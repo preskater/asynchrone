@@ -2,13 +2,13 @@
 
 import { useLocale, useTranslations } from "next-intl"
 
-import { formatEventRange } from "@/lib/calendars/date-utils"
+import { formatEventRange } from "@workspace/calendars/date-utils"
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 const RESPONSE_DOT: Record<string, string> = {
   accepted: "bg-emerald-500",

@@ -18,12 +18,12 @@ import {
   formatRange,
   startOfWeek,
   addDays,
-} from "@/lib/calendars/date-utils"
+} from "@workspace/calendars/date-utils"
 import { useCalendars } from "@/lib/calendars/store"
 import { useProjectStore } from "@/lib/projects/store"
 import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
-import type { CalendarEvent, CalendarView } from "@/lib/calendars/types"
+import type { CalendarEvent, CalendarView } from "@workspace/calendars/types"
 
 const VIEWS: CalendarView[] = ["day", "week", "month", "agenda", "availability"]
 

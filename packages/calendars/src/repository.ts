@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@workspace/db"
+import type { CalendarDb, CalendarEventUpdateInput } from "./db"
 
 export const calendarInclude = {
   events: {
@@ -8,7 +8,7 @@ export const calendarInclude = {
 }
 
 export class CalendarRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: CalendarDb) {}
 
   listCalendars(organizationId: string) {
     return this.db.calendar.findMany({
@@ -32,14 +32,12 @@ export class CalendarRepository {
     color: string
     memberIds: string[]
   }) {
+    const { memberIds, ...calendar } = data
     return this.db.calendar.create({
       data: {
-        organizationId: data.organizationId,
-        name: data.name,
-        kind: data.kind,
-        color: data.color,
+        ...calendar,
         members: {
-          create: data.memberIds.map((userId) => ({ userId })),
+          create: memberIds.map((userId) => ({ userId })),
         },
       },
       include: { members: true },
@@ -106,22 +104,12 @@ export class CalendarRepository {
     createdBy: string
     attendees: { memberId: string; response: string }[]
   }) {
+    const { attendees, ...event } = data
     return this.db.calendarEvent.create({
       data: {
-        organizationId: data.organizationId,
-        calendarId: data.calendarId,
-        title: data.title,
-        description: data.description,
-        startAt: data.startAt,
-        endAt: data.endAt,
-        allDay: data.allDay,
-        location: data.location,
-        meetingUrl: data.meetingUrl,
-        color: data.color,
-        reminderMinutes: data.reminderMinutes,
-        createdBy: data.createdBy,
+        ...event,
         attendees: {
-          create: data.attendees.map((attendee) => ({
+          create: attendees.map((attendee) => ({
             userId: attendee.memberId,
             response: attendee.response,
           })),
@@ -131,21 +119,7 @@ export class CalendarRepository {
     })
   }
 
-  updateEvent(
-    id: string,
-    data: {
-      title?: string
-      description?: string
-      startAt?: Date
-      endAt?: Date
-      allDay?: boolean
-      calendarId?: string
-      location?: string
-      meetingUrl?: string
-      color?: string
-      reminderMinutes?: number
-    }
-  ) {
+  updateEvent(id: string, data: CalendarEventUpdateInput) {
     return this.db.calendarEvent.update({
       where: { id },
       data,
@@ -153,7 +127,10 @@ export class CalendarRepository {
     })
   }
 
-  setAttendees(eventId: string, attendees: { memberId: string; response: string }[]) {
+  setAttendees(
+    eventId: string,
+    attendees: { memberId: string; response: string }[]
+  ) {
     return this.db.$transaction([
       this.db.eventAttendee.deleteMany({ where: { eventId } }),
       this.db.eventAttendee.createMany({
@@ -179,3 +156,24 @@ export class CalendarRepository {
     return this.db.calendarEvent.delete({ where: { id } })
   }
 }
+
+export type { CalendarEventRow, CalendarRow } from "./db"
+
+/**
+ * The slice of {@link CalendarRepository} the service depends on. Kept as a
+ * port so the calendar rules can be unit-tested without a database and so the
+ * eventual calendars app can bind the same service to its own client.
+ */
+export type CalendarRepositoryPort = Pick<
+  CalendarRepository,
+  | "listCalendars"
+  | "findCalendar"
+  | "createCalendar"
+  | "setCalendarVisible"
+  | "listEvents"
+  | "findEvent"
+  | "createEvent"
+  | "updateEvent"
+  | "deleteEvent"
+  | "setAttendeeResponse"
+>

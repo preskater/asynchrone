@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { calendarService } from "@/lib/calendars"
-import { createEventSchema } from "@/lib/calendars/schemas"
+import { createEventSchema } from "@workspace/calendars/schemas"
 import type { RequestContext } from "@workspace/core/context"
 
 import type { McpTool } from "./projects"
@@ -10,8 +10,7 @@ export const calendarTools: McpTool[] = [
   {
     name: "list_calendar",
     title: "List calendars and events",
-    description:
-      "List the workspace calendars and their scheduled events.",
+    description: "List the workspace calendars and their scheduled events.",
     inputSchema: {},
     readOnly: true,
     run: (ctx) => calendarService.list(ctx),
@@ -29,7 +28,8 @@ export const calendarTools: McpTool[] = [
   {
     name: "respond_to_event",
     title: "Respond to event",
-    description: "Set your response (accepted, tentative, declined) for an event.",
+    description:
+      "Set your response (accepted, tentative, declined) for an event.",
     inputSchema: {
       eventId: z.string(),
       response: z.enum(["accepted", "tentative", "declined", "pending"]),
@@ -37,7 +37,8 @@ export const calendarTools: McpTool[] = [
     readOnly: false,
     run: (ctx, input) =>
       calendarService.setAttendeeResponse(ctx, String(input.eventId), {
-        response: input.response as "accepted" | "tentative" | "declined" | "pending",
+        response: input.response as
+          "accepted" | "tentative" | "declined" | "pending",
       }),
   },
 ]

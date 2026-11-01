@@ -4,7 +4,10 @@ import * as React from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarPlusIcon } from "lucide-react"
 
-import { AttendeePicker, type AttendeeDraft } from "@/components/calendars/attendee-picker"
+import {
+  AttendeePicker,
+  type AttendeeDraft,
+} from "@/components/calendars/attendee-picker"
 import { DatePicker } from "@/components/task/date-picker"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -35,20 +38,17 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { ToggleGroup, ToggleGroupItem } from "@workspace/ui/components/toggle-group"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@workspace/ui/components/toggle-group"
 
 import { EVENT_COLOR_VAR } from "@/lib/calendars/event-colors"
 import { useCalendars, type EventInput } from "@/lib/calendars/store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import type { CalendarEvent, EventColor } from "@/lib/calendars/types"
+import type { CalendarEvent, EventColor } from "@workspace/calendars/types"
 
-const EVENT_COLOR_VALUES = [
-  "blue",
-  "green",
-  "orange",
-  "red",
-  "purple",
-] as const
+const EVENT_COLOR_VALUES = ["blue", "green", "orange", "red", "purple"] as const
 
 const REMINDER_VALUES = ["none", "0", "5", "15", "30", "60"] as const
 
@@ -127,7 +127,9 @@ export function EventDialog({
     const startParts = splitTime(start.toISOString())
     const endParts = splitTime(end.toISOString())
     setTitle(event?.title ?? "")
-    setCalendarId(event?.calendarId ?? defaultCalendarId ?? calendars[0]?.id ?? "")
+    setCalendarId(
+      event?.calendarId ?? defaultCalendarId ?? calendars[0]?.id ?? ""
+    )
     setDate(start.toISOString())
     setStartHour(startParts.hour)
     setStartMinute(startParts.minute)
@@ -139,7 +141,9 @@ export function EventDialog({
     setMeetingUrl(event?.meetingUrl ?? "")
     setColor(event?.color ?? "blue")
     setReminder(
-      event?.reminderMinutes !== undefined ? String(event.reminderMinutes) : "15"
+      event?.reminderMinutes !== undefined
+        ? String(event.reminderMinutes)
+        : "15"
     )
     setAttendees(
       event?.attendees.map((attendee) => ({
@@ -236,7 +240,9 @@ export function EventDialog({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field data-invalid={calendarInvalid}>
-                <FieldLabel htmlFor="event-calendar">{t("calendar")}</FieldLabel>
+                <FieldLabel htmlFor="event-calendar">
+                  {t("calendar")}
+                </FieldLabel>
                 <Select
                   items={calendarItems}
                   value={calendarId}
@@ -438,7 +444,9 @@ export function EventDialog({
                 </ToggleGroup>
               </Field>
               <Field>
-                <FieldLabel htmlFor="event-reminder">{t("reminder")}</FieldLabel>
+                <FieldLabel htmlFor="event-reminder">
+                  {t("reminder")}
+                </FieldLabel>
                 <Select
                   items={reminderItems}
                   value={reminder}

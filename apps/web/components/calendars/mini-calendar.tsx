@@ -49,7 +49,7 @@ export function MiniCalendar({
         hasEvents:
           "relative after:absolute after:bottom-0.5 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-primary",
       }}
-      className="[--cell-size:--spacing(7)] p-1"
+      className="p-1 [--cell-size:--spacing(7)]"
     />
   )
 }

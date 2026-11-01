@@ -25,15 +25,9 @@ import {
   SearchIcon,
 } from "lucide-react"
 
-import type { CalendarView } from "@/lib/calendars/types"
+import type { CalendarView } from "@workspace/calendars/types"
 
-const VIEWS: CalendarView[] = [
-  "day",
-  "week",
-  "month",
-  "agenda",
-  "availability",
-]
+const VIEWS: CalendarView[] = ["day", "week", "month", "agenda", "availability"]
 
 export function CalendarsHeader({
   rangeLabel,
@@ -64,7 +58,12 @@ export function CalendarsHeader({
           {rangeLabel}
         </h2>
         <ButtonGroup>
-          <Button variant="outline" size="icon-sm" aria-label={t("previous")} onClick={onPrev}>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("previous")}
+            onClick={onPrev}
+          >
             <ChevronLeftIcon />
           </Button>
           <ButtonGroupSeparator />
@@ -72,7 +71,12 @@ export function CalendarsHeader({
             {t("today")}
           </Button>
           <ButtonGroupSeparator />
-          <Button variant="outline" size="icon-sm" aria-label={t("next")} onClick={onNext}>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("next")}
+            onClick={onNext}
+          >
             <ChevronRightIcon />
           </Button>
         </ButtonGroup>
@@ -105,7 +109,13 @@ export function CalendarsHeader({
           </InputGroupAddon>
         </InputGroup>
 
-        <Button variant="outline" size="icon-sm" aria-label={t("searchLabel")} onClick={onSearch} className="md:hidden">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label={t("searchLabel")}
+          onClick={onSearch}
+          className="md:hidden"
+        >
           <SearchIcon />
         </Button>
 

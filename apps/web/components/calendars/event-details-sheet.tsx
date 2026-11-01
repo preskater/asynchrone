@@ -39,11 +39,17 @@ import {
 } from "@workspace/ui/components/sheet"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { formatDayLabel, formatEventRange } from "@/lib/calendars/date-utils"
-import { EVENT_COLOR_CLASSES, RESPONSE_VARIANT } from "@/lib/calendars/event-colors"
+import {
+  formatDayLabel,
+  formatEventRange,
+} from "@workspace/calendars/date-utils"
+import {
+  EVENT_COLOR_CLASSES,
+  RESPONSE_VARIANT,
+} from "@/lib/calendars/event-colors"
 import { useEnumLabel } from "@workspace/i18n/labels"
 import { useCalendars } from "@/lib/calendars/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 const REMINDER_KEY: Record<number, string> = {
   0: "at_start",

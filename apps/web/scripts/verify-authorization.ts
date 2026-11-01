@@ -2,8 +2,7 @@ import "dotenv/config"
 
 import { randomUUID } from "node:crypto"
 
-import { CalendarRepository } from "../lib/calendars/repository"
-import { CalendarService } from "../lib/calendars/service"
+import { CalendarRepository, CalendarService } from "@workspace/calendars"
 import { contextForMember } from "../lib/core/auth-context"
 import type { RequestContext } from "@workspace/core/context"
 import { MessagingRepository } from "../lib/messaging/repository"

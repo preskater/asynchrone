@@ -2,9 +2,9 @@
 
 import { useLocale, useTranslations } from "next-intl"
 
-import { formatEventRange, formatTime } from "@/lib/calendars/date-utils"
+import { formatEventRange, formatTime } from "@workspace/calendars/date-utils"
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 export function EventChip({
   event,

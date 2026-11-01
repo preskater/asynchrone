@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { useCalendars } from "@/lib/calendars/store"
-import type { CalendarView } from "@/lib/calendars/types"
+import type { CalendarView } from "@workspace/calendars/types"
 import type { FileLocation } from "@/lib/files/types"
 import { useMessaging } from "@/lib/messaging/store"
 

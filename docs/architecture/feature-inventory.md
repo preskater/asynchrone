@@ -120,7 +120,8 @@ organization 2FA policy.
 - Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
-  `list_files`, `list_conversations`, `send_message`.
+  `list_files`, `list_conversations`, `send_message`. Calendar tools call
+  `@workspace/calendars` through the app adapter.
 - MCP transport: `apps/web/app/mcp/route.ts`, `apps/web/lib/mcp/*`.
 - MCP tools (44) live in `apps/web/lib/mcp/tools/*` and are listed per domain
   below.
@@ -199,14 +200,33 @@ Copilot shell during the transition.
 
 Target: `apps/calendars` / `@workspace/calendars` + `@workspace/meetings`.
 
-| Surface            | Inventory                                                                                                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pages              | `/[orgSlug]/calendars`                                                                                                                                                               |
-| Server actions     | `actions/calendars.ts`, `actions/meetings.ts`                                                                                                                                        |
-| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings` |
-| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `AuditLog`                                                       |
-| Audit actions      | none today                                                                                                                                                                           |
-| Internal endpoints | search / export / delete as above                                                                                                                                                    |
+### Domain packages (#154)
+
+| Package              | Ships                                                                                                                              | Bound by                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers                                        | `apps/web/lib/calendars/index.ts` binds `CalendarDb` over the transitional Prisma client   |
+| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters                             | `apps/web/lib/meetings/index.ts` binds `MeetingDb` and Copilot's notification inbox         |
+
+Both packages are Next-free and depend only on `@workspace/core` and
+`@workspace/organization`. Repositories take narrow structural ports
+(`CalendarDb`, `MeetingDb`), so the same service runs in the calendars app, the
+portal (in-process until #190) and Copilot without importing another app's
+client. Unit tests use the repository ports.
+
+### Routes and surfaces
+
+| Surface            | Location                                                                                                                                                       | Notes                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Calendars page     | `apps/web/app/[locale]/(app)/[orgSlug]/calendars/{page,loading,not-found}.tsx`                                                                                | Loads its own data through `listCalendarDataAction`; the app layout only mounts an empty provider |
+| Meeting inbox      | Dialog on the calendars page (`apps/web/components/meetings/meeting-requests-dialog.tsx`)                                                                    | No route of its own                                                                            |
+| Meeting settings   | `apps/web/app/[locale]/(app)/[orgSlug]/settings/page.tsx` + `components/meetings/meeting-settings-form.tsx`                                                   | Owners/admins                                                                                  |
+| Portal meetings    | `apps/web/app/[locale]/portal/meetings/page.tsx`                                                                                                              | Server-renders `meetingService.getPortalMeetings`                                              |
+| Server actions     | `actions/calendars.ts` (list data/events, create/update/move/delete event, add/toggle calendar, respond) and `actions/meetings.ts` (portal create/cancel, team list/accept/decline, settings get/update) | Set `"use server"`; URLs unchanged |
+| API                | `/api/health` only                                                                                                                                            | No dedicated calendar or meeting route                                                         |
+| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings` | `apps/web/lib/mcp/tools/{calendars,meetings}.ts`                                               |
+| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `AuditLog`                                  | `asynchrone_calendars` (`@workspace/db-calendars`)                                             |
+| Audit actions      | none today                                                                                                                                                     |                                                                                                |
+| Internal endpoints | search / export / delete as above                                                                                                                              | Not wired yet                                                                                  |
 
 ## Files
 
@@ -376,6 +396,7 @@ Never bake secrets into an image.
 | Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
 | Unit — Projects           | domain has no standalone unit file yet; covered by `e2e` and scripts                                                                         |
 | Unit — Files              | `apps/web/lib/files/duplicate.unit.test.ts`                                                                                                  |
+| Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts` |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                    |
 | Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts` |
@@ -473,7 +494,10 @@ phase issues rather than fixed in #146.
 1. `apps/web/lib/prisma.ts` re-exports `@workspace/db` (the monolith schema).
    Domain pages and actions still read every table through that one client.
 2. The assistant (`lib/assistant/tools.ts`) and MCP tools import the Projects,
-   Calendars, Files and Messages services in-process.
+   Files and Messages services in-process; calendar tools import
+   `@workspace/calendars` and meeting tools `@workspace/meetings` through the
+   app adapters. All of them still run inside Copilot instead of the domain
+   internal API (#190).
 3. The portal service reads project/files data in-process.
 4. Search, export and deletion handlers exist in packages but only Copilot's
    audit/identity endpoints are wired; domain endpoints arrive with each app.

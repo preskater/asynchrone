@@ -42,7 +42,7 @@ import {
   MEETING_PROVIDERS,
   type MeetingProviderId,
   type MeetingSettingsData,
-} from "@/lib/meetings/types"
+} from "@workspace/meetings/types"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 
 /** Organization rules for client meeting requests (Settings → Meetings). */

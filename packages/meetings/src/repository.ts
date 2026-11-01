@@ -1,14 +1,9 @@
-import type { PrismaClient } from "@workspace/db"
-
-export const meetingRequestInclude = {
-  client: { select: { id: true, name: true } },
-  slots: { orderBy: { position: "asc" as const } },
-} as const
+import { meetingRequestInclude, type MeetingDb } from "./db"
 
 const ACTIVE_STATUSES = ["pending", "accepted"]
 
 export class MeetingRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: MeetingDb) {}
 
   getSettings(organizationId: string) {
     return this.db.meetingSettings.findUnique({ where: { organizationId } })
@@ -141,10 +136,7 @@ export class MeetingRepository {
           slots: { some: { startAt: { lt: to }, endAt: { gt: from } } },
           ...(excludeRequestId ? { id: { not: excludeRequestId } } : {}),
         },
-        select: {
-          id: true,
-          slots: { select: { startAt: true, endAt: true } },
-        },
+        include: meetingRequestInclude,
         take: 100,
       }),
       this.db.calendarEvent.findMany({
@@ -154,7 +146,7 @@ export class MeetingRepository {
           startAt: { lt: to },
           endAt: { gt: from },
         },
-        select: { startAt: true, endAt: true },
+        select: { id: true, title: true, startAt: true, endAt: true },
         take: 500,
       }),
     ])
@@ -310,3 +302,33 @@ export class MeetingRepository {
     })
   }
 }
+
+export type {
+  MeetingRequestRow,
+  MeetingSettingsRow,
+  MeetingSlotRow,
+} from "./db"
+
+/**
+ * The slice of {@link MeetingRepository} the service depends on. The booking
+ * rules are unit-tested against a fake port; the calendars app binds the real
+ * repository over the generated client.
+ */
+export type MeetingRepositoryPort = Pick<
+  MeetingRepository,
+  | "getSettings"
+  | "upsertSettings"
+  | "listRequests"
+  | "listClientRequests"
+  | "findRequest"
+  | "findClientRequest"
+  | "createRequest"
+  | "updateRequest"
+  | "findSlotConflicts"
+  | "listTeamEvents"
+  | "findCalendar"
+  | "ensureTeamCalendar"
+  | "bookRequest"
+  | "listManagers"
+  | "findInternalMembers"
+>

@@ -20,7 +20,11 @@ import { useErrorTranslator } from "@workspace/i18n/errors"
 import type { Member } from "@/lib/projects/types"
 import { useProjectStore } from "@/lib/projects/store"
 
-import type { CalendarData, CalendarEvent, CalendarSource } from "./types"
+import type {
+  CalendarData,
+  CalendarEvent,
+  CalendarSource,
+} from "@workspace/calendars/types"
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`

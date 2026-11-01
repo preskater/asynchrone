@@ -3,7 +3,7 @@ import {
   acceptMeetingRequestSchema,
   declineMeetingRequestSchema,
   updateMeetingSettingsSchema,
-} from "@/lib/meetings/schemas"
+} from "@workspace/meetings/schemas"
 
 import type { McpTool } from "./projects"
 

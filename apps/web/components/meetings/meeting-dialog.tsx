@@ -71,10 +71,7 @@ export function MeetingDialog({
   const [duration, setDuration] = React.useState("30")
 
   const durations = DURATION_MINUTES.map((minutes) => ({
-    label:
-      minutes >= 60
-        ? t("oneHour")
-        : t("minutesCount", { count: minutes }),
+    label: minutes >= 60 ? t("oneHour") : t("minutesCount", { count: minutes }),
     value: String(minutes),
   }))
   const times = buildTimes(locale)
@@ -143,7 +140,9 @@ export function MeetingDialog({
                 </Select>
               </Field>
               <Field>
-                <FieldLabel htmlFor="meeting-duration">{t("duration")}</FieldLabel>
+                <FieldLabel htmlFor="meeting-duration">
+                  {t("duration")}
+                </FieldLabel>
                 <Select
                   items={durations}
                   value={duration}
@@ -164,9 +163,7 @@ export function MeetingDialog({
                 </Select>
               </Field>
             </div>
-            <FieldDescription>
-              {t("everyoneInvited")}
-            </FieldDescription>
+            <FieldDescription>{t("everyoneInvited")}</FieldDescription>
           </FieldGroup>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>

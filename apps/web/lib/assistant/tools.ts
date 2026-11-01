@@ -2,7 +2,7 @@ import { tool, type RunContext, type Tool } from "@openai/agents"
 import { z } from "zod"
 
 import { calendarService } from "@/lib/calendars"
-import { createEventSchema } from "@/lib/calendars/schemas"
+import { createEventSchema } from "@workspace/calendars/schemas"
 import type { RequestContext } from "@workspace/core/context"
 import { fileService } from "@/lib/files"
 import { messagingService } from "@/lib/messaging"

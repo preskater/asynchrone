@@ -13,13 +13,13 @@ import {
   dateKey,
   isSameDay,
   layoutDayEvents,
-} from "@/lib/calendars/date-utils"
+} from "@workspace/calendars/date-utils"
 import { tasksOnDay } from "@/lib/calendars/tasks"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
 import { useProjectStore } from "@/lib/projects/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 const HOURS = Array.from(
   { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
