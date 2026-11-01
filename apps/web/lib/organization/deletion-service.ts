@@ -8,7 +8,9 @@ import { unlinkLargeObject } from "@/lib/large-object"
 import { prisma } from "@/lib/prisma"
 
 /** Matches the privacy policy: data is removed within 30 days of the request. */
-export const DELETION_GRACE_DAYS = 30
+import { ORGANIZATION_DELETION_GRACE_DAYS } from "@workspace/organization/lifecycle"
+
+export const DELETION_GRACE_DAYS = ORGANIZATION_DELETION_GRACE_DAYS
 
 const DAY = 24 * 60 * 60 * 1000
 

@@ -39,7 +39,7 @@ import type { EmployeeOverviewData, LeaveRequestData } from "@/lib/employees/typ
 import { TRACKED_LEAVE_TYPES } from "@/lib/employees/types"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { getInitials } from "@/lib/organization/utils"
+import { getInitials } from "@workspace/organization/utils"
 
 import {
   BalanceDialog,

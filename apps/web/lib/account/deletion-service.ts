@@ -4,7 +4,7 @@ import {
   ValidationError,
 } from "@workspace/core/errors"
 import { sendAccountDeletedEmail } from "@/lib/email"
-import { parseRoles } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/utils"
 import { prisma } from "@/lib/prisma"
 
 export const DELETED_USER_NAME = "Deleted user"

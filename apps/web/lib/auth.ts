@@ -5,13 +5,13 @@ import { recordTwoFactorChange } from "./account/two-factor-audit"
 import { recordAuthAuditEvent } from "./audit/auth-audit"
 import { rateLimit } from "./core/rate-limit"
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email"
-import { ac, orgRoles } from "./organization/access"
+import { ac, orgRoles } from "@workspace/organization/access"
 import {
   entitlementsFor,
   resolvePlan,
   seatsFull,
 } from "./organization/entitlements"
-import { parseRoles } from "./organization/utils"
+import { parseRoles } from "@workspace/organization/utils"
 import { prisma } from "./prisma"
 import { buildOAuthClaims, twoFactorEnrollmentRequired } from "./oauth/claims"
 import {

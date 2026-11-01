@@ -16,7 +16,7 @@ import { fileService } from "@/lib/files"
 import { orgQuotaBytes, orgUsedBytes } from "@/lib/files/storage"
 import { MaxBytesExceededError, uploadLargeObject } from "@/lib/large-object"
 import { notificationService } from "@/lib/notifications"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 import { prisma } from "@/lib/prisma"
 import {
   createProjectMessage,

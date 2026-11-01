@@ -20,16 +20,21 @@ export const ORG_ROLES: RoleMeta[] = [
   { value: "viewer", badge: "outline" },
 ]
 
-export const INVITABLE_ROLES = ORG_ROLES.filter((role) => role.value !== "owner")
+export const INVITABLE_ROLES = ORG_ROLES.filter(
+  (role) => role.value !== "owner"
+)
 
 export function getRoleMeta(role: string | null | undefined): RoleMeta {
-  return ORG_ROLES.find((item) => item.value === role) ?? { value: "member", badge: "outline" }
+  return (
+    ORG_ROLES.find((item) => item.value === role) ?? {
+      value: "member",
+      badge: "outline",
+    }
+  )
 }
 
 export function roleRank(role: string | null | undefined): number {
-  const primary = (role ?? "")
-    .split(",")[0]
-    ?.trim()
+  const primary = (role ?? "").split(",")[0]?.trim()
   return primary ? (ROLE_RANK[primary as OrgRole] ?? 0) : 0
 }
 

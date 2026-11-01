@@ -1,27 +1,20 @@
+import {
+  toMemberDirectoryEntry,
+  type MemberDirectorySource,
+} from "@workspace/organization/directory"
+
 import type { Member, MemberRole } from "@/lib/projects/types"
 
-export interface MemberSource {
-  userId: string
-  role: string
-  user: {
-    name: string
-    email: string
-    image: string | null
-  }
-}
+export type MemberSource = MemberDirectorySource
 
-const ROLES: MemberRole[] = ["owner", "admin", "member", "viewer"]
-
-function toMemberRole(role: string | null | undefined): MemberRole {
-  return ROLES.includes(role as MemberRole) ? (role as MemberRole) : "member"
-}
-
+/** Project members cannot be portal clients; the directory defaults to member. */
 export function toMemberView(source: MemberSource): Member {
+  const entry = toMemberDirectoryEntry(source)
   return {
-    id: source.userId,
-    name: source.user.name,
-    email: source.user.email,
-    avatarUrl: source.user.image ?? undefined,
-    role: toMemberRole(source.role),
+    id: entry.id,
+    name: entry.name,
+    email: entry.email,
+    avatarUrl: entry.avatarUrl,
+    role: (entry.role === "client" ? "member" : entry.role) as MemberRole,
   }
 }

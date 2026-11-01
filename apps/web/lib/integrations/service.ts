@@ -7,7 +7,7 @@ import {
 } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
 import type { PrismaClient } from "@workspace/db"
-import { ROLE_RANK } from "@/lib/organization/roles"
+import { ROLE_RANK } from "@workspace/organization/roles"
 
 import { decryptSecret, encryptSecret, generateWebhookSecret } from "./crypto"
 import { createProviderClient, RepositoryApiError } from "./providers"

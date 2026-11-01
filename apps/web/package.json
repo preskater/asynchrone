@@ -48,6 +48,7 @@
     "@workspace/db-identity": "*",
     "@workspace/i18n": "*",
     "@workspace/next-config": "*",
+    "@workspace/organization": "*",
     "@workspace/sagas": "*",
     "@workspace/search": "*",
     "@workspace/service-auth": "*",

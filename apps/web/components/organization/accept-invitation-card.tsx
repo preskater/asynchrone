@@ -20,7 +20,7 @@ import { Spinner } from "@workspace/ui/components/spinner"
 import { authClient } from "@/lib/auth-client"
 import { claimPortalAccessAction } from "@/actions/portal"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { parseRoles } from "@/lib/organization/roles"
+import { parseRoles } from "@workspace/organization/roles"
 
 interface InvitationDetails {
   organizationName: string

@@ -26,8 +26,8 @@ import {
 
 import { authClient } from "@/lib/auth-client"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { parseRoles } from "@/lib/organization/roles"
-import { buildInviteUrl } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
+import { buildInviteUrl } from "@workspace/organization/utils"
 
 export interface OrgInvitation {
   id: string

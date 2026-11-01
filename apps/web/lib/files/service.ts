@@ -8,7 +8,7 @@ import {
   uploadLargeObject,
 } from "@/lib/large-object"
 import { requireEntitlement } from "@/lib/organization/entitlements"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 
 import { kindFromName } from "./file-utils"
 import { FileRepository } from "./repository"

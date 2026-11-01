@@ -29,7 +29,7 @@ import {
   ValidationError,
 } from "@workspace/core/errors"
 import { requireEntitlement } from "@/lib/organization/entitlements"
-import { ROLE_RANK, roleRank } from "@/lib/organization/roles"
+import { ROLE_RANK, roleRank } from "@workspace/organization/roles"
 import { prisma } from "@/lib/prisma"
 
 import { AUDIT_ACTIONS } from "./actions"

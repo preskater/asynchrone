@@ -18,7 +18,7 @@ import {
 } from "@workspace/core/pagination"
 import { repositoryIntegrationService } from "@/lib/integrations"
 import { notificationService } from "@/lib/notifications"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 import type { PrismaClient } from "@workspace/db"
 
 import { ProjectRepository } from "./repository"

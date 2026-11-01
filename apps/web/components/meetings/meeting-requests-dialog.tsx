@@ -39,7 +39,7 @@ import type {
   MeetingRequestsData,
   MeetingStatus,
 } from "@/lib/meetings/types"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 
 const STATUS_VARIANT: Record<

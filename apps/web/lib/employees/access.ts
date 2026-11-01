@@ -1,5 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 
 export interface EmployeeAccess {
   rank: number
