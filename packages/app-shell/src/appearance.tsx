@@ -9,7 +9,7 @@ import {
   customThemeVariables,
   EFFECT_ATTRIBUTES,
   type OrganizationAppearance,
-} from "./appearance-types"
+} from "@workspace/appearance/types"
 import {
   appearanceBootScript,
   userAppearanceStorageKey,

@@ -1,6 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
 
-import { NotificationRepository } from "./repository"
 import type {
   NotificationItemData,
   NotificationType,
@@ -18,16 +17,43 @@ export interface NotifyArgs {
   data?: Record<string, unknown>
 }
 
-export class NotificationService {
-  constructor(private readonly repo: NotificationRepository) {}
+export interface NotificationRow {
+  id: string
+  type: string
+  data: unknown
+  readAt: Date | null
+  createdAt: Date
+}
 
-  private map(row: {
-    id: string
+/**
+ * Storage contract for the notification inbox.
+ *
+ * Copilot owns the `Notification` table in its identity database and provides
+ * this port; every other app calls `POST /internal/v1/notifications` instead
+ * (see `NotificationClient` in `@workspace/contracts`).
+ */
+export interface NotificationRepositoryPort {
+  list(
+    organizationId: string,
+    userId: string,
+    limit: number
+  ): Promise<NotificationRow[]>
+  countUnread(userId: string): Promise<number>
+  create(data: {
+    organizationId: string
+    userId: string
+    actorId: string | null
     type: string
-    data: unknown
-    readAt: Date | null
-    createdAt: Date
-  }): NotificationItemData {
+    data?: unknown
+  }): PromiseLike<unknown>
+  markRead(userId: string, id: string): PromiseLike<unknown>
+  markAllRead(userId: string): PromiseLike<unknown>
+}
+
+export class NotificationService {
+  constructor(private readonly repo: NotificationRepositoryPort) {}
+
+  private map(row: NotificationRow): NotificationItemData {
     return {
       id: row.id,
       type: row.type as NotificationType,

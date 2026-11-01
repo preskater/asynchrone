@@ -17,8 +17,8 @@ import {
   MessageScrollerViewport,
 } from "@workspace/ui/components/message-scroller"
 
-import { suggestions } from "@/lib/assistant/suggestions"
-import { useAssistant } from "@/lib/assistant/use-assistant"
+import { suggestions } from "@workspace/ai/suggestions"
+import { useAssistant } from "@workspace/ai/use-assistant"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useEntitlements } from "@/lib/organization/use-entitlements"
 

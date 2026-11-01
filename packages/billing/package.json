@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/billing",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@workspace/core": "*",
+    "@workspace/db": "*",
+    "@workspace/organization": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.13.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./plans": "./src/plans.ts",
+    "./service": "./src/service.ts",
+    "./types": "./src/types.ts",
+    "./webhook-payload": "./src/webhook-payload.ts"
+  }
+}

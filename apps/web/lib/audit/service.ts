@@ -20,7 +20,7 @@ import {
 } from "@workspace/audit"
 import type { PrismaClient } from "@workspace/db"
 
-import { parseOrganizationMetadata } from "@workspace/app-shell/appearance-types"
+import { parseOrganizationMetadata } from "@workspace/appearance/types"
 import { toCsv } from "@workspace/core/csv"
 import type { RequestContext } from "@workspace/core/context"
 import {
@@ -38,7 +38,7 @@ import {
   facetsAcrossApps,
   listAuditAcrossApps,
   type LocalAuditSource,
-} from "./fanout"
+} from "@workspace/audit"
 import { recordUserAudit } from "./record"
 import { auditRemotes } from "./remotes"
 

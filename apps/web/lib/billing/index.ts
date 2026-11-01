@@ -1,6 +1,7 @@
+import { BillingService } from "@workspace/billing"
+
 import { BillingNotifier } from "./notifier"
 import { BillingRepository } from "./repository"
-import { BillingService } from "./service"
 import { StripeBillingProvider } from "./stripe-provider"
 
 export const billingRepository = new BillingRepository()
@@ -13,7 +14,7 @@ export const billingService = new BillingService({
   notifier: billingNotifier,
 })
 
-export { BillingService } from "./service"
+export { BillingService } from "@workspace/billing"
 export { BillingRepository } from "./repository"
 export { StripeBillingProvider } from "./stripe-provider"
-export * from "./types"
+export * from "@workspace/billing"

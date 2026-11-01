@@ -1,8 +1,4 @@
-import {
-  run,
-  type AgentInputItem,
-  type RunStreamEvent,
-} from "@openai/agents"
+import { run, type AgentInputItem, type RunStreamEvent } from "@openai/agents"
 import { z } from "zod"
 
 import { getRequestContext } from "@/lib/core/auth-context"
@@ -11,7 +7,7 @@ import { jsonError, rejectCrossOrigin } from "@workspace/core/http"
 import { upgradeRequired } from "@/lib/organization/entitlements"
 import { rateLimit } from "@/lib/core/rate-limit"
 import { assistantAgent } from "@/lib/assistant/agent"
-import { DEFAULT_ASSISTANT_MODEL } from "@/lib/assistant/model"
+import { DEFAULT_ASSISTANT_MODEL } from "@workspace/ai/model"
 import { getAiQuota, quotaExceeded, recordAiUsage } from "@/lib/assistant/usage"
 
 export const runtime = "nodejs"

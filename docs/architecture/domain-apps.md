@@ -100,6 +100,10 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
   domain's Prisma client (#190). That wiring lands with the domain apps in
   milestone #1; the foundation already ships the contracts, tokens and
   failure-mode tests.
+- Cross-domain services are port-parameterized packages (#152): storage,
+  notifications, integrations, AI, appearance, billing and audit. The owning
+  app binds the pool, database client, provider or notifier in a thin adapter
+  (`apps/web/lib/*`); the package never opens a second app's database.
 
 ## Validation
 
@@ -136,4 +140,5 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Auth package and session helpers (#149)
 - [x] Organization roles, entitlements, shell and directory (#150)
 - [x] App shell and lazy domain hydration (#151)
+- [x] Cross-domain services: storage, notifications, integrations, AI, appearance, billing and audit (#152)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

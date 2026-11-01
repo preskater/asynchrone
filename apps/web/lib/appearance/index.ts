@@ -1,2 +1,2 @@
-export * from "./types"
-export * from "./schemas"
+export * from "@workspace/appearance/types"
+export * from "@workspace/appearance/schemas"

@@ -1,1 +1,1 @@
-export * from "@workspace/app-shell/appearance-types"
+export * from "@workspace/appearance/types"

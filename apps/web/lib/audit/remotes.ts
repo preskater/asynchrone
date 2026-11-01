@@ -1,7 +1,7 @@
 import { APPS, CUSTOMER_APP_KEYS, AuditClient } from "@workspace/contracts"
 import { ServiceTokenClient } from "@workspace/service-auth"
 
-import type { RemoteAuditSource } from "./fanout"
+import type { RemoteAuditSource } from "@workspace/audit"
 
 /**
  * Reachable domain apps for the audit fan-out.

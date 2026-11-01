@@ -1,9 +1,18 @@
 import type { PrismaClient } from "@workspace/db"
 
-export class NotificationRepository {
+import type {
+  NotificationRepositoryPort,
+  NotificationRow,
+} from "@workspace/notifications"
+
+export class NotificationRepository implements NotificationRepositoryPort {
   constructor(private readonly db: PrismaClient) {}
 
-  list(organizationId: string, userId: string, limit = 20) {
+  list(
+    organizationId: string,
+    userId: string,
+    limit = 20
+  ): Promise<NotificationRow[]> {
     return this.db.notification.findMany({
       where: { organizationId, userId },
       orderBy: { createdAt: "desc" },
