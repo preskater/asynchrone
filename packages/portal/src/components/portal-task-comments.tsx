@@ -10,11 +10,12 @@ import { Button } from "@workspace/ui/components/button"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { Textarea } from "@workspace/ui/components/textarea"
 
-import { postPortalTaskCommentAction } from "@/actions/portal"
 import { useRouter } from "@workspace/i18n/navigation"
 import { unwrapActionResult } from "@workspace/core/action"
-import type { TaskCommentData } from "@/lib/projects/task-comments"
+import type { TaskCommentData } from "@workspace/projects/task-comments"
 import { useErrorTranslator } from "@workspace/i18n/errors"
+
+import { usePortalActions } from "./actions"
 
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -40,6 +41,7 @@ export function PortalTaskComments({
   const te = useErrorTranslator()
   const locale = useLocale()
   const router = useRouter()
+  const actions = usePortalActions()
 
   const [body, setBody] = React.useState("")
   const [sending, setSending] = React.useState(false)
@@ -52,7 +54,8 @@ export function PortalTaskComments({
     const diff = new Date(iso).getTime() - Date.now()
     const abs = Math.abs(diff)
     if (abs < 60_000) return relative.format(Math.round(diff / 1000), "second")
-    if (abs < 3_600_000) return relative.format(Math.round(diff / 60_000), "minute")
+    if (abs < 3_600_000)
+      return relative.format(Math.round(diff / 60_000), "minute")
     if (abs < 86_400_000)
       return relative.format(Math.round(diff / 3_600_000), "hour")
     if (abs < 2_592_000_000)
@@ -67,7 +70,11 @@ export function PortalTaskComments({
     setSending(true)
     try {
       unwrapActionResult(
-        await postPortalTaskCommentAction({ projectId, taskId, body: text })
+        await actions.postPortalTaskCommentAction({
+          projectId,
+          taskId,
+          body: text,
+        })
       )
       setBody("")
       toast.success(tT("portalMessageSent"))
@@ -135,9 +142,7 @@ export function PortalTaskComments({
           </div>
         </form>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          {t("readOnlyComments")}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("readOnlyComments")}</p>
       )}
     </div>
   )

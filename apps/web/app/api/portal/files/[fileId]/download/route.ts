@@ -3,17 +3,19 @@ import { Readable } from "node:stream"
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 
+import { isAppError } from "@workspace/core/errors"
+
 import { auth } from "@/lib/auth"
-import { openLargeObjectStream } from "@/lib/large-object"
-import { prisma } from "@/lib/prisma"
+import { getPortalContext, portalService } from "@/lib/portal"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
 /**
- * Download of a client-visible document for portal users. Access requires a
- * member row linked to a company and a ClientDocument(visibility=client) link on
- * that company.
+ * Download of a client-visible document for portal users. The package owns the
+ * access rule: a member row linked to a company and a ClientDocument
+ * (visibility=client) link on that company. The large object is opened through
+ * Copilot's storage binding.
  */
 export async function GET(
   _request: Request,
@@ -25,50 +27,28 @@ export async function GET(
   }
 
   const { fileId } = await params
-
-  const activeOrganizationId = session.session.activeOrganizationId as
-    | string
-    | undefined
-  const members = await prisma.member.findMany({
-    where: { userId: session.user.id, clientId: { not: null } },
-    select: { organizationId: true, clientId: true },
-  })
-  const member =
-    members.find((entry) => entry.organizationId === activeOrganizationId) ??
-    members[0]
-
-  if (!member?.clientId) {
+  const ctx = await getPortalContext()
+  if (!ctx) {
     return new NextResponse("Forbidden", { status: 403 })
   }
 
-  const link = await prisma.clientDocument.findFirst({
-    where: {
-      organizationId: member.organizationId,
-      entity: "client",
-      entityId: member.clientId,
-      visibility: "client",
-      fileId,
-    },
-    select: {
-      file: {
-        select: { name: true, oid: true, mimeType: true, trashed: true },
-      },
-    },
-  })
-
-  if (!link || link.file.trashed || link.file.oid === null) {
-    return new NextResponse("Not found", { status: 404 })
+  let file
+  try {
+    file = await portalService.openDocument(ctx, fileId)
+  } catch (error) {
+    if (isAppError(error) && error.code === "not_found") {
+      return new NextResponse("Not found", { status: 404 })
+    }
+    throw error
   }
 
-  const { size, stream } = await openLargeObjectStream(Number(link.file.oid))
-
-  const body = Readable.toWeb(stream) as unknown as ReadableStream
+  const body = Readable.toWeb(file.stream) as unknown as ReadableStream
   return new NextResponse(body, {
     headers: {
-      "Content-Type": link.file.mimeType || "application/octet-stream",
-      "Content-Length": String(size),
+      "Content-Type": file.mimeType || "application/octet-stream",
+      "Content-Length": String(file.size),
       "X-Content-Type-Options": "nosniff",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(link.file.name)}"`,
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(file.name)}"`,
       "Cache-Control": "private, no-cache",
     },
   })

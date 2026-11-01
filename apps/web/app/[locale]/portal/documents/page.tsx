@@ -2,12 +2,9 @@ import { redirect } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
 import { DownloadIcon, FileTextIcon } from "lucide-react"
 
-import {
-  Card,
-  CardContent,
-} from "@workspace/ui/components/card"
+import { Card, CardContent } from "@workspace/ui/components/card"
 
-import { PortalUpload } from "@/components/portal/portal-upload"
+import { PortalUpload } from "@workspace/portal/components/portal-upload"
 import { getPortalContext } from "@/lib/portal/context"
 import { portalService } from "@/lib/portal"
 
@@ -53,9 +50,7 @@ export default async function PortalDocumentsPage() {
       <Card>
         <CardContent>
           {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("noDocuments")}
-            </p>
+            <p className="text-sm text-muted-foreground">{t("noDocuments")}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {documents.map((document) => (

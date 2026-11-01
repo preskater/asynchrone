@@ -16,11 +16,12 @@ import {
 import { Spinner } from "@workspace/ui/components/spinner"
 import { Textarea } from "@workspace/ui/components/textarea"
 
-import { postPortalMessageAction } from "@/actions/portal"
 import { useRouter } from "@workspace/i18n/navigation"
 import { unwrapActionResult } from "@workspace/core/action"
-import type { ProjectMessageData } from "@/lib/projects/thread"
+import type { ProjectMessageData } from "@workspace/projects/thread"
 import { useErrorTranslator } from "@workspace/i18n/errors"
+
+import { usePortalActions } from "./actions"
 
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -44,6 +45,7 @@ export function PortalDiscussion({
   const te = useErrorTranslator()
   const locale = useLocale()
   const router = useRouter()
+  const actions = usePortalActions()
 
   const [body, setBody] = React.useState("")
   const [sending, setSending] = React.useState(false)
@@ -56,7 +58,8 @@ export function PortalDiscussion({
     const diff = new Date(iso).getTime() - Date.now()
     const abs = Math.abs(diff)
     if (abs < 60_000) return relative.format(Math.round(diff / 1000), "second")
-    if (abs < 3_600_000) return relative.format(Math.round(diff / 60_000), "minute")
+    if (abs < 3_600_000)
+      return relative.format(Math.round(diff / 60_000), "minute")
     if (abs < 86_400_000)
       return relative.format(Math.round(diff / 3_600_000), "hour")
     if (abs < 2_592_000_000)
@@ -71,7 +74,7 @@ export function PortalDiscussion({
     setSending(true)
     try {
       unwrapActionResult(
-        await postPortalMessageAction({ projectId, body: text })
+        await actions.postPortalMessageAction({ projectId, body: text })
       )
       setBody("")
       toast.success(tT("portalMessageSent"))

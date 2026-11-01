@@ -4,6 +4,25 @@ import type {
   TaskStatus,
 } from "@workspace/projects/types"
 
+/**
+ * Resolved identity of a signed-in client-portal user.
+ *
+ * The owning app resolves it from its Better Auth session (`getPortalContext`
+ * in `apps/web/lib/core/auth-context.ts`), which requires a `Member` row linked
+ * to a client company. The structural copy keeps this package independent from
+ * the app's session wiring.
+ */
+export interface PortalContext {
+  userId: string
+  userName: string
+  userEmail: string
+  organizationId: string
+  organizationName: string
+  organizationSlug: string
+  clientId: string
+  clientName: string
+}
+
 /** One project of the client's company, with its task progress. */
 export interface PortalProjectSummary {
   id: string
@@ -99,4 +118,18 @@ export interface PortalInviteData {
 export interface PortalAccessData {
   members: PortalMemberData[]
   invites: PortalInviteData[]
+}
+
+/**
+ * One client-visible document, resolved for download.
+ *
+ * The route streams `stream` with the package-selected headers; the large
+ * object itself belongs to `@workspace/storage` and is opened by the owning
+ * app's port.
+ */
+export interface PortalDocumentFile {
+  name: string
+  mimeType?: string
+  size: number
+  stream: import("node:stream").Readable
 }

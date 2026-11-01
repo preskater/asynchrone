@@ -12,8 +12,8 @@ import {
 import { Progress } from "@workspace/ui/components/progress"
 
 import { Link } from "@workspace/i18n/navigation"
-import { PortalDiscussion } from "@/components/portal/portal-discussion"
-import { PortalSeenTracker } from "@/components/portal/portal-seen-tracker"
+import { PortalDiscussion } from "@workspace/portal/components/portal-discussion"
+import { PortalSeenTracker } from "@workspace/portal/components/portal-seen-tracker"
 import { getPortalContext } from "@/lib/portal/context"
 import { portalService } from "@/lib/portal"
 import { isAppError } from "@workspace/core/errors"
