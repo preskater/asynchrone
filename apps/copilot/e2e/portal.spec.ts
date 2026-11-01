@@ -1,6 +1,14 @@
 import { expect, test, type Browser, type Page } from "@playwright/test"
 
-import { createProject, register, signUp, uniqueEmail } from "./fixtures"
+import {
+  createClient,
+  createProject,
+  invitePortalClient,
+  linkProjectToClient,
+  register,
+  signUp,
+  uniqueEmail,
+} from "./fixtures"
 
 /**
  * The client portal lives in Copilot (`/{locale}/portal`, `/api/portal/*`).
@@ -9,63 +17,6 @@ import { createProject, register, signUp, uniqueEmail } from "./fixtures"
  * `role=client` member. A client only ever sees its own company and the
  * projects shared with it, and neither side can cross into the other's routes.
  */
-
-/** Create a client company from the clients page and open its detail page. */
-async function createClient(page: Page, slug: string, name: string) {
-  await page.goto(`/${slug}/clients`)
-
-  const dialog = page.getByRole("dialog")
-  // Retry: a click that lands before hydration is a no-op.
-  await expect(async () => {
-    await page.getByRole("button", { name: "New company" }).first().click()
-    await expect(dialog).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 15_000 })
-  await dialog.getByLabel("Name", { exact: true }).fill(name)
-  await dialog.getByRole("button", { name: "Save", exact: true }).click()
-
-  const link = page.getByRole("link", { name })
-  await expect(link).toBeVisible({ timeout: 15_000 })
-  await link.click()
-
-  // The client detail page owns the project links and the portal access card.
-  await expect(
-    page.getByRole("button", { name: "Invite to portal" })
-  ).toBeVisible({ timeout: 15_000 })
-}
-
-/** Link one existing project to the open client company. */
-async function linkProject(page: Page, projectName: string) {
-  const dialog = page.getByRole("dialog")
-  await expect(async () => {
-    await page.getByRole("button", { name: "Link project" }).click()
-    await expect(dialog).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 15_000 })
-
-  await dialog
-    .locator("label", { hasText: projectName })
-    .getByRole("checkbox")
-    .check()
-  await dialog.getByRole("button", { name: "Link 1 project" }).click()
-  await expect(dialog).not.toBeVisible()
-  await expect(page.getByRole("link", { name: projectName })).toBeVisible()
-}
-
-/** Invite an email to the portal and return the invitation link it shows. */
-async function inviteToPortal(page: Page, email: string): Promise<string> {
-  const dialog = page.getByRole("dialog")
-  await expect(async () => {
-    await page.getByRole("button", { name: "Invite to portal" }).click()
-    await expect(dialog).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 15_000 })
-
-  await dialog.getByLabel("Email", { exact: true }).fill(email)
-  await dialog.getByRole("button", { name: "Create invitation" }).click()
-
-  // The dialog replaces the form with the copyable invitation link.
-  const linkInput = dialog.locator("#portal-invite-link")
-  await expect(linkInput).toHaveValue(/accept-invitation\?id=/)
-  return linkInput.inputValue()
-}
 
 /** Accept an invitation in a fresh browser context, as the invited contact. */
 async function acceptInvitation(
@@ -91,16 +42,20 @@ test("a portal client sees its shared project and uploads and downloads document
 
   // Two projects in the workspace: only the linked one reaches the portal.
   const sharedProject = `Shared ${Date.now()}`
-  await createProject(slug, sharedProject)
+  const sharedProjectId = await createProject(slug, sharedProject)
   const privateProject = `Internal ${Date.now()}`
   await createProject(slug, privateProject)
 
+  // The CRM screens moved to `apps/clients` (#163); seed the company, its
+  // project link and the invitation through the shared database, then drive
+  // only the portal side in the browser.
   const clientName = `Acme ${Date.now()}`
-  await createClient(page, slug, clientName)
-  await linkProject(page, sharedProject)
+  const clientId = await createClient(slug, clientName)
+  await linkProjectToClient(sharedProjectId, clientId)
 
   const email = uniqueEmail()
-  const invitationUrl = await inviteToPortal(page, email)
+  const invitationId = await invitePortalClient(page, slug, clientId, email)
+  const invitationUrl = `/accept-invitation?id=${encodeURIComponent(invitationId)}`
 
   // The invited contact accepts and lands in the portal, not the workspace.
   const client = await acceptInvitation(browser, invitationUrl, email)
@@ -138,10 +93,9 @@ test("a portal client sees its shared project and uploads and downloads document
     expect(download.ok()).toBeTruthy()
     expect(await download.text()).toBe(content)
 
-    // A client never reaches an internal workspace route. `/projects` now
-    // redirects to the projects host before the portal guard, so use a domain
-    // that still lives in Copilot to exercise the guard itself.
-    await client.page.goto(`/${slug}/clients`)
+    // A client never reaches an internal workspace route, so the portal guard
+    // wins over a screen Copilot still owns.
+    await client.page.goto(`/${slug}/settings`)
     await expect(client.page).toHaveURL(/\/portal$/)
     await expect(
       client.page.getByRole("link", { name: sharedProject })

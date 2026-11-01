@@ -8,6 +8,12 @@
 #   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as
 #                                           Copilot until #190), PROJECTS_OAUTH_CLIENT_ID,
 #                                           PROJECTS_OAUTH_CLIENT_SECRET
+#   asynchrone-space-clients-secrets:       DATABASE_URL (the same database as
+#                                           Copilot until #171/#190), CLIENTS_OAUTH_CLIENT_ID,
+#                                           CLIENTS_OAUTH_CLIENT_SECRET
+#   asynchrone-space-employees-secrets:     DATABASE_URL (the same database as
+#                                           Copilot until #171/#190), EMPLOYEES_OAUTH_CLIENT_ID,
+#                                           EMPLOYEES_OAUTH_CLIENT_SECRET
 #   asynchrone-space-messages-secrets:      DATABASE_URL (the same database as
 #                                           Copilot until #190/#171),
 #                                           MESSAGES_OAUTH_CLIENT_ID,
@@ -317,6 +323,80 @@ asynchrone-space-files:
       enabled: true
       schedule: "0 3 * * *"
       path: /api/files/uploads/sweep
+
+# ---------------------------------------------------------------------------
+# Domain app: clients (#163). Own image, own chart, host-only OIDC session.
+# ---------------------------------------------------------------------------
+asynchrone-space-clients:
+  enabled: true
+
+  nameOverride: clients
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-clients
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: clients.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: clients-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - clients.copilot.asynchrone.space
+
+  config:
+    CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-clients-secrets
+
+# ---------------------------------------------------------------------------
+# Domain app: employees (#163). Own image, own chart, host-only OIDC session.
+# ---------------------------------------------------------------------------
+asynchrone-space-employees:
+  enabled: true
+
+  nameOverride: employees
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-employees
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: employees.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: employees-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - employees.copilot.asynchrone.space
+
+  config:
+    EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-employees-secrets
 
 # ---------------------------------------------------------------------------
 # Internal control tower

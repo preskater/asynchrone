@@ -60,10 +60,17 @@ export function ClientDetail({
   orgSlug,
   data,
   portal,
+  portalManage = true,
 }: {
   orgSlug: string
   data: ClientDetailData
   portal: PortalAccessData
+  /**
+   * Portal invitations are created through Copilot's Better Auth instance, so
+   * an app that does not own the identity runtime shows the access list
+   * read-only (see `docs/architecture/feature-inventory.md`).
+   */
+  portalManage?: boolean
 }) {
   const t = useTranslations("Clients")
   const tT = useTranslations("Toasts")
@@ -378,7 +385,7 @@ export function ClientDetail({
         <PortalAccessCard
           clientId={client.id}
           access={portal}
-          canManage={data.access.canManage}
+          canManage={portalManage && data.access.canManage}
         />
       </div>
 

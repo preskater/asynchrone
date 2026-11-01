@@ -87,3 +87,82 @@ export async function createProject(
   })
   return project.id
 }
+
+
+/**
+ * Create a client company directly for an organization and return its id.
+ *
+ * The CRM screens moved to `apps/clients` (#163), so the Copilot e2e suite
+ * cannot create them through the UI. The portal tests only need a client row
+ * to link a project and an invitation to; seeding it through the shared
+ * database keeps the portal spec independent of the clients app's dev server.
+ */
+export async function createClient(
+  organizationSlug: string,
+  name: string
+): Promise<string> {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: organizationSlug },
+    select: { id: true },
+  })
+  if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
+
+  const client = await prisma.client.create({
+    data: { organizationId: organization.id, name, status: "active" },
+    select: { id: true },
+  })
+  return client.id
+}
+
+/** Link a project to a client company (the portal visibility rule). */
+export async function linkProjectToClient(
+  projectId: string,
+  clientId: string
+): Promise<void> {
+  await prisma.project.update({ where: { id: projectId }, data: { clientId } })
+}
+
+/**
+ * Invite an email to the client portal the way the clients app will: a Better
+ * Auth organization invitation (issued with the owner's session) plus the
+ * `portalInvite` row the portal claims on acceptance.
+ */
+export async function invitePortalClient(
+  page: Page,
+  organizationSlug: string,
+  clientId: string,
+  email: string
+): Promise<string> {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: organizationSlug },
+    select: { id: true },
+  })
+  if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
+
+  const invitation = await page.request.post(
+    "/api/auth/organization/invite-member",
+    {
+      headers: { Origin: ORIGIN },
+      data: { email, role: "client", organizationId: organization.id },
+    }
+  )
+  expect(invitation.ok(), await invitation.text()).toBeTruthy()
+  const invitationId = ((await invitation.json()) as { id: string }).id
+
+  const owner = await prisma.member.findFirst({
+    where: { organizationId: organization.id, role: "owner" },
+    select: { userId: true },
+  })
+
+  await prisma.portalInvite.create({
+    data: {
+      organizationId: organization.id,
+      clientId,
+      email,
+      invitationId,
+      invitedById: owner?.userId ?? null,
+    },
+  })
+
+  return invitationId
+}

@@ -24,6 +24,14 @@ const MOVED_SECTIONS: Partial<Record<string, AppKey>> = {
   files: "files",
   // Messaging moved in #162.
   messages: "messages",
+  // Clients and employees moved in #163.
+  clients: "clients",
+  contacts: "clients",
+  deals: "clients",
+  employees: "employees",
+  // `/hr` was the employees surface's old name (ADR 0030); it lands on the
+  // employees host's `/employees` screen.
+  hr: "employees",
 }
 
 export default function proxy(request: NextRequest) {
@@ -33,8 +41,12 @@ export default function proxy(request: NextRequest) {
 
   const app = section ? MOVED_SECTIONS[section] : undefined
   if (locale && LOCALES.has(locale) && app) {
+    const path =
+      section === "hr"
+        ? pathname.replace(/\/hr(?=\/|$)/, "/employees")
+        : pathname
     return NextResponse.redirect(
-      new URL(`${pathname}${search}`, appOrigin(app)),
+      new URL(`${path}${search}`, appOrigin(app)),
       308
     )
   }

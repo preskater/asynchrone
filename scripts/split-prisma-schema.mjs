@@ -144,6 +144,8 @@ const DATABASES = {
       "ClientActivity",
       "ClientFieldDefinition",
       "ClientDocument",
+      // The app-local relying-party session (#163).
+      "OidcSession",
     ],
   },
   employees: {
@@ -158,6 +160,8 @@ const DATABASES = {
       "EmployeeSettings",
       "SalaryProfile",
       "InternalActivity",
+      // The app-local relying-party session (#163).
+      "OidcSession",
     ],
   },
   "control-tower": {

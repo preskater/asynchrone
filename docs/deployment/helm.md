@@ -1,14 +1,14 @@
 # Deploying Asynchrone Space with Helm
 
-Asynchrone Space runs as seven Next.js apps today: the stateless public landing
+Asynchrone Space runs as nine Next.js apps today: the stateless public landing
 site, Copilot (the customer app and identity/OAuth server), the projects,
-calendars, files and messages domain apps and the control tower. Copilot and the
-control tower are backed by their own PostgreSQL databases (eight are reserved,
-one per app; Copilot owns identity). Until #190/#171 the domain apps connect to
-the same database as Copilot. This guide installs all of them from the umbrella
-chart in `charts/asynchrone-space`. Secrets, network policy, backups, restore
-order and the connection budget are covered in
-[Database operations](database-operations.md).
+calendars, files, messages, clients and employees domain apps and the control
+tower. Copilot and the control tower are backed by their own PostgreSQL
+databases (eight are reserved, one per app; Copilot owns identity). Until
+#190/#171 the domain apps connect to the same database as Copilot. This guide
+installs all of them from the umbrella chart in `charts/asynchrone-space`.
+Secrets, network policy, backups, restore order and the connection budget are
+covered in [Database operations](database-operations.md).
 
 ```
 charts/
@@ -19,6 +19,8 @@ charts/
   asynchrone-space-calendars/         # domain app: calendars + meetings, host-only OIDC session
   asynchrone-space-files/             # domain app: files + uploads-sweep CronJob
   asynchrone-space-messages/          # domain app: ingress, host-only OIDC session
+  asynchrone-space-clients/           # CRM domain app: ingress, host-only OIDC session
+  asynchrone-space-employees/         # HR domain app: ingress, host-only OIDC session
   asynchrone-space-control-tower/     # internal platform app, ingress
 ```
 
@@ -49,9 +51,8 @@ charts/
 
 ## Images
 
-`.github/workflows/docker.yml` publishes eight images for every push to `main`
+`.github/workflows/docker.yml` publishes ten images for every push to `main`
 and every `v*` tag:
-
 | Image                                                      | Built from                             | Purpose                                       |
 | ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
 | `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` stage, `APP=copilot`          | Copilot (`copilot.asynchrone.space`)          |
@@ -59,6 +60,8 @@ and every `v*` tag:
 | `ghcr.io/preskater/asynchrone-space-calendars`             | `runner` stage, `APP=calendars`        | Calendars and meetings (`calendars.copilot.asynchrone.space`) |
 | `ghcr.io/preskater/asynchrone-space-files`                 | `runner` stage, `APP=files`            | Files (`files.copilot.asynchrone.space`)      |
 | `ghcr.io/preskater/asynchrone-space-messages`              | `runner` stage, `APP=messages`         | Messages (`messages.copilot.asynchrone.space`)|
+| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` stage, `APP=clients`          | Clients (`clients.copilot.asynchrone.space`)  |
+| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` stage, `APP=employees`        | Employees (`employees.copilot.asynchrone.space`) |
 | `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` stage, `APP=control-tower`    | Control tower                                 |
 | `ghcr.io/preskater/asynchrone-space-landing`               | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
 | `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
@@ -130,6 +133,23 @@ domain still reads the member directory and uses the files upload sessions); its
 registered redirect URI is
 `https://messages.copilot.asynchrone.space/api/auth/callback`.
 
+The clients and employees apps have the same shape (#163):
+
+```bash
+for app in clients employees; do
+  PREFIX=$(echo "$app" | tr a-z A-Z)
+  kubectl -n asynchrone-space create secret generic "asynchrone-space-${app}-secrets" \
+    --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+    --from-literal="${PREFIX}_OAUTH_CLIENT_ID=$(grep ^${PREFIX}_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
+    --from-literal="${PREFIX}_OAUTH_CLIENT_SECRET=$(grep ^${PREFIX}_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
+done
+```
+
+Their registered redirect URIs are
+`https://clients.copilot.asynchrone.space/api/auth/callback` and
+`https://employees.copilot.asynchrone.space/api/auth/callback`. `DATABASE_URL`
+is the same database Copilot uses until #171/#190, because both domains still
+read identity rows through the documented transitional binding.
 ```bash
 kubectl create namespace asynchrone-space
 

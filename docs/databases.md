@@ -105,18 +105,21 @@ set explicitly with `IDENTITY_SHADOW_DATABASE_URL`, … They are used by
 
 The shared `OidcSession` model (an app's relying-party session, see
 [oidc-client.md](./oidc-client.md)) ships in the identity, projects, calendars,
-files and messages databases: every app needs one row per local sign-in.
-`apps/calendars` and `apps/files` got the table in
+files, messages, clients and employees databases: every app needs one row per
+local sign-in. `apps/calendars` and `apps/files` got the table in
 `20261101130000_add_oidc_session` (#161), `apps/messages` in
-`20261101130000_add_oidc_session` (#162). The remaining domain schemas (clients,
-employees) add `OidcSession` to their model list and their migration history
-when their app is created (#163–#164).
+`20261101130000_add_oidc_session` (#162), `apps/clients` and `apps/employees` in
+`20261101130000_add_oidc_session` (#163). Every domain schema now carries the
+model.
 
-Each database has a `20261031120000_init` baseline; projects, calendars, files
-and messages add an `add_oidc_session` migration. The Docker `migrate` stage runs
-the monolith migration and then the orchestrator. The Helm migrate Job reads
-every `*_DATABASE_URL` from the existing migrate secret.
+The projects, calendars, files, messages, clients and employees apps still bind
+the shared `@workspace/db` client at runtime until #171/#190, so their
+`oidcSession` rows live in the identity database meanwhile.
 
+Each database has a `20261031120000_init` baseline; projects, calendars, files,
+messages, clients and employees add an `add_oidc_session` migration. The Docker
+`migrate` stage runs the monolith migration and then the orchestrator. The Helm
+migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
 ## Boundaries
 
 - A domain package imports only its own `@workspace/db-<domain>` package.
