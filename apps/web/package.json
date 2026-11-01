@@ -50,6 +50,7 @@
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/db": "*",
+    "@workspace/files": "*",
     "@workspace/db-identity": "*",
     "@workspace/i18n": "*",
     "@workspace/integrations": "*",

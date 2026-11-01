@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { sweepExpiredUploadSessions } from "@/lib/files/upload-session"
+import { filesRuntime } from "@/lib/files"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -20,6 +20,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
   }
 
-  await sweepExpiredUploadSessions()
+  await filesRuntime.uploads.sweepExpiredUploadSessions()
   return NextResponse.json({ ok: true })
 }

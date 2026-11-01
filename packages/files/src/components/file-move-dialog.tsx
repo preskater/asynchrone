@@ -17,8 +17,8 @@ import {
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { useFiles } from "@/lib/files/store"
-import type { FileNode } from "@/lib/files/types"
+import { useFiles } from "../store"
+import type { FileNode } from "../types"
 
 export function FileMoveDialog({
   file,

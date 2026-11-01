@@ -15,6 +15,8 @@ import { pool } from "@/lib/prisma"
  */
 const store = createLargeObjectStore(pool)
 
+/** The bound store, for packages that take the large-object port. */
+export const largeObjectStore = store
 export const uploadLargeObject = store.upload
 export const openLargeObjectStream = store.open
 export const unlinkLargeObject = store.unlink

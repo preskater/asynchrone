@@ -1,18 +1,16 @@
-import { AUDIT_ACTIONS } from "@/lib/audit/actions"
-import { recordUserAudit, recordUserAuditMany } from "@/lib/audit/record"
+import { AUDIT_ACTIONS } from "@workspace/audit"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import {
-  openLargeObjectStream,
-  unlinkLargeObject,
-  uploadLargeObject,
-} from "@/lib/large-object"
-import { requireEntitlement } from "@/lib/organization/entitlements"
 import { roleRank } from "@workspace/organization/roles"
 
+import type {
+  FileAudit,
+  FileEntitlementCheck,
+  FileQuota,
+  FileStorage,
+} from "./deps"
 import { kindFromName } from "./file-utils"
 import { FileRepository } from "./repository"
-import { orgQuotaBytes, orgUsedBytes } from "./storage"
 import type {
   CreateFilesInput,
   CreateFolderInput,
@@ -92,8 +90,18 @@ function resolveAccess(ctx: RequestContext, chain: AncestorNode[]): FileAccess {
   return { canRead, canWrite }
 }
 
+export interface FileServiceDeps {
+  audit: FileAudit
+  quota: FileQuota
+  storage: FileStorage
+  requireEntitlement: FileEntitlementCheck
+}
+
 export class FileService {
-  constructor(private readonly repo: FileRepository) {}
+  constructor(
+    private readonly repo: FileRepository,
+    private readonly deps: FileServiceDeps
+  ) {}
 
   private mapFile(row: FileRow): FileNode {
     return {
@@ -290,7 +298,7 @@ export class FileService {
       parentId: input.parentId ?? null,
       ownerId: ctx.userId,
     })
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileFolderCreated,
       entityType: "file",
       entityId: row.id,
@@ -319,7 +327,7 @@ export class FileService {
         sha256: file.sha256,
       }))
     )
-    await recordUserAuditMany(
+    await this.deps.audit.recordUserMany(
       ctx,
       rows.map((row) => ({
         action: AUDIT_ACTIONS.fileCreated,
@@ -375,7 +383,7 @@ export class FileService {
       sizeBytes: input.sizeBytes,
     })
     await this.repo.addActivity(row.id, ctx.userId, "uploadedThisFile")
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileCreated,
       entityType: "file",
       entityId: row.id,
@@ -402,7 +410,7 @@ export class FileService {
       modifiedAt: new Date(),
     })
     await this.repo.addActivity(id, ctx.userId, "renamedThisFile")
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileRenamed,
       entityType: "file",
       entityId: id,
@@ -424,7 +432,7 @@ export class FileService {
       parentId: input.parentId,
       modifiedAt: new Date(),
     })
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileMoved,
       entityType: "file",
       entityId: id,
@@ -449,14 +457,14 @@ export class FileService {
     // as an upload (`createUploadSession`).
     const opened =
       source.oid !== null
-        ? await openLargeObjectStream(Number(source.oid))
+        ? await this.deps.storage.open(Number(source.oid))
         : null
-    let copy: Awaited<ReturnType<typeof uploadLargeObject>> | null = null
+    let copy: Awaited<ReturnType<FileStorage["upload"]>> | null = null
     try {
       if (opened) {
         const [quota, used] = await Promise.all([
-          orgQuotaBytes(ctx.organizationId),
-          orgUsedBytes(ctx.organizationId),
+          this.deps.quota.quotaBytes(ctx.organizationId),
+          this.deps.quota.usedBytes(ctx.organizationId),
         ])
         const copySize = source.sizeBytes ?? opened.size
         if (used + copySize > quota) {
@@ -466,7 +474,7 @@ export class FileService {
         }
         // The copy needs its own large object: sharing the oid would let
         // deleting one file unlink the other's bytes.
-        copy = await uploadLargeObject(opened.stream)
+        copy = await this.deps.storage.upload(opened.stream)
       }
 
       const row = await this.repo.create({
@@ -488,7 +496,7 @@ export class FileService {
           permission: share.permission,
         })),
       })
-      await recordUserAudit(ctx, {
+      await this.deps.audit.recordUser(ctx, {
         action: AUDIT_ACTIONS.fileDuplicated,
         entityType: "file",
         entityId: row.id,
@@ -499,7 +507,7 @@ export class FileService {
       return this.mapFile(row)
     } catch (error) {
       opened?.stream.destroy()
-      if (copy) await unlinkLargeObject(copy.oid).catch(() => undefined)
+      if (copy) await this.deps.storage.unlink(copy.oid).catch(() => undefined)
       throw error
     }
   }
@@ -517,7 +525,7 @@ export class FileService {
       trashedAt: new Date(),
     })
     await this.repo.addActivity(id, ctx.userId, "movedThisFileToTrash")
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileTrashed,
       entityType: "file",
       entityId: id,
@@ -534,7 +542,7 @@ export class FileService {
       trashed: false,
       trashedAt: null,
     })
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileRestored,
       entityType: "file",
       entityId: id,
@@ -551,7 +559,7 @@ export class FileService {
     const row = await this.requireWrite(ctx, id)
     await this.repo.delete(id)
     await this.unlinkRows([row])
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileDeleted,
       entityType: "file",
       entityId: id,
@@ -581,9 +589,11 @@ export class FileService {
     }
     await Promise.all(
       Array.from(oids, (oid) =>
-        unlinkLargeObject(Number(oid)).catch((error) =>
-          console.error(`[files] failed to unlink large object ${oid}`, error)
-        )
+        this.deps.storage
+          .unlink(Number(oid))
+          .catch((error) =>
+            console.error(`[files] failed to unlink large object ${oid}`, error)
+          )
       )
     )
   }
@@ -606,7 +616,7 @@ export class FileService {
       trashed: true,
       trashedAt: new Date(),
     })
-    await recordUserAuditMany(
+    await this.deps.audit.recordUserMany(
       ctx,
       rows.map((row) => ({
         action: AUDIT_ACTIONS.fileTrashed,
@@ -629,7 +639,7 @@ export class FileService {
       trashed: false,
       trashedAt: null,
     })
-    await recordUserAuditMany(
+    await this.deps.audit.recordUserMany(
       ctx,
       rows.map((row) => ({
         action: AUDIT_ACTIONS.fileRestored,
@@ -650,7 +660,7 @@ export class FileService {
     const rows = await this.requireWrites(ctx, ids)
     const result = await this.repo.deleteMany(ids)
     await this.unlinkRows(rows)
-    await recordUserAuditMany(
+    await this.deps.audit.recordUserMany(
       ctx,
       rows.map((row) => ({
         action: AUDIT_ACTIONS.fileDeleted,
@@ -676,9 +686,12 @@ export class FileService {
     const existing = await this.requireWrite(ctx, id)
     // Lifting a restriction stays allowed so a downgraded org can clean up.
     if (restricted)
-      await requireEntitlement(ctx.organizationId, "granularPermissions")
+      await this.deps.requireEntitlement(
+        ctx.organizationId,
+        "granularPermissions"
+      )
     const row = await this.repo.update(id, { restricted })
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileAccessUpdated,
       entityType: "file",
       entityId: id,
@@ -695,10 +708,13 @@ export class FileService {
     input: AddShareInput
   ): Promise<ShareEntry[]> {
     const file = await this.requireWrite(ctx, id)
-    await requireEntitlement(ctx.organizationId, "granularPermissions")
+    await this.deps.requireEntitlement(
+      ctx.organizationId,
+      "granularPermissions"
+    )
     await this.repo.addShare(id, input.memberId, input.permission)
     await this.repo.update(id, { shared: true })
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileShareAdded,
       entityType: "file",
       entityId: id,
@@ -715,9 +731,12 @@ export class FileService {
     input: UpdateShareInput
   ): Promise<ShareEntry[]> {
     const file = await this.requireWrite(ctx, id)
-    await requireEntitlement(ctx.organizationId, "granularPermissions")
+    await this.deps.requireEntitlement(
+      ctx.organizationId,
+      "granularPermissions"
+    )
     await this.repo.addShare(id, input.memberId, input.permission)
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileShareUpdated,
       entityType: "file",
       entityId: id,
@@ -735,7 +754,7 @@ export class FileService {
   ): Promise<ShareEntry[]> {
     const file = await this.requireWrite(ctx, id)
     await this.repo.removeShare(id, input.memberId)
-    await recordUserAudit(ctx, {
+    await this.deps.audit.recordUser(ctx, {
       action: AUDIT_ACTIONS.fileShareRemoved,
       entityType: "file",
       entityId: id,

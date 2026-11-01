@@ -15,7 +15,7 @@ import {
   renameFileSchema,
   setFileRestrictedSchema,
   updateShareSchema,
-} from "@/lib/files/schemas"
+} from "@workspace/files/schemas"
 
 export const listFilesAction = withAction(async () => {
   const ctx = await getRequestContext()

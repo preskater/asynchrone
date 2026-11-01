@@ -4,6 +4,7 @@ import type { RequestContext } from "@workspace/core/context"
 import { requirePermission } from "@/lib/core/auth-context"
 import { ConflictError, ValidationError } from "@workspace/core/errors"
 import { sendOrganizationDeletedEmail } from "@/lib/email"
+import { snapshotForOrganization } from "@/lib/files"
 import { unlinkLargeObject } from "@/lib/large-object"
 import { prisma } from "@/lib/prisma"
 
@@ -124,43 +125,34 @@ export async function deleteOrganization(
   })
   if (!org) return false
 
-  const [files, versions, uploads, attachments, exports, owners, memberCount] =
-    await Promise.all([
-      prisma.fileNode.findMany({
-        where: { organizationId, oid: { not: null } },
-        select: { oid: true },
-      }),
-      prisma.fileVersion.findMany({
-        where: { file: { organizationId }, oid: { not: null } },
-        select: { oid: true },
-      }),
-      prisma.uploadSession.findMany({
-        where: { organizationId },
-        select: { oid: true },
-      }),
-      prisma.messageAttachment.findMany({
-        where: {
-          message: { conversation: { organizationId } },
-          oid: { not: null },
-        },
-        select: { oid: true },
-      }),
-      prisma.dataExport.findMany({
-        where: { organizationId, oid: { not: null } },
-        select: { oid: true },
-      }),
-      prisma.member.findMany({
-        where: { organizationId, role: { contains: "owner" } },
-        select: { user: { select: { email: true } } },
-      }),
-      prisma.member.count({ where: { organizationId } }),
-    ])
+  // The files app owns the file/version/upload bytes; list them before the
+  // delete cascades and unlink them after it commits.
+  const fileObjects = await snapshotForOrganization(organizationId)
+
+  const [attachments, exports, owners, memberCount] = await Promise.all([
+    prisma.messageAttachment.findMany({
+      where: {
+        message: { conversation: { organizationId } },
+        oid: { not: null },
+      },
+      select: { oid: true },
+    }),
+    prisma.dataExport.findMany({
+      where: { organizationId, oid: { not: null } },
+      select: { oid: true },
+    }),
+    prisma.member.findMany({
+      where: { organizationId, role: { contains: "owner" } },
+      select: { user: { select: { email: true } } },
+    }),
+    prisma.member.count({ where: { organizationId } }),
+  ])
   const oids = [
-    ...new Set(
-      [...files, ...versions, ...uploads, ...attachments, ...exports].map(
-        ({ oid }) => Number(oid)
-      )
-    ),
+    ...new Set([
+      ...fileObjects.oids,
+      ...attachments.map(({ oid }) => Number(oid)),
+      ...exports.map(({ oid }) => Number(oid)),
+    ]),
   ]
 
   const deleted = await prisma.$transaction(async (tx) => {
@@ -194,9 +186,11 @@ export async function deleteOrganization(
 
   // ponytail: an unlink that fails here leaves an orphan large object; the
   // verify:organization-deletion script reports them. Add a sweep if it happens.
-  for (const oid of oids) {
-    await unlinkLargeObject(oid).catch((error) => {
-      console.error(`[organization-deletion] unlink ${oid} failed`, error)
+  await fileObjects.unlink()
+  for (const { oid } of [...attachments, ...exports]) {
+    const value = Number(oid)
+    await unlinkLargeObject(value).catch((error) => {
+      console.error(`[organization-deletion] unlink ${value} failed`, error)
     })
   }
 

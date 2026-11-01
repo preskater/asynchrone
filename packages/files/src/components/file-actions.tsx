@@ -27,9 +27,9 @@ import {
   ContextMenuSeparator,
 } from "@workspace/ui/components/context-menu"
 
-import { useFiles } from "@/lib/files/store"
-import { useOrgSlug } from "@/lib/organization/use-org-slug"
-import type { FileLocation, FileNode } from "@/lib/files/types"
+import { useFiles } from "../store"
+import { useOrgSlug } from "@workspace/organization/use-org-slug"
+import type { FileLocation, FileNode } from "../types"
 
 export function FileMenuItems({
   menu,

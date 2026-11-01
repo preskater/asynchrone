@@ -4,21 +4,21 @@ import * as React from "react"
 import { FolderIcon, RotateCcwIcon, Trash2Icon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { FilesGrid } from "@/components/files/files-grid"
-import { FilesSearchCommand } from "@/components/files/files-search-command"
-import { FilesTable } from "@/components/files/files-table"
+import { FilesGrid } from "./files-grid"
+import { FilesSearchCommand } from "./files-search-command"
+import { FilesTable } from "./files-table"
 import {
   FilesToolbar,
   type SortOption,
   type ViewMode,
-} from "@/components/files/files-toolbar"
-import { FileDeleteDialog } from "@/components/files/file-delete-dialog"
-import { FileMoveDialog } from "@/components/files/file-move-dialog"
-import { FilePermissionsSheet } from "@/components/files/file-permissions-sheet"
-import { FilePreviewSheet } from "@/components/files/file-preview-sheet"
-import { FileRenameDialog } from "@/components/files/file-rename-dialog"
-import { FileShareDialog } from "@/components/files/file-share-dialog"
-import { UploadQueue } from "@/components/files/file-upload-dialog"
+} from "./files-toolbar"
+import { FileDeleteDialog } from "./file-delete-dialog"
+import { FileMoveDialog } from "./file-move-dialog"
+import { FilePermissionsSheet } from "./file-permissions-sheet"
+import { FilePreviewSheet } from "./file-preview-sheet"
+import { FileRenameDialog } from "./file-rename-dialog"
+import { FileShareDialog } from "./file-share-dialog"
+import { UploadQueue } from "./file-upload-dialog"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -30,11 +30,10 @@ import {
   EmptyTitle,
 } from "@workspace/ui/components/empty"
 
-import { useFiles } from "@/lib/files/store"
+import { useFiles, useFilesNav } from "../store"
 import { useRecents } from "@workspace/app-shell/recents"
-import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import type { FileLocation, FileNode } from "@/lib/files/types"
+import type { FileLocation, FileNode } from "../types"
 
 export function FilesWorkspace() {
   const t = useTranslations("Files")
@@ -52,11 +51,11 @@ export function FilesWorkspace() {
   } = useFiles()
   const { record, active, hydrated } = useRecents()
   const {
-    filesLocation: location,
-    filesFolderId: folderId,
-    selectFileLocation,
-    openFileFolder,
-  } = useWorkspaceNav()
+    location,
+    folderId,
+    selectLocation: selectFileLocation,
+    openFolder: openFileFolder,
+  } = useFilesNav()
 
   const [query, setQuery] = React.useState("")
   const [filter, setFilter] = React.useState("all")

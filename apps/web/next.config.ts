@@ -11,6 +11,7 @@ export default createNextConfig({
     "@workspace/db",
     "@workspace/audit",
     "@workspace/contracts",
+    "@workspace/files",
     "@workspace/sagas",
     "@workspace/search",
     "@workspace/db-core",

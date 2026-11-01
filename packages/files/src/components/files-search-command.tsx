@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { FileIcon } from "@/components/files/file-icon"
+import { FileIcon } from "./file-icon"
 import {
   Command,
   CommandDialog,
@@ -14,9 +14,9 @@ import {
   CommandList,
 } from "@workspace/ui/components/command"
 
-import { formatBytes, formatRelativeDate } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
-import type { FileNode } from "@/lib/files/types"
+import { formatBytes, formatRelativeDate } from "../file-utils"
+import { useFiles } from "../store"
+import type { FileNode } from "../types"
 
 export function FilesSearchCommand({
   open,

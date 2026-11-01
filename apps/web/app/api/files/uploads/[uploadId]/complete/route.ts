@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { getRequestContext } from "@/lib/core/auth-context"
 import { toAppError } from "@workspace/core/errors"
 import { jsonError, rejectCrossOrigin } from "@workspace/core/http"
-import { completeUploadSession } from "@/lib/files/upload-session"
+import { filesRuntime } from "@/lib/files"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -17,7 +17,10 @@ export async function POST(
   try {
     const ctx = await getRequestContext({ request })
     const { uploadId } = await params
-    const result = await completeUploadSession(ctx, uploadId)
+    const result = await filesRuntime.uploads.completeUploadSession(
+      ctx,
+      uploadId
+    )
 
     // Workspace files return the created FileNode; transient message
     // attachments return the large-object reference for the caller to persist.

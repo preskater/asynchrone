@@ -19,9 +19,9 @@ import { Progress } from "@workspace/ui/components/progress"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { formatBytes } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
-import type { UploadStatus } from "@/lib/files/types"
+import { formatBytes } from "../file-utils"
+import { useFiles } from "../store"
+import type { UploadStatus } from "../types"
 
 const STATUS_VARIANT: Record<
   UploadStatus,
