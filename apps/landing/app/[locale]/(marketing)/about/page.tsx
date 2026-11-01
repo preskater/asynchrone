@@ -13,13 +13,15 @@ import {
 } from "@workspace/ui/components/card"
 
 import { companyStats } from "@/lib/landing/content"
+import { marketingMetadata } from "@/lib/seo"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.about")
-  return {
+  return marketingMetadata({
+    path: "/about",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 const statIcons = [RocketIcon, UsersIcon, GlobeIcon, Building2Icon]

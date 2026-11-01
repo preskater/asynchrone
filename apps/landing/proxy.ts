@@ -3,28 +3,37 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { routing } from "@workspace/i18n/routing"
 
-import { isLegacyCopilotPath, workspaceUrl } from "./lib/workspace"
+import { legacyCopilotTarget, workspaceUrl } from "./lib/workspace"
 
-const intl = createMiddleware(routing)
-const LOCALES = new Set<string>(routing.locales)
+// The landing has its own middleware policy: no locale cookie and no
+// Accept-Language detection. With `localePrefix: "always"` the prefix already
+// selects the language, and the marketing site must not set any cookie.
+// (`createMiddleware` reads the policy from the routing object it is given, so
+// the shared `@workspace/i18n/routing` is not changed for the workspace apps.)
+const intl = createMiddleware({
+  ...routing,
+  localeCookie: false,
+  localeDetection: false,
+})
 
 /**
- * The landing owns the apex (`asynchrone.space`). Auth, onboarding and portal
- * routes used to live here; after #175 they are served by Copilot. Redirect
- * them before next-intl turns the path into a locale-prefixed 404, keep the
- * original locale, and leave every marketing page to the i18n middleware.
+ * The landing owns the apex (`asynchrone.space`). Auth, onboarding, settings
+ * and portal routes used to live here; after #175 they are served by Copilot.
+ * Redirect them before next-intl turns the path into a locale-prefixed 404,
+ * keep the original locale and query string, and leave every marketing page to
+ * the i18n middleware.
+ *
+ * This middleware never reads a session and never sets a cookie (not even the
+ * next-intl locale cookie): the landing is anonymous marketing only.
  */
 export default function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl
-  const segments = pathname.split("/").filter(Boolean)
-  const withoutLocale =
-    segments[0] && LOCALES.has(segments[0]) ? segments.slice(1) : segments
+  const target = legacyCopilotTarget(
+    request.nextUrl.pathname,
+    request.nextUrl.search
+  )
 
-  if (isLegacyCopilotPath(withoutLocale.join("/"))) {
-    return NextResponse.redirect(
-      new URL(`${pathname}${search}`, workspaceUrl),
-      308
-    )
+  if (target) {
+    return NextResponse.redirect(new URL(target, workspaceUrl), 308)
   }
 
   return intl(request)

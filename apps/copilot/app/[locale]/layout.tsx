@@ -35,6 +35,7 @@ export async function generateMetadata({
       template: t("titleTemplate"),
     },
     description: t("description"),
+    robots: { index: false, follow: false },
   }
 }
 

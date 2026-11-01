@@ -12,13 +12,15 @@ import {
 } from "@workspace/ui/components/empty"
 
 import { getAllPosts } from "@/lib/landing/blog"
+import { marketingMetadata } from "@/lib/seo"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.blog")
-  return {
+  return marketingMetadata({
+    path: "/blog",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 export default async function BlogPage({

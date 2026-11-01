@@ -1,7 +1,7 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { createNextConfig } from "@workspace/next-config"
+import { createNextConfig, securityHeaders } from "@workspace/next-config"
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 
@@ -28,6 +28,18 @@ export default createNextConfig({
   serverExternalPackages: ["pg-large-object", "pg"],
   experimental: {
     globalNotFound: true,
+  },
+  // The workspace is a signed-in product, not a marketing site: keep it out of
+  // search indexes with both a header (for every response, including static
+  // assets) and `app/robots.ts`. The landing at asynchrone.space is the only
+  // indexable app.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders({ noindex: true }),
+      },
+    ]
   },
   async redirects() {
     return [

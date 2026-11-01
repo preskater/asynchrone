@@ -149,23 +149,11 @@ jobs:
       - name: Lint landing
         run: npm run lint --workspace=landing
 
-      - name: Verify landing has no database or auth dependency
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFileSync } from "node:fs"
-          const pkg = JSON.parse(readFileSync("apps/landing/package.json", "utf8"))
-          const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
-          const forbidden = deps.filter(
-            (name) =>
-              /^@workspace\/(auth|sagas|service-auth)$/.test(name) ||
-              /^@workspace\/db(-|$)/.test(name) ||
-              /^(better-auth|prisma|@prisma\/)/.test(name)
-          )
-          if (forbidden.length > 0) {
-            console.error("landing must not depend on " + forbidden.join(", "))
-            process.exit(1)
-          }
-          NODE
+      - name: Verify landing is stateless
+        run: npm run verify:stateless --workspace=landing
+
+      - name: Unit tests
+        run: npm run test:unit --workspace=landing
 
       - name: Build landing
         run: npm run build --workspace=landing

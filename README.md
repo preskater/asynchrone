@@ -36,12 +36,13 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | Path                         | Description                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
+| `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
 | `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
 | `packages/ui`                | Shared UI component library.                                                        |
 | `packages/eslint-config`     | Shared ESLint configuration.                                                        |
 | `packages/typescript-config` | Shared TypeScript configuration.                                                    |
-| `charts/asynchrone-space`    | Helm umbrella chart for deploying both apps.                                        |
+| `charts/asynchrone-space`    | Helm umbrella chart for deploying all three apps.                                    |
 
 ## Getting started
 
@@ -130,12 +131,45 @@ app through a single-use handoff (no shared cookie) and shows a banner there.
 asserts that cross-subdomain cookies stay disabled (see
 [ADR 0018](./docs/adr/0018-control-tower-on-shared-database-package.md)).
 
+### Landing site
+
+`apps/landing` is the public marketing site for `asynchrone.space`: home,
+features, pricing, about, careers, contact, FAQ, blog and legal. It is
+stateless — no database, no `@workspace/auth`, no session cookie — and builds
+with no `DATABASE_URL`, `BETTER_AUTH_SECRET` or `BETTER_AUTH_URL`:
+
+```bash
+npm run dev --workspace=landing        # http://localhost:3002
+npm run build --workspace=landing      # no database or auth env needed
+npm run test:unit --workspace=landing
+npm run verify:stateless --workspace=landing
+npm run verify:legal-copy --workspace=landing
+```
+
+All account actions link to Copilot (`NEXT_PUBLIC_WORKSPACE_URL`, inlined at
+build time; defaults to `https://copilot.asynchrone.space`). Canonical URLs,
+`robots.txt` and `sitemap.xml` use `NEXT_PUBLIC_SITE_URL` (defaults to
+`https://asynchrone.space`).
+
+Old apex workspace URLs redirect to Copilot with a 308, keeping the locale and
+query string: sign-in/sign-up, password reset, two-factor, consent, onboarding,
+select-organization, accept-invitation, portal, settings, search, help,
+feedback, `mcp`, `api/assistant`, and organization-scoped sections
+(`/<orgSlug>/settings`, `/<orgSlug>/search`, `/<orgSlug>/help`, …). Marketing
+paths are never shadowed; `MARKETING_SEGMENTS` in `apps/landing/lib/workspace.ts`
+is the guard and the map is covered by unit tests. The landing is the only
+indexable app: Copilot and the control tower send `X-Robots-Tag: noindex,
+nofollow` and disallow `/` in `robots.txt`.
+
 ## Environment variables
 
 Copilot variables live in `apps/copilot/.env` (see
 [`apps/copilot/.env.example`](./apps/copilot/.env.example)); the control tower reads
 `apps/control-tower/.env` (see
-[`apps/control-tower/.env.example`](./apps/control-tower/.env.example)).
+[`apps/control-tower/.env.example`](./apps/control-tower/.env.example)); the
+stateless landing reads only `apps/landing/.env` (see
+[`apps/landing/.env.example`](./apps/landing/.env.example) for
+`NEXT_PUBLIC_WORKSPACE_URL` and `NEXT_PUBLIC_SITE_URL`).
 
 | Variable             | Required | Description                                                                                                                                                                    |
 | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

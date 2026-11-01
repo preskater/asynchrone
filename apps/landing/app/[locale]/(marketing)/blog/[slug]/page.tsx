@@ -9,6 +9,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Separator } from "@workspace/ui/components/separator"
 
 import { getPost, getBlogSlugs, type BlogFrontmatter } from "@/lib/landing/blog"
+import { marketingMetadata } from "@/lib/seo"
 
 type PostModule = {
   default: React.ComponentType
@@ -27,7 +28,11 @@ export async function generateMetadata({
   const { slug, locale } = await params
   const post = getPost(slug, locale)
   if (!post) return {}
-  return { title: post.title, description: post.description }
+  return marketingMetadata({
+    path: `/blog/${slug}`,
+    title: post.title,
+    description: post.description,
+  })
 }
 
 const postsEn = {
