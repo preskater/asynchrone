@@ -4,8 +4,8 @@ import * as React from "react"
 import { PlusIcon, SearchIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { ConversationList } from "@/components/messaging/conversation-list"
-import { NewMessageDialog } from "@/components/messaging/new-message-dialog"
+import { ConversationList } from "./conversation-list"
+import { NewMessageDialog } from "./new-message-dialog"
 import { Button } from "@workspace/ui/components/button"
 import {
   InputGroup,
@@ -14,14 +14,17 @@ import {
 } from "@workspace/ui/components/input-group"
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
 
-import { useMessaging } from "@/lib/messaging/store"
-import { useWorkspaceNav } from "@/lib/workspace-nav/store"
+import { useMessaging } from "../store"
+import type { MessagingNavigation } from "./navigation"
 
-export function ConversationSidebar() {
+export function ConversationSidebar({
+  navigation,
+}: {
+  navigation: MessagingNavigation
+}) {
   const t = useTranslations("Messaging")
   const { unreadTotal } = useMessaging()
-  const { messagesActiveId, selectConversation, setMessagesSearchOpen } =
-    useWorkspaceNav()
+  const { activeId, selectConversation, setSearchOpen } = navigation
   const [query, setQuery] = React.useState("")
 
   return (
@@ -54,7 +57,7 @@ export function ConversationSidebar() {
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault()
-                setMessagesSearchOpen(true)
+                setSearchOpen(true)
               }
             }}
           />
@@ -66,7 +69,7 @@ export function ConversationSidebar() {
 
       <ScrollArea className="min-h-0 flex-1">
         <ConversationList
-          activeId={messagesActiveId}
+          activeId={activeId}
           onSelect={selectConversation}
           query={query}
         />

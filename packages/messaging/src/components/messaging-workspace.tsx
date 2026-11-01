@@ -3,10 +3,10 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
-import { ChatPanel } from "@/components/messaging/chat-panel"
-import { ConversationDetailsSheet } from "@/components/messaging/conversation-details-sheet"
-import { SearchCommand } from "@/components/messaging/search-command"
-import { ThreadSheet } from "@/components/messaging/thread-sheet"
+import { ChatPanel, type ChatPanelSlots } from "./chat-panel"
+import { ConversationDetailsSheet } from "./conversation-details-sheet"
+import { SearchCommand } from "./search-command"
+import { ThreadSheet } from "./thread-sheet"
 import {
   Empty,
   EmptyDescription,
@@ -17,11 +17,20 @@ import {
 import { MessageSquareIcon } from "lucide-react"
 
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "../store"
 import { useRecents } from "@workspace/app-shell/recents"
-import { useWorkspaceNav } from "@/lib/workspace-nav/store"
+import type { MessagingNavigation } from "./navigation"
 
-export function MessagingWorkspace() {
+/** The app-local slots a Copilot-style shell passes into the workspace. */
+export type MessagingWorkspaceSlots = ChatPanelSlots
+
+export function MessagingWorkspace({
+  navigation,
+  slots,
+}: {
+  navigation: MessagingNavigation
+  slots?: ChatPanelSlots
+}) {
   const t = useTranslations("Messaging")
   const L = useEnumLabel()
   const {
@@ -33,12 +42,7 @@ export function MessagingWorkspace() {
     ensureMessages,
   } = useMessaging()
   const { record, active, hydrated } = useRecents()
-  const {
-    messagesActiveId: activeId,
-    selectConversation,
-    messagesSearchOpen: searchOpen,
-    setMessagesSearchOpen: setSearchOpen,
-  } = useWorkspaceNav()
+  const { activeId, selectConversation, searchOpen, setSearchOpen } = navigation
   const [threadId, setThreadId] = React.useState<string | undefined>()
   const [threadOpen, setThreadOpen] = React.useState(false)
   const [detailsOpen, setDetailsOpen] = React.useState(false)
@@ -99,6 +103,7 @@ export function MessagingWorkspace() {
             onOpenDetails={() => setDetailsOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
             onReply={openThread}
+            slots={slots}
           />
         ) : (
           <Empty className="h-full">

@@ -3,14 +3,18 @@
 import { HashIcon, PinIcon, VolumeXIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { PresenceDot } from "@/components/messaging/presence-dot"
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
+import { PresenceDot } from "./presence-dot"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { initials } from "@/lib/messaging/format"
-import { useMessaging } from "@/lib/messaging/store"
-import type { Conversation } from "@/lib/messaging/types"
+import { initials } from "../format"
+import { useMessaging } from "../store"
+import type { Conversation } from "../types"
 
 export function ConversationItem({
   conversation,

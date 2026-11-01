@@ -3,11 +3,11 @@ import "dotenv/config"
 import { randomUUID } from "node:crypto"
 
 import { CalendarRepository, CalendarService } from "@workspace/calendars"
+import { MessagingRepository, MessagingService } from "@workspace/messaging"
 import { contextForMember } from "../lib/core/auth-context"
 import type { RequestContext } from "@workspace/core/context"
-import { MessagingRepository } from "../lib/messaging/repository"
-import { MessagingService } from "../lib/messaging/service"
 import { prisma } from "../lib/prisma"
+import { largeObjectStore } from "../lib/large-object"
 import { ProjectRepository } from "@workspace/projects/repository"
 import { ProjectService } from "@workspace/projects/service"
 import { recordUserAudit } from "../lib/audit/record"
@@ -134,7 +134,10 @@ async function main() {
     )
 
     // 3. Reaction on behalf of another member: Bob reacts as Alice.
-    const messaging = new MessagingService(new MessagingRepository(prisma))
+    const messaging = new MessagingService(
+      new MessagingRepository(prisma),
+      { storage: largeObjectStore }
+    )
     const conversation = await prisma.conversation.create({
       data: { organizationId: orgA, name: "general" },
     })

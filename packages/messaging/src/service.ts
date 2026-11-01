@@ -1,5 +1,6 @@
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
+import type { Readable } from "node:stream"
 import {
   decodeCursor,
   encodeCursor,
@@ -8,10 +9,9 @@ import {
   type Page,
   type PageInput,
 } from "@workspace/core/pagination"
-import { unlinkLargeObject } from "@/lib/large-object"
 import { roleRank } from "@workspace/organization/roles"
-import { prisma } from "@/lib/prisma"
 
+import type { MessagingStorage } from "./deps"
 import { MessagingRepository } from "./repository"
 import type {
   AddThreadReplyInput,
@@ -56,8 +56,20 @@ type MessageRow = Awaited<
 type ReplyRow = Awaited<ReturnType<MessagingRepository["listReplies"]>>[number]
 type TeamRow = Awaited<ReturnType<MessagingRepository["listTeams"]>>[number]
 
+/** What the owning app binds: today the files/database pool's large objects. */
+export interface MessagingServiceDeps {
+  storage: MessagingStorage
+}
+
 export class MessagingService {
-  constructor(private readonly repo: MessagingRepository) {}
+  private readonly storage: MessagingStorage
+
+  constructor(
+    private readonly repo: MessagingRepository,
+    deps: MessagingServiceDeps
+  ) {
+    this.storage = deps.storage
+  }
 
   private mapConversation(row: ConversationRow): Conversation {
     return {
@@ -136,10 +148,7 @@ export class MessagingService {
         this.repo.listConversations(ctx.organizationId),
         this.repo.listTeams(ctx.organizationId),
         this.repo.listLatestMessages(ctx.organizationId),
-        prisma.member.findMany({
-          where: { organizationId: ctx.organizationId, clientId: null },
-          select: { userId: true, user: { select: { lastSeenAt: true } } },
-        }),
+        this.repo.listPresenceCandidates(ctx.organizationId),
       ])
     const now = Date.now()
     const presence: Record<string, Presence> = {}
@@ -309,12 +318,14 @@ export class MessagingService {
     await this.repo.deleteMessage(id)
     await Promise.all(
       oids.map((oid) =>
-        unlinkLargeObject(Number(oid)).catch((error) =>
-          console.error(
-            `[messaging] failed to unlink large object ${oid}`,
-            error
+        this.storage
+          .unlink(Number(oid))
+          .catch((error) =>
+            console.error(
+              `[messaging] failed to unlink large object ${oid}`,
+              error
+            )
           )
-        )
       )
     )
     return { id }
@@ -381,10 +392,10 @@ export class MessagingService {
     )
     if (existing) return this.mapConversation(existing)
 
-    const member = await prisma.member.findFirst({
-      where: { organizationId: ctx.organizationId, userId: input.memberId },
-      select: { user: { select: { name: true } } },
-    })
+    const member = await this.repo.findMemberName(
+      ctx.organizationId,
+      input.memberId
+    )
     const name = member?.user.name ?? ctx.userName
     const row = await this.repo.createConversation({
       organizationId: ctx.organizationId,
@@ -461,9 +472,33 @@ export class MessagingService {
   }
 
   async touchPresence(ctx: RequestContext): Promise<void> {
-    await prisma.user.update({
-      where: { id: ctx.userId },
-      data: { lastSeenAt: new Date() },
-    })
+    await this.repo.touchPresence(ctx.userId)
+  }
+
+  /**
+   * Open one attachment's bytes for download. The organization scope is part of
+   * the lookup, so an attachment id from another organization is a 404.
+   */
+  async openAttachment(
+    ctx: RequestContext,
+    attachmentId: string
+  ): Promise<{
+    name: string
+    mimeType: string
+    size: number
+    stream: Readable
+  } | null> {
+    const attachment = await this.repo.findAttachment(
+      ctx.organizationId,
+      attachmentId
+    )
+    if (!attachment || attachment.oid === null) return null
+    const { size, stream } = await this.storage.open(Number(attachment.oid))
+    return {
+      name: attachment.name,
+      mimeType: attachment.mimeType ?? "application/octet-stream",
+      size,
+      stream,
+    }
   }
 }

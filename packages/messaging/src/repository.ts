@@ -1,5 +1,30 @@
 import type { PrismaClient } from "@workspace/db"
 
+/**
+ * The slice of a Prisma client the messaging domain needs.
+ *
+ * The package never opens a connection: the owning app binds its own client.
+ * Today that is `apps/web` and the shared monolith client; once `apps/messages`
+ * exists it binds the `asynchrone_messages` client instead.
+ *
+ * `member` and `user` are identity tables the presence indicator and the DM
+ * title still read directly. They move behind the identity internal API when
+ * Messaging becomes its own app; until then the structural port keeps the
+ * dependency explicit.
+ */
+export type MessagingDb = Pick<
+  PrismaClient,
+  | "chatTeam"
+  | "conversation"
+  | "message"
+  | "messageReaction"
+  | "messageAttachment"
+  | "member"
+  | "user"
+  | "$transaction"
+  | "$queryRaw"
+>
+
 /** Thread replies are bounded: only the latest replies of a message load. */
 export const messageInclude = {
   reactions: true,
@@ -12,7 +37,7 @@ export const messageInclude = {
 }
 
 export class MessagingRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: MessagingDb) {}
 
   listConversations(organizationId: string) {
     return this.db.conversation.findMany({
@@ -66,7 +91,12 @@ export class MessagingRepository {
 
   updateConversation(
     id: string,
-    data: { unreadCount?: number; muted?: boolean; pinned?: boolean; lastMessageAt?: Date }
+    data: {
+      unreadCount?: number
+      muted?: boolean
+      pinned?: boolean
+      lastMessageAt?: Date
+    }
   ) {
     return this.db.conversation.update({
       where: { id },
@@ -237,6 +267,41 @@ export class MessagingRepository {
       }
       await tx.messageReaction.create({ data: { messageId, emoji, userId } })
       return true
+    })
+  }
+
+  /** One attachment of a conversation in this organization. */
+  findAttachment(organizationId: string, attachmentId: string) {
+    return this.db.messageAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        oid: { not: null },
+        message: { conversation: { organizationId } },
+      },
+      select: { id: true, name: true, mimeType: true, oid: true },
+    })
+  }
+
+  /** Every organization member, for the coarse presence indicator. */
+  listPresenceCandidates(organizationId: string) {
+    return this.db.member.findMany({
+      where: { organizationId, clientId: null },
+      select: { userId: true, user: { select: { lastSeenAt: true } } },
+    })
+  }
+
+  /** The display name a direct message is titled with. */
+  findMemberName(organizationId: string, userId: string) {
+    return this.db.member.findFirst({
+      where: { organizationId, userId },
+      select: { user: { select: { name: true } } },
+    })
+  }
+
+  touchPresence(userId: string) {
+    return this.db.user.update({
+      where: { id: userId },
+      data: { lastSeenAt: new Date() },
     })
   }
 }

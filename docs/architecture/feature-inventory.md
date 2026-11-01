@@ -1,6 +1,6 @@
 # Feature inventory and parity checklist
 
-Last audited: 2026-11-01 (issues #146–#151).
+Last audited: 2026-11-01 (issues #146–#156).
 
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
@@ -303,17 +303,30 @@ routes still run in `apps/web` (Copilot) and bind the package through
 
 ## Messages
 
-Target: `apps/messages` / `@workspace/messaging`.
+Target: `apps/messages` / `@workspace/messaging`. The package landed in #156;
+the routes still run in `apps/web` (Copilot) and bind the package through
+`apps/web/lib/messaging.ts`, `apps/web/components/messaging-provider.tsx` and
+`apps/web/components/messaging-workspace.tsx`.
 
-| Surface            | Inventory                                                                                                       |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Pages              | `/[orgSlug]/messages`                                                                                           |
-| Server actions     | `actions/messaging.ts` (channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin)   |
-| API                | `GET /api/messages/attachments/[attachmentId]`, `/api/health`                                                   |
-| MCP tools          | `list_conversations`, `list_messages`, `send_message`, `create_channel`                                         |
-| Prisma models      | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `AuditLog` |
-| Audit actions      | none today                                                                                                      |
-| Internal endpoints | search / export / delete as above; attachments are served by the messages app                                   |
+| Surface                                        | Location                                                                                                        | Notes                                                                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Page                                           | `apps/web/app/[locale]/(app)/[orgSlug]/messages/page.tsx`                                                       | renders `apps/web/components/messaging-workspace.tsx`, which binds the package's `MessagingWorkspace`                                |
+| Loading                                        | `apps/web/app/[locale]/(app)/[orgSlug]/messages/loading.tsx`                                                    | route-level skeleton                                                                                                                 |
+| Not found                                      | `apps/web/app/[locale]/(app)/[orgSlug]/messages/not-found.tsx`                                                  | route-level empty state                                                                                                              |
+| `GET /api/messages/attachments/[attachmentId]` | `apps/web/app/api/messages/attachments/[attachmentId]/route.ts`                                                 | streams one attachment after an organization-scoped lookup (`messagingService.openAttachment`)                                       |
+| Server actions                                 | `apps/web/actions/messaging.ts`                                                                                 | channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin                                                 |
+| Sidebar                                        | `apps/web/components/app-sidebar.tsx`                                                                           | renders `ConversationSidebar` with the workspace navigation while on `/[orgSlug]/messages`                                           |
+| MCP tools                                      | `apps/web/lib/mcp/tools/messaging.ts`                                                                           | `list_conversations`, `list_messages`, `send_message`, `create_channel`                                                              |
+| Assistant tools                                | `apps/web/lib/assistant/tools.ts`                                                                               | `list_conversations`, `send_message` over the same read/write service                                                                |
+| Package read API                               | `packages/messaging/src/service.ts`                                                                             | `list`, `listConversations`, `listMessages`, `messagesFor`, `listThreadReplies`, `listTeams`                                         |
+| Package write API                              | `packages/messaging/src/service.ts`                                                                             | `sendMessage`, `editMessage`, `deleteMessage`, `toggleReaction`, `addThreadReply`, `markRead`, DM/channel, mute/pin, `touchPresence` |
+| Attachments                                    | `packages/messaging/src/service.ts`, `../files/src/upload-client.ts` (`uploadAttachment`)                       | metadata in `messageAttachment`; bytes are PostgreSQL large objects through `@workspace/storage`                                     |
+| Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/web/lib/large-object.ts`; the package never opens a pool                                                         |
+| Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `AuditLog` |                                                                                                                                      |
+| Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; bound in `apps/web/lib/messaging.ts`                                       |
+| Audit actions                                  | none today                                                                                                      |                                                                                                                                      |
+| Internal endpoints                             | search / export / delete as above; attachments are served by the messages app                                   |                                                                                                                                      |
+| Tests                                          | `packages/messaging/src/service.unit.test.ts`                                                                   | membership, unread state, threads, attachment upload/download, cross-org authorization                                               |
 
 ## Clients
 
@@ -517,10 +530,11 @@ Never bake secrets into an image.
 | Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest                                                                                                                           |
 | Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                                                                                                                     |
 | Unit — Clients/Employees  | `packages/clients/src/{access,import-export}.unit.test.ts` (role permissions, CSV export); `packages/employees/src/{access,exports}.unit.test.ts` (role/validator permissions, leave and audit exports)                                                        |
+| Unit — Messaging          | `packages/messaging/src/service.unit.test.ts` (membership, unread state, threads, attachment upload/download, cross-org authorization)                                                                                                                         |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
-| Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts`                                                                                                                   |
+| Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
 | Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
 | Boundaries                | `scripts/check-boundaries.mjs`                                                                                                                                                                                                                                 |

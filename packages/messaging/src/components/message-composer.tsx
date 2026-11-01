@@ -16,7 +16,7 @@ import {
   CommandPopover,
   MentionPopover,
   type SlashCommand,
-} from "@/components/messaging/mention-picker"
+} from "./mention-picker"
 import { Button } from "@workspace/ui/components/button"
 import {
   Popover,
@@ -24,17 +24,42 @@ import {
   PopoverTrigger,
 } from "@workspace/ui/components/popover"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "../store"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { uploadAttachment } from "@workspace/files/upload-client"
-import type { Attachment } from "@/lib/messaging/types"
+import type { Attachment } from "../types"
 
 const EMOJI = [
-  "😀", "😄", "😉", "😍", "🤔", "😅", "😂", "🥳",
-  "👍", "👎", "🙏", "👏", "🎉", "🔥", "✨", "❤️",
-  "✅", "❌", "👀", "🚀", "🐛", "💡", "📌", "☕",
+  "😀",
+  "😄",
+  "😉",
+  "😍",
+  "🤔",
+  "😅",
+  "😂",
+  "🥳",
+  "👍",
+  "👎",
+  "🙏",
+  "👏",
+  "🎉",
+  "🔥",
+  "✨",
+  "❤️",
+  "✅",
+  "❌",
+  "👀",
+  "🚀",
+  "🐛",
+  "💡",
+  "📌",
+  "☕",
 ]
 
 const GIFS = ["👋 wave", "🎉 confetti", "🙌 high five", "🤝 deal", "😹 laugh"]
@@ -146,7 +171,11 @@ export function MessageComposer({
           className="min-h-20 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
           onChange={(event) => {
             setValue(event.target.value)
-            setTyping(conversationId, currentUserId, event.target.value.length > 0)
+            setTyping(
+              conversationId,
+              currentUserId,
+              event.target.value.length > 0
+            )
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -208,9 +237,7 @@ export function MessageComposer({
                       key={emoji}
                       type="button"
                       className="rounded-md p-1 text-lg transition-colors hover:bg-muted"
-                      onClick={() =>
-                        setValue((prev) => `${prev}${emoji}`)
-                      }
+                      onClick={() => setValue((prev) => `${prev}${emoji}`)}
                     >
                       {emoji}
                     </button>
@@ -222,11 +249,7 @@ export function MessageComposer({
             <Popover>
               <PopoverTrigger
                 render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t("addGif")}
-                  >
+                  <Button variant="ghost" size="sm" aria-label={t("addGif")}>
                     GIF
                   </Button>
                 }
@@ -248,7 +271,11 @@ export function MessageComposer({
             <CommandPopover
               onCommand={handleCommand}
               trigger={
-                <Button variant="ghost" size="icon-sm" aria-label={t("commands")}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("commands")}
+                >
                   <SlashIcon />
                 </Button>
               }
@@ -259,7 +286,11 @@ export function MessageComposer({
                 setValue((prev) => `${prev}@${name.split(" ")[0]} `)
               }
               trigger={
-                <Button variant="ghost" size="icon-sm" aria-label={t("mentionSomeone")}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("mentionSomeone")}
+                >
                   <AtSignIcon />
                 </Button>
               }

@@ -6,6 +6,7 @@ import { ConflictError, ValidationError } from "@workspace/core/errors"
 import { sendOrganizationDeletedEmail } from "@/lib/email"
 import { snapshotForOrganization } from "@/lib/files"
 import { unlinkLargeObject } from "@/lib/large-object"
+import { snapshotMessagingForOrganization } from "@/lib/messaging"
 import { prisma } from "@/lib/prisma"
 
 /** Matches the privacy policy: data is removed within 30 days of the request. */
@@ -128,15 +129,11 @@ export async function deleteOrganization(
   // The files app owns the file/version/upload bytes; list them before the
   // delete cascades and unlink them after it commits.
   const fileObjects = await snapshotForOrganization(organizationId)
+  // The messages app owns the attachment bytes; same list-before-delete rule.
+  const messagingObjects =
+    await snapshotMessagingForOrganization(organizationId)
 
-  const [attachments, exports, owners, memberCount] = await Promise.all([
-    prisma.messageAttachment.findMany({
-      where: {
-        message: { conversation: { organizationId } },
-        oid: { not: null },
-      },
-      select: { oid: true },
-    }),
+  const [exports, owners, memberCount] = await Promise.all([
     prisma.dataExport.findMany({
       where: { organizationId, oid: { not: null } },
       select: { oid: true },
@@ -150,7 +147,7 @@ export async function deleteOrganization(
   const oids = [
     ...new Set([
       ...fileObjects.oids,
-      ...attachments.map(({ oid }) => Number(oid)),
+      ...messagingObjects.oids,
       ...exports.map(({ oid }) => Number(oid)),
     ]),
   ]
@@ -187,7 +184,8 @@ export async function deleteOrganization(
   // ponytail: an unlink that fails here leaves an orphan large object; the
   // verify:organization-deletion script reports them. Add a sweep if it happens.
   await fileObjects.unlink()
-  for (const { oid } of [...attachments, ...exports]) {
+  await messagingObjects.unlink()
+  for (const { oid } of exports) {
     const value = Number(oid)
     await unlinkLargeObject(value).catch((error) => {
       console.error(`[organization-deletion] unlink ${value} failed`, error)

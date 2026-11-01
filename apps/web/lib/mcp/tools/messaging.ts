@@ -5,7 +5,7 @@ import { messagingService } from "@/lib/messaging"
 import {
   createChannelSchema,
   sendMessageSchema,
-} from "@/lib/messaging/schemas"
+} from "@workspace/messaging/schemas"
 
 import type { McpTool } from "./projects"
 

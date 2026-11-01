@@ -2,8 +2,8 @@
 
 import { cn } from "@workspace/ui/lib/utils"
 
-import { useMessaging } from "@/lib/messaging/store"
-import type { Reaction } from "@/lib/messaging/types"
+import { useMessaging } from "../store"
+import type { Reaction } from "../types"
 
 export function ReactionBar({
   messageId,

@@ -32,8 +32,8 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 
-import { formatTime } from "@/lib/messaging/format"
-import { useMessaging } from "@/lib/messaging/store"
+import { formatTime } from "@workspace/messaging/format"
+import { useMessaging } from "@workspace/messaging/store"
 
 const DURATION_MINUTES = [15, 30, 45, 60]
 

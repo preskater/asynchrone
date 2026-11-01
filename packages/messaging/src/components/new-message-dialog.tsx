@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { MemberAvatar } from "./member-avatar"
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import {
   CommandList,
 } from "@workspace/ui/components/command"
 
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "../store"
 
 export function NewMessageDialog({
   trigger,

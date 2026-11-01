@@ -11,6 +11,7 @@ import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { TrialBanner } from "@workspace/app-shell/trial-banner"
 import { AppSidebar } from "@/components/app-sidebar"
 import { FilesShellProvider } from "@/components/files-provider"
+import { MessagingShellProvider } from "@/components/messaging-provider"
 import { SiteHeader } from "@/components/site-header"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
@@ -55,8 +56,7 @@ import {
 } from "@/actions/project-messages"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import type { FilesData } from "@workspace/files/types"
-import { MessagingProvider } from "@/lib/messaging/store"
-import type { MessagingData } from "@/lib/messaging/types"
+import type { MessagingData } from "@workspace/messaging/types"
 import { notificationService } from "@/lib/notifications"
 import { mustEnrollTwoFactor } from "@/lib/organization/two-factor-policy"
 import { getOrganizationShell } from "@/lib/organization/shell"
@@ -181,7 +181,7 @@ export default async function AppLayout({
               actions={PROJECT_ACTIONS}
               canManageMembers={roleRank(ctx.role) >= 3}
             >
-              <MessagingProvider
+              <MessagingShellProvider
                 initialData={EMPTY_MESSAGING_DATA}
                 currentUserId={ctx.userId}
                 organizationId={organization.id}
@@ -237,7 +237,7 @@ export default async function AppLayout({
                     </FilesShellProvider>
                   </WorkspaceNavProvider>
                 </CalendarsProvider>
-              </MessagingProvider>
+              </MessagingShellProvider>
             </ProjectStoreProvider>
           </RecentsProvider>
         </AppearanceProvider>

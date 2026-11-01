@@ -1,5 +1,17 @@
 export type Presence = "online" | "away" | "busy" | "offline"
 
+/**
+ * A member of the organization, as the conversation screens render it. The
+ * owning app binds its member directory (see `MessagingMember` in `deps.ts`).
+ */
+export interface MessagingMember {
+  id: string
+  name: string
+  email: string
+  avatarUrl?: string
+  role: string
+}
+
 export type ConversationKind = "channel" | "dm"
 
 export type AttachmentKind = "file" | "image"

@@ -5,7 +5,7 @@ import * as React from "react"
 import { useCalendars } from "@/lib/calendars/store"
 import type { CalendarView } from "@workspace/calendars/types"
 import type { FileLocation } from "@workspace/files/types"
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "@workspace/messaging/store"
 
 interface WorkspaceNavStore {
   messagesActiveId: string | undefined

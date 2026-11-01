@@ -3,13 +3,13 @@
 import * as React from "react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { MessageItem } from "@/components/messaging/message-item"
+import { MessageItem } from "./message-item"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
-import { formatDayLabel, isSameDay } from "@/lib/messaging/format"
-import { useMessaging } from "@/lib/messaging/store"
+import { formatDayLabel, isSameDay } from "../format"
+import { useMessaging } from "../store"
 
 export function MessageList({
   conversationId,

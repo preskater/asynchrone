@@ -3,8 +3,8 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
-import { PresenceDot } from "@/components/messaging/presence-dot"
+import { MemberAvatar } from "./member-avatar"
+import { PresenceDot } from "./presence-dot"
 import { Button } from "@workspace/ui/components/button"
 import {
   Sheet,
@@ -14,8 +14,8 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet"
 
-import { useMessaging } from "@/lib/messaging/store"
-import type { Conversation } from "@/lib/messaging/types"
+import { useMessaging } from "../store"
+import type { Conversation } from "../types"
 
 export function ConversationDetailsSheet({
   conversation,

@@ -19,12 +19,13 @@ import { useTranslations } from "next-intl"
 
 import { ProjectFormDialog } from "@workspace/projects/components/project/project-dialog"
 import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
-import { ConversationSidebar } from "@/components/messaging/conversation-sidebar"
+import { ConversationSidebar } from "@workspace/messaging/components/conversation-sidebar"
 import { FilesSidebar } from "@workspace/files/components/files-sidebar"
 import { NavMain, type NavApp } from "@workspace/app-shell/nav-main"
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "@workspace/messaging/store"
 import { NavSecondary } from "@workspace/ui/components/nav-secondary"
 import { Link, usePathname } from "@workspace/i18n/navigation"
+import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import {
   Sidebar,
   SidebarContent,
@@ -116,6 +117,12 @@ export function AppSidebar({
   const pathname = usePathname()
   const t = useTranslations("Sidebar")
   const { unreadTotal } = useMessaging()
+  const {
+    messagesActiveId,
+    selectConversation,
+    messagesSearchOpen,
+    setMessagesSearchOpen,
+  } = useWorkspaceNav()
   const navMain = useNavMain(orgSlug)
   const navSecondary = useNavSecondary(orgSlug)
 
@@ -126,7 +133,14 @@ export function AppSidebar({
 
   const contextual =
     relative === "/messages" || relative.startsWith("/messages/") ? (
-      <ConversationSidebar />
+      <ConversationSidebar
+        navigation={{
+          activeId: messagesActiveId,
+          selectConversation,
+          searchOpen: messagesSearchOpen,
+          setSearchOpen: setMessagesSearchOpen,
+        }}
+      />
     ) : relative === "/files" || relative.startsWith("/files/") ? (
       <FilesSidebar />
     ) : relative === "/calendars" || relative.startsWith("/calendars/") ? (

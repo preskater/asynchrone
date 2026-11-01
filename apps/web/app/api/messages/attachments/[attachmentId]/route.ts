@@ -3,8 +3,7 @@ import { Readable } from "node:stream"
 import { NextResponse } from "next/server"
 
 import { getRequestContext } from "@/lib/core/auth-context"
-import { openLargeObjectStream } from "@/lib/large-object"
-import { prisma } from "@/lib/prisma"
+import { messagingService } from "@/lib/messaging"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -16,25 +15,18 @@ export async function GET(
   const ctx = await getRequestContext({ request })
   const { attachmentId } = await params
 
-  const attachment = await prisma.messageAttachment.findFirst({
-    where: {
-      id: attachmentId,
-      message: { conversation: { organizationId: ctx.organizationId } },
-    },
-    select: { name: true, oid: true, mimeType: true },
-  })
-
-  if (!attachment || attachment.oid === null) {
+  // The lookup is organization-scoped: an attachment id from another
+  // organization is indistinguishable from a missing one.
+  const attachment = await messagingService.openAttachment(ctx, attachmentId)
+  if (!attachment) {
     return new NextResponse("Not found", { status: 404 })
   }
 
-  const { size, stream } = await openLargeObjectStream(Number(attachment.oid))
-
-  const body = Readable.toWeb(stream) as unknown as ReadableStream
+  const body = Readable.toWeb(attachment.stream) as unknown as ReadableStream
   return new NextResponse(body, {
     headers: {
-      "Content-Type": attachment.mimeType || "application/octet-stream",
-      "Content-Length": String(size),
+      "Content-Type": attachment.mimeType,
+      "Content-Length": String(attachment.size),
       "X-Content-Type-Options": "nosniff",
       "Content-Disposition": `attachment; filename="${encodeURIComponent(attachment.name)}"`,
       "Cache-Control": "private, no-cache",

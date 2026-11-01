@@ -15,7 +15,7 @@ import {
   setTypingSchema,
   startDmSchema,
   toggleReactionSchema,
-} from "@/lib/messaging/schemas"
+} from "@workspace/messaging/schemas"
 
 export const listMessagingAction = withAction(async () => {
   const ctx = await getRequestContext()
