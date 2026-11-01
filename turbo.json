@@ -95,6 +95,17 @@
     "typecheck": {
       "dependsOn": ["^typecheck", "generate"]
     },
+    "test:contracts": {
+      "dependsOn": ["^generate"],
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "DATABASE_POOL_MAX",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CONTROL_TOWER_URL"
+      ]
+    },
     "dev": {
       "dependsOn": ["^generate"],
       "cache": false,
