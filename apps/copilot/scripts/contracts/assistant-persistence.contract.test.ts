@@ -5,6 +5,9 @@ import { toAgentInput, type AssistantPart } from "@workspace/ai/chat"
 import {
   beginTurn,
   completeTurn,
+  createConversation,
+  deleteConversation,
+  listConversations,
   loadConversation,
   MAX_HISTORY_MESSAGES,
 } from "@/lib/assistant/conversations"
@@ -195,5 +198,83 @@ describe("assistant conversation persistence", () => {
 
     expect(next.history).toHaveLength(MAX_HISTORY_MESSAGES)
     expect(next.history.at(-1)).toMatchObject({ role: "user" })
+  })
+
+  it("lists the signed-in user's conversations newest first", async () => {
+    const older = await createConversation(fixture.ctxAlice)
+    // `updatedAt` has millisecond resolution; give the newer row a distinct stamp.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    const newer = await createConversation(fixture.ctxAlice)
+
+    const aliceList = await listConversations(fixture.ctxAlice)
+    const ids = aliceList.map((conversation) => conversation.id)
+    expect(ids).toContain(older.id)
+    expect(ids).toContain(newer.id)
+    expect(ids.indexOf(newer.id)).toBeLessThan(ids.indexOf(older.id))
+    expect(aliceList).toContainEqual(newer)
+
+    // Another organization sees none of them.
+    const malloryList = await listConversations(fixture.ctxMallory)
+    expect(malloryList.map((conversation) => conversation.id)).not.toContain(
+      newer.id
+    )
+
+    // Another member of the same organization is excluded too.
+    const bobList = await listConversations(fixture.ctxBob)
+    expect(bobList.map((conversation) => conversation.id)).not.toContain(
+      older.id
+    )
+  })
+
+  it("creates an empty conversation that can be reopened", async () => {
+    const created = await createConversation(fixture.ctxAlice)
+
+    expect(created.title).toBe("")
+    expect(Number.isNaN(Date.parse(created.updatedAt))).toBe(false)
+
+    const reloaded = await loadConversation(fixture.ctxAlice, created.id)
+    expect(reloaded).toEqual({
+      id: created.id,
+      title: "",
+      messages: [],
+    })
+  })
+
+  it("deletes a conversation and its messages, rejecting foreign ids", async () => {
+    const turn = await beginTurn(fixture.ctxAlice, { text: "Delete me" })
+    await completeTurn(fixture.ctxAlice, turn.conversationId, [
+      { type: "text", text: "Gone soon." },
+    ])
+
+    await expect(
+      rejectionOf(deleteConversation(fixture.ctxMallory, turn.conversationId))
+    ).resolves.toMatchObject({ code: "not_found" })
+    await expect(
+      rejectionOf(deleteConversation(fixture.ctxBob, turn.conversationId))
+    ).resolves.toMatchObject({ code: "not_found" })
+
+    // The rejected attempts left it intact.
+    const stillThere = await loadConversation(
+      fixture.ctxAlice,
+      turn.conversationId
+    )
+    expect(stillThere.messages).toHaveLength(2)
+
+    await deleteConversation(fixture.ctxAlice, turn.conversationId)
+
+    await expect(
+      rejectionOf(loadConversation(fixture.ctxAlice, turn.conversationId))
+    ).resolves.toMatchObject({ code: "not_found" })
+    // The schema cascade removed the turns as well.
+    expect(
+      await prisma.assistantMessage.count({
+        where: { conversationId: turn.conversationId },
+      })
+    ).toBe(0)
+
+    // Deleting twice is the same 404 rather than an error.
+    await expect(
+      rejectionOf(deleteConversation(fixture.ctxAlice, turn.conversationId))
+    ).resolves.toMatchObject({ code: "not_found" })
   })
 })

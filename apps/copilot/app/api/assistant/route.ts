@@ -2,7 +2,7 @@ import { run, type RunStreamEvent } from "@openai/agents"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
-import { getRequestContext } from "@/lib/core/auth-context"
+import { assistantRequestContext } from "@/lib/assistant/context"
 import {
   applyAssistantEvent,
   finishAssistantParts,
@@ -103,10 +103,10 @@ function toClientEvent(
   return undefined
 }
 
-/** Reloads the signed-in user's conversation, scoped to the active org. */
+/** Reloads the signed-in user's conversation, scoped to the request organization. */
 export async function GET(request: Request) {
   try {
-    const ctx = await getRequestContext({ request })
+    const ctx = await assistantRequestContext(request)
     const conversationId = new URL(request.url).searchParams.get(
       "conversationId"
     )
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const blocked = rejectCrossOrigin(request)
   if (blocked) return blocked
-  const ctx = await getRequestContext({ request })
+  const ctx = await assistantRequestContext(request)
 
   // A custom OpenAI-compatible endpoint (OPENAI_API_URL) may not need a key.
   if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_URL) {

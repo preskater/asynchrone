@@ -1,3 +1,4 @@
+import type { AssistantConversationSummary } from "@workspace/ai/conversations"
 import type { AssistantPart, ChatMessage } from "@workspace/ai/chat"
 import type { RequestContext } from "@workspace/core/context"
 import { NotFoundError } from "@workspace/core/errors"
@@ -39,13 +40,77 @@ export interface AssistantConversationView {
   messages: ChatMessage[]
 }
 
+/** The home screen shows recent conversations, not the whole history. */
+export const MAX_CONVERSATIONS = 100
+
 const messageSelect = { id: true, role: true, parts: true } as const
+const summarySelect = { id: true, title: true, updatedAt: true } as const
 
 /** Newest stored turn first, so `take` keeps the most recent history. */
 const newestFirst = [{ createdAt: "desc" as const }, { id: "desc" as const }]
 
 function ownedBy(ctx: RequestContext, id: string) {
   return { id, organizationId: ctx.organizationId, userId: ctx.userId }
+}
+
+function toSummary(conversation: {
+  id: string
+  title: string
+  updatedAt: Date
+}): AssistantConversationSummary {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    updatedAt: conversation.updatedAt.toISOString(),
+  }
+}
+
+/**
+ * The signed-in user's conversations in the active organization, newest
+ * first. Another member's conversations never appear, even in the same
+ * organization.
+ */
+export async function listConversations(
+  ctx: RequestContext
+): Promise<AssistantConversationSummary[]> {
+  const conversations = await prisma.assistantConversation.findMany({
+    where: { organizationId: ctx.organizationId, userId: ctx.userId },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: MAX_CONVERSATIONS,
+    select: summarySelect,
+  })
+  return conversations.map(toSummary)
+}
+
+/**
+ * Creates an empty conversation so "New chat" has a stable id to reopen after
+ * a reload. The title stays empty until the first user message derives it.
+ */
+export async function createConversation(
+  ctx: RequestContext
+): Promise<AssistantConversationSummary> {
+  const conversation = await prisma.assistantConversation.create({
+    data: {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+    },
+    select: summarySelect,
+  })
+  return toSummary(conversation)
+}
+
+/**
+ * Deletes one conversation and, through the schema cascade, its messages.
+ * Foreign, unknown and already-deleted ids are the same `404`.
+ */
+export async function deleteConversation(
+  ctx: RequestContext,
+  conversationId: string
+): Promise<void> {
+  const deleted = await prisma.assistantConversation.deleteMany({
+    where: ownedBy(ctx, conversationId),
+  })
+  if (deleted.count === 0) throw new NotFoundError("Conversation")
 }
 
 /** Loads one conversation for a reload, rejecting foreign ids. */

@@ -16,5 +16,22 @@
   "summarizeProject": "Summarize a project",
   "summarizeProjectPrompt": "Summarize the Website Redesign project",
   "draftMessage": "Draft a message",
-  "draftMessagePrompt": "Draft a message to the engineering channel"
+  "draftMessagePrompt": "Draft a message to the engineering channel",
+  "conversations": "Conversations",
+  "conversationList": "Conversation list",
+  "conversationListDescription": "Your recent conversations in this organization.",
+  "newChat": "New chat",
+  "untitledConversation": "New conversation",
+  "noConversations": "No conversations yet. Start a new chat to ask the assistant something.",
+  "deleteConversation": "Delete conversation “{title}”",
+  "deleteConversationTitle": "Delete this conversation?",
+  "deleteConversationDescription": "“{title}” and its messages will be deleted for you. This cannot be undone.",
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "loadingConversation": "Loading conversation…",
+  "retry": "Try again",
+  "toolRunning": "Running",
+  "toolDone": "Done",
+  "toolArguments": "Arguments",
+  "toolOutput": "Output"
 }

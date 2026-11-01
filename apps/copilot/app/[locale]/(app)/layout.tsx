@@ -17,7 +17,6 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getOrganizationAppearance } from "@/lib/appearance/service"
-import { AssistantProvider } from "@workspace/ai/use-assistant"
 import { CalendarsProvider } from "@/lib/calendars/store"
 import type { CalendarData } from "@workspace/calendars/types"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
@@ -127,47 +126,45 @@ export default async function AppLayout({
                   storageQuotaBytes={storageQuotaBytes}
                   members={members}
                 >
-                  <AssistantProvider organizationId={organization.id}>
-                    <WorkspaceShell
-                      skipLabel={t("skipToContent")}
-                      sidebar={
-                        <AppSidebar
-                          variant="inset"
-                          orgSlug={organization.slug}
-                          projectsUrl={projectsUrl}
-                          messagesUrl={messagesUrl}
-                        />
-                      }
-                      banners={
-                        <>
-                          {session.session.impersonatedBy ? (
-                            <ImpersonationBanner name={session.user.name} />
-                          ) : null}
-                          {deletionScheduledAt ? (
-                            <DeletionBanner
-                              scheduledAt={deletionScheduledAt}
-                              orgSlug={organization.slug}
-                            />
-                          ) : null}
-                          {trial?.state === "active" ? (
-                            <TrialBanner daysLeft={trial.daysLeft} />
-                          ) : null}
-                        </>
-                      }
-                      header={
-                        <SiteHeader
-                          orgSlug={organization.slug}
-                          projectsUrl={projectsUrl}
-                          messagesUrl={messagesUrl}
-                          user={session.user}
-                          activeOrganizationId={organization.id}
-                          notifications={notificationData}
-                        />
-                      }
-                    >
-                      {children}
-                    </WorkspaceShell>
-                  </AssistantProvider>
+                  <WorkspaceShell
+                    skipLabel={t("skipToContent")}
+                    sidebar={
+                      <AppSidebar
+                        variant="inset"
+                        orgSlug={organization.slug}
+                        projectsUrl={projectsUrl}
+                        messagesUrl={messagesUrl}
+                      />
+                    }
+                    banners={
+                      <>
+                        {session.session.impersonatedBy ? (
+                          <ImpersonationBanner name={session.user.name} />
+                        ) : null}
+                        {deletionScheduledAt ? (
+                          <DeletionBanner
+                            scheduledAt={deletionScheduledAt}
+                            orgSlug={organization.slug}
+                          />
+                        ) : null}
+                        {trial?.state === "active" ? (
+                          <TrialBanner daysLeft={trial.daysLeft} />
+                        ) : null}
+                      </>
+                    }
+                    header={
+                      <SiteHeader
+                        orgSlug={organization.slug}
+                        projectsUrl={projectsUrl}
+                        messagesUrl={messagesUrl}
+                        user={session.user}
+                        activeOrganizationId={organization.id}
+                        notifications={notificationData}
+                      />
+                    }
+                  >
+                    {children}
+                  </WorkspaceShell>
                 </FilesShellProvider>
               </WorkspaceNavProvider>
             </CalendarsProvider>

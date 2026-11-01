@@ -10,6 +10,7 @@
  * side effect.
  */
 export * from "./chat"
+export * from "./conversations"
 export * from "./model"
 export * from "./pricing"
 export * from "./suggestions"

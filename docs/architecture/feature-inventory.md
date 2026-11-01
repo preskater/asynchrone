@@ -101,6 +101,8 @@ organization 2FA policy.
 | ----------------------------------------------------- | -------- | ----------------------------- |
 | `/api/assistant`                                      | POST     | Copilot (assistant run)       |
 | `/api/assistant?conversationId=`                      | GET      | Copilot (assistant reload)    |
+| `/api/assistant/conversations`                        | GET/POST | Copilot (conversation list/create) |
+| `/api/assistant/conversations/[conversationId]`       | DELETE   | Copilot (conversation delete) |
 | `/api/auth/[...all]`                                  | GET/POST | Copilot (Better Auth + OIDC)  |
 | `/api/health`                                         | GET      | every app (same payload)      |
 | `/api/cron/audit-retention`                           | GET      | Copilot (audit)               |
@@ -129,7 +131,12 @@ organization 2FA policy.
   conversation id in `localStorage` per organization. Every read and write is
   scoped to the active organization and the signed-in user; see
   [assistant](../assistant.md).
-- Assistant tools currently call the domain services in-process:
+- `/api/assistant/conversations` lists and creates conversations;
+  `DELETE /api/assistant/conversations/:id` deletes one and cascades its
+  messages. The organization home (`/{locale}/{orgSlug}`) loads the list on the
+  server, renders the streaming transcript and tool cards, and exposes new chat,
+  reopen and delete with the same organization/user isolation. Copilot is the
+  home; there is no separate shell redirect, and `/mcp` stays here.- Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
   `list_files`, `list_conversations`, `send_message`. Calendar tools call
@@ -590,7 +597,7 @@ Never bake secrets into an image.
 | Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
-| Unit — Assistant          | `packages/ai/src/chat.unit.test.ts` (stream reducer, deterministic replay); `apps/copilot/lib/assistant/history.unit.test.ts`; `apps/copilot/app/api/assistant/route.unit.test.ts` (server-owned history, failed stream)                                       |
+| Unit — Assistant          | `packages/ai/src/{chat,conversations}.unit.test.ts` (stream reducer, deterministic replay, list ordering); `apps/copilot/lib/assistant/history.unit.test.ts`; `apps/copilot/app/api/assistant/{route,conversations/route}.unit.test.ts` (server-owned history, failed stream, create/delete cross-origin) |
 | Contracts (DB)            | `apps/copilot/scripts/contracts/assistant-persistence.contract.test.ts` (stored turns, reload, cross-org/cross-user rejection)                                                                                                                                |
 | E2E                       | `apps/copilot/e2e/{a11y,assistant,audit-log,password-reset,portal,upload}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160)                                                                                              |
 | Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
@@ -628,6 +635,10 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [ ] The portal reads domain data through internal APIs instead of the
       in-process packages (#190).
 - [x] Conversations persist and the server owns model history (#165).
+- [x] Copilot is the organization home: `/{locale}/{orgSlug}` renders the
+      server-loaded conversation list, new chat, streaming transcript and tool
+      cards with create/reopen/delete, and no separate shell redirect is needed
+      (#166).
 - [ ] No domain Prisma import remains after #190.
 
 ### Projects (#153, #160)

@@ -16,5 +16,22 @@
   "summarizeProject": "Résumer un projet",
   "summarizeProjectPrompt": "Résumez le projet Refonte du site web",
   "draftMessage": "Rédiger un message",
-  "draftMessagePrompt": "Rédigez un message pour le canal ingénierie"
+  "draftMessagePrompt": "Rédigez un message pour le canal ingénierie",
+  "conversations": "Conversations",
+  "conversationList": "Liste des conversations",
+  "conversationListDescription": "Vos conversations récentes dans cette organisation.",
+  "newChat": "Nouvelle conversation",
+  "untitledConversation": "Nouvelle conversation",
+  "noConversations": "Aucune conversation pour le moment. Démarrez une nouvelle conversation pour poser une question à l'assistant.",
+  "deleteConversation": "Supprimer la conversation « {title} »",
+  "deleteConversationTitle": "Supprimer cette conversation ?",
+  "deleteConversationDescription": "« {title} » et ses messages seront supprimés pour vous. Cette action est irréversible.",
+  "delete": "Supprimer",
+  "cancel": "Annuler",
+  "loadingConversation": "Chargement de la conversation…",
+  "retry": "Réessayer",
+  "toolRunning": "En cours",
+  "toolDone": "Terminé",
+  "toolArguments": "Arguments",
+  "toolOutput": "Résultat"
 }

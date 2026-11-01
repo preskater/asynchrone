@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { SparklesIcon, WrenchIcon } from "lucide-react"
+import { ChevronRightIcon, SparklesIcon, WrenchIcon } from "lucide-react"
 
 import {
   getToolName,
@@ -9,6 +9,7 @@ import {
   isTextPart,
   isToolPart,
   type ChatMessage,
+  type ToolPart,
 } from "@workspace/ai/chat"
 
 import { Bubble, BubbleContent } from "@workspace/ui/components/bubble"
@@ -20,6 +21,58 @@ import {
 import { Badge } from "@workspace/ui/components/badge"
 
 import { Markdown } from "@/components/assistant/markdown"
+
+function prettyJson(value: string): string {
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2)
+  } catch {
+    return value
+  }
+}
+
+function ToolCard({ part }: { part: ToolPart }) {
+  const t = useTranslations("Assistant")
+  const done = part.state === "output"
+
+  return (
+    <Bubble variant="outline" align="start">
+      <BubbleContent>
+        <details className="group/tool min-w-0">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open/tool:rotate-90 motion-reduce:transition-none" />
+            <WrenchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate font-medium">{getToolName(part)}</span>
+            <Badge variant="secondary">
+              {done ? t("toolDone") : t("toolRunning")}
+            </Badge>
+          </summary>
+          <div className="mt-2 flex flex-col gap-1.5 border-t pt-2">
+            {part.args ? (
+              <div className="flex flex-col gap-1">
+                <span className="text-[0.7rem] font-medium text-muted-foreground">
+                  {t("toolArguments")}
+                </span>
+                <pre className="max-h-40 overflow-auto rounded-md bg-muted/60 p-2 text-[0.7rem] whitespace-pre-wrap">
+                  {prettyJson(part.args)}
+                </pre>
+              </div>
+            ) : null}
+            {done && part.output ? (
+              <div className="flex flex-col gap-1">
+                <span className="text-[0.7rem] font-medium text-muted-foreground">
+                  {t("toolOutput")}
+                </span>
+                <pre className="max-h-48 overflow-auto rounded-md bg-muted/60 p-2 text-[0.7rem] whitespace-pre-wrap">
+                  {prettyJson(part.output)}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      </BubbleContent>
+    </Bubble>
+  )
+}
 
 export function AssistantMessage({ message }: { message: ChatMessage }) {
   const t = useTranslations("Assistant")
@@ -59,7 +112,13 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
               <Bubble key={`reasoning-${index}`} variant="ghost" align="start">
                 <BubbleContent className="flex items-start gap-1.5 text-xs text-muted-foreground italic">
                   <SparklesIcon className="mt-0.5 size-3 shrink-0" />
-                  <span className={part.state === "streaming" ? "shimmer" : ""}>
+                  <span
+                    className={
+                      part.state === "streaming"
+                        ? "shimmer motion-reduce:animate-none"
+                        : ""
+                    }
+                  >
                     {part.text || t("thinkingEllipsis")}
                   </span>
                 </BubbleContent>
@@ -68,15 +127,7 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
           }
 
           if (isToolPart(part)) {
-            return (
-              <Bubble key={`tool-${index}`} variant="outline" align="start">
-                <BubbleContent className="flex items-center gap-2 text-xs">
-                  <WrenchIcon className="size-3.5 text-muted-foreground" />
-                  <span className="font-medium">{getToolName(part)}</span>
-                  <Badge variant="secondary">{part.state}</Badge>
-                </BubbleContent>
-              </Bubble>
-            )
+            return <ToolCard key={`tool-${part.callId || index}`} part={part} />
           }
 
           return null
