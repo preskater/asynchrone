@@ -167,20 +167,20 @@ export function ProjectStoreProvider({
       void listProjectShellAction()
         .then((result) => {
           const data = unwrapActionResult(result)
-          setProjects(data.projects)
-          setMembers(data.members)
-          setLabels(data.labels)
-          setTemplates(data.templates)
+          setProjects((prev) => (prev.length > 0 ? prev : data.projects))
+          setMembers((prev) => (prev.length > 0 ? prev : data.members))
+          setLabels((prev) => (prev.length > 0 ? prev : data.labels))
+          setTemplates((prev) => (prev.length > 0 ? prev : data.templates))
         })
         .catch(() => {})
     }
   }, [initialData.projects.length])
 
   React.useEffect(() => {
-    setProjects(initialData.projects)
-    setMembers(initialData.members)
-    setLabels(initialData.labels)
-    setTemplates(initialData.templates)
+    if (initialData.projects.length > 0) setProjects(initialData.projects)
+    if (initialData.members.length > 0) setMembers(initialData.members)
+    if (initialData.labels.length > 0) setLabels(initialData.labels)
+    if (initialData.templates.length > 0) setTemplates(initialData.templates)
     // The layout only sends shell data. Keep what the feature already loaded
     // instead of wiping it on every server refresh.
     if (!tasksLoadedRef.current) {
@@ -267,7 +267,11 @@ export function ProjectStoreProvider({
           .then((result) => {
             const project = unwrapActionResult(result)
             setProjects((prev) =>
-              prev.map((item) => (item.id === optimistic.id ? project : item))
+              prev.some((item) => item.id === optimistic.id)
+                ? prev.map((item) =>
+                    item.id === optimistic.id ? project : item
+                  )
+                : [project, ...prev]
             )
             toast.success(t("projectCreated", { name: project.name }))
           })
