@@ -23,13 +23,19 @@ inventory in [#146](./feature-inventory.md).
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
-`apps/projects` (#160), `apps/calendars` (calendars, meetings and their
-settings, #161), `apps/files` (files, the upload/download APIs and the
-`uploads-sweep` cron, #161) and `apps/messages` (#162) are live: each serves its
-own host from its own image and chart with a host-only OIDC session. The
-remaining domain apps follow the same template — see
+`apps/projects` (#160), `apps/calendars` (#161), `apps/files` (#161),
+`apps/messages` (#162), `apps/clients` and `apps/employees` (#163) are live:
+each serves its own host from its own image and chart with a host-only OIDC
+session. The remaining domain apps follow the same template — see
 [domain-app-template.md](../domain-app-template.md).
 
+The clients and employees apps keep the documented transitional database
+binding: `@workspace/clients` still reads `member`/`user`/`fileNode`/`project`
+and `@workspace/employees` still reads `member`/`user`/`project`, so both bind
+`@workspace/db` until #171/#190 move those reads behind the identity and
+projects internal APIs. Their own `@workspace/db-clients` and
+`@workspace/db-employees` packages already carry the domain tables and
+`oidcSession`; no app imports two database packages.
 The registry lives in `@workspace/contracts`:
 
 - `apps.ts` — keys, hosts, development ports, database names, audiences and
@@ -44,17 +50,16 @@ baked into an image or committed.
 
 1. A workspace owns its database and its Prisma client. A domain may only import
    its own `@workspace/db-<domain>` package. The documented exception is the
-   transitional binding: `apps/projects`, `apps/calendars`, `apps/files` and
-   `apps/messages` still need identity rows (`member`, `user`, `session`,
-   `organization`) and other apps' tables (the shared `rateLimit`/notification
-   tables, the project task overlay, the files upload sessions and large
-   objects), so they bind the shared client (`@workspace/db`) until #190/#171
-   moves those reads behind the internal API. Each imports exactly one database
-   package, and its own `@workspace/db-<domain>` schema already carries
-   `oidcSession`, `auditLog` and its domain models, so the cutover only swaps
-   the binding.
-2. A package never imports an app. An app never imports another app.
-3. Relative imports never escape their workspace.
+   transitional binding: `apps/projects`, `apps/calendars`, `apps/files`,
+   `apps/messages`, `apps/clients` and `apps/employees` still need identity rows
+   (`member`, `user`, `session`, `organization`) and other apps' tables (the
+   shared `rateLimit`/notification tables, the project task overlay, the files
+   upload sessions and large objects), so they bind the shared client
+   (`@workspace/db`) until #190/#171 moves those reads behind the internal API.
+   Each imports exactly one database package, and its own
+   `@workspace/db-<domain>` schema already carries `oidcSession`, `auditLog` and
+   its domain models, so the cutover only swaps the binding.
+2. A package never imports an app. An app never imports another app.3. Relative imports never escape their workspace.
 4. Every `@workspace/*` import is declared in the importer's `package.json`.
 5. Cross-domain reads and writes go through a versioned `/internal/v1/*`
    endpoint; no cross-database joins and no shared Prisma client.
@@ -205,8 +210,11 @@ also catches imports in files that are not currently reachable from a route.
       `projects.copilot.asynchrone.space` (#160)
 - [x] Messages app at `messages.copilot.asynchrone.space` (#162)
 - [x] Assistant conversations persisted with server-owned history (#165)
+- [x] Clients and employees apps at `clients.copilot.asynchrone.space` and
+      `employees.copilot.asynchrone.space` (#163)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)
 - [x] Calendars and files apps at `calendars.copilot.asynchrone.space` and
       `files.copilot.asynchrone.space`, with the upload sweep cron and meeting
       settings moved out of Copilot (#161)
-- [ ] Clients and employees apps (#163–#164)
+- [x] Clients and employees apps at `clients.copilot.asynchrone.space` and
+      `employees.copilot.asynchrone.space` (#163)

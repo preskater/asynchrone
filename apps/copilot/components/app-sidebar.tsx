@@ -40,6 +40,8 @@ export interface DomainAppUrls {
   messages: string
   calendars: string
   files: string
+  clients: string
+  employees: string
 }
 
 export function useNavMain(
@@ -90,14 +92,17 @@ export function useNavMain(
     },
     {
       title: t("clients"),
-      url: `/${orgSlug}/clients`,
+      // The CRM moved to its own app in #163.
+      url: domainUrl(domainApps.clients, "/clients"),
       icon: <HandshakeIcon />,
-      match: [`/${orgSlug}/contacts`, `/${orgSlug}/deals`],
+      external: true,
     },
     {
       title: t("employees"),
-      url: `/${orgSlug}/employees`,
+      // HR moved to its own app in #163.
+      url: domainUrl(domainApps.employees, "/employees"),
       icon: <BriefcaseIcon />,
+      external: true,
     },
   ]
 }

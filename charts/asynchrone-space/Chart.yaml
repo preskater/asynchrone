@@ -30,6 +30,14 @@ dependencies:
     version: 0.1.0
     repository: file://../asynchrone-space-files
     condition: asynchrone-space-files.enabled
+  - name: asynchrone-space-clients
+    version: 0.1.0
+    repository: file://../asynchrone-space-clients
+    condition: asynchrone-space-clients.enabled
+  - name: asynchrone-space-employees
+    version: 0.1.0
+    repository: file://../asynchrone-space-employees
+    condition: asynchrone-space-employees.enabled
   - name: asynchrone-space-control-tower
     version: 0.1.1
     repository: file://../asynchrone-space-control-tower

@@ -50,6 +50,7 @@ export function PortalAccessCard({
     useClientActions()
 
   async function handleRevoke(memberId: string) {
+    if (!revokePortalMemberAction) return
     try {
       unwrapActionResult(await revokePortalMemberAction({ memberId }))
       toast.success(tT("portalAccessRevoked"))
@@ -60,6 +61,7 @@ export function PortalAccessCard({
   }
 
   async function handleCancelInvite(inviteId: string) {
+    if (!cancelPortalInviteAction) return
     try {
       unwrapActionResult(await cancelPortalInviteAction({ inviteId }))
       toast.success(tT("portalInviteCancelled"))
@@ -236,6 +238,7 @@ export function InvitePortalUserDialog({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!email.trim()) return
+    if (!invitePortalUserAction) return
     setSubmitting(true)
     try {
       const result = unwrapActionResult(

@@ -1,12 +1,9 @@
 # Domain app template
 
 `apps/projects` is the pilot for the domain-app split (#160); `apps/calendars`
-and `apps/files` followed in #161 and `apps/messages` in #162. This document is
-the checklist for the next apps (`clients`/`employees` #163–#164): copy the
-shape,
-not the code.
-
-Architecture and ownership: [domain-apps.md](./architecture/domain-apps.md),
+and `apps/files` followed in #161, `apps/messages` in #162, and
+`apps/clients`/`apps/employees` in #163. This document is the checklist for the
+next app: copy the shape, not the code.Architecture and ownership: [domain-apps.md](./architecture/domain-apps.md),
 [ADR 0028](./adr/0028-split-workspace-into-domain-apps.md),
 [ADR 0036](./adr/0036-use-a-per-domain-app-template.md).
 
@@ -116,8 +113,9 @@ A new app should bind its own package when every port it needs is satisfied by
 that schema. When a domain package still reads identity tables, keep
 `ProjectDb`-style ports explicit and list the gap in
 [feature-inventory.md](./architecture/feature-inventory.md) rather than
-importing a second database client.
-
+importing a second database client. `apps/clients` and `apps/employees` use that
+transitional `@workspace/db` binding today (their own packages already carry the
+domain tables and `oidcSession`).
 ## Environment
 
 Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to the

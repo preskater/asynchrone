@@ -83,9 +83,12 @@ function formatInvoiceAmount(
 /** Header bell with the current user's unread notifications. */
 export function NotificationBell({
   orgSlug,
+  clientsUrl,
   initial,
 }: {
   orgSlug: string
+  /** Origin of the clients app: deal and client rows live there since #163. */
+  clientsUrl: string
   initial: NotificationsData
 }) {
   const t = useTranslations("Notifications")
@@ -197,7 +200,7 @@ export function NotificationBell({
       return `/${orgSlug}/projects/${item.data.projectId}`
     }
     if (item.type.startsWith("deal.") && typeof item.data.dealId === "string") {
-      return `/${orgSlug}/deals/${item.data.dealId}`
+      return `${clientsUrl}/${locale}/${orgSlug}/deals/${item.data.dealId}`
     }
     if (
       item.type === "portal.message" &&
@@ -215,7 +218,7 @@ export function NotificationBell({
       item.type === "portal.document" &&
       typeof item.data.clientId === "string"
     ) {
-      return `/${orgSlug}/clients/${item.data.clientId}`
+      return `${clientsUrl}/${locale}/${orgSlug}/clients/${item.data.clientId}`
     }
     if (item.type === "meeting.requested") {
       return `/${orgSlug}/calendars`
@@ -248,7 +251,11 @@ export function NotificationBell({
       }
     }
     const link = linkFor(item)
-    if (link) router.push(link)
+    if (link) {
+      // Cross-app links are absolute; everything else stays in Copilot.
+      if (/^https?:\/\//.test(link)) window.location.href = link
+      else router.push(link)
+    }
   }
 
   async function markAll() {

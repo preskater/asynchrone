@@ -17,8 +17,14 @@ dependencies:
 - name: asynchrone-space-files
   repository: file://../asynchrone-space-files
   version: 0.1.0
+- name: asynchrone-space-clients
+  repository: file://../asynchrone-space-clients
+  version: 0.1.0
+- name: asynchrone-space-employees
+  repository: file://../asynchrone-space-employees
+  version: 0.1.0
 - name: asynchrone-space-control-tower
   repository: file://../asynchrone-space-control-tower
   version: 0.1.1
-digest: sha256:a47e729e588b09f7093471807e4beedd45297db276cccbe58b0096b058543470
-generated: "2026-11-01T23:04:51.552357+01:00"
+digest: sha256:83f5f8d6c342c39bd85ea2a51bf7f4db57ee32c00d58dcb8fdb9d09bde48e7c7
+generated: "2026-11-02T00:01:42.895286+01:00"

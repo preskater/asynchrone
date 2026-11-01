@@ -35,6 +35,14 @@ jobs:
             suffix: "-messages"
             target: runner
             cacheScope: messages
+          - app: clients
+            suffix: "-clients"
+            target: runner
+            cacheScope: clients
+          - app: employees
+            suffix: "-employees"
+            target: runner
+            cacheScope: employees
           - app: control-tower
             suffix: "-control-tower"
             target: runner

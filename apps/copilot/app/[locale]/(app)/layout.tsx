@@ -58,6 +58,8 @@ export default async function AppLayout({
     messages: appOrigin("messages"),
     calendars: appOrigin("calendars"),
     files: appOrigin("files"),
+    clients: appOrigin("clients"),
+    employees: appOrigin("employees"),
   }
 
   const [notificationData, appearance, trial, shell] = await Promise.all([

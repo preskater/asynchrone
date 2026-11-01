@@ -36,10 +36,12 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | Path                         | Description                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
-| `apps/projects`              | Projects: the first domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
+| `apps/projects`              | Projects: domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
 | `apps/calendars`             | Calendars and meetings (`calendars.copilot.asynchrone.space`): calendar screens, meeting inbox and settings. |
 | `apps/files`                 | Files (`files.copilot.asynchrone.space`): file tree, chunked upload/download APIs and the uploads-sweep cron. |
 | `apps/messages`              | Messages: the messaging domain app (`messages.copilot.asynchrone.space`), host-only OIDC session. |
+| `apps/clients`               | Clients: CRM domain app (`clients.copilot.asynchrone.space`), host-only OIDC session. |
+| `apps/employees`             | Employees: HR domain app (`employees.copilot.asynchrone.space`), host-only OIDC session. |
 | `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
 | `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
@@ -99,19 +101,20 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
 > migrations, serves the public landing site on port **3002**, the Copilot app
 > on port **3003**, the projects app on port **3004**, the calendars app on port
-> **3005**, the files app on port **3006**, the messages app on port **3007** and
-> the control tower on port **3001**. Each container loads its app's `.env` (then
-> overrides `DATABASE_URL` and the public URLs), so local dev and Docker share
-> the same secrets. The image is parameterised with
-> `--build-arg APP=copilot|projects|calendars|files|messages|control-tower|landing`.
+> **3005**, the files app on port **3006**, the messages app on port **3007**, the
+> clients app on port **3008**, the employees app on port **3009** and the control
+> tower on port **3001**. Each container loads its app's `.env` (then overrides
+> `DATABASE_URL` and the public URLs), so local dev and Docker share the same
+> secrets. The image is parameterised with
+> `--build-arg APP=copilot|projects|calendars|files|messages|clients|employees|control-tower|landing`.
 
 ### Domain apps
 
 `apps/projects` (port **3004**), `apps/calendars` (port **3005**),
-`apps/files` (port **3006**) and `apps/messages` (port **3007**) are the domain
-apps: each serves
-`http://localhost:<port>/{locale}/{orgSlug}/<domain>` and signs in through
-Copilot (host-only session, no credential form). Each needs its own environment
+`apps/files` (port **3006**), `apps/messages` (port **3007**),
+`apps/clients` (port **3008**, the CRM) and `apps/employees` (port **3009**,
+time & attendance, leave and payroll) are the domain apps: each serves
+`http://localhost:<port>/{locale}/{orgSlug}/<domain>` and signs in throughCopilot (host-only session, no credential form). Each needs its own environment
 file and the provisioned OAuth client credentials:
 
 ```bash
@@ -119,17 +122,18 @@ cp apps/projects/.env.example apps/projects/.env
 cp apps/calendars/.env.example apps/calendars/.env
 cp apps/files/.env.example apps/files/.env
 cp apps/messages/.env.example apps/messages/.env
-# then copy the PROJECTS_*/CALENDARS_*/FILES_*/MESSAGES_* pairs written by:
+cp apps/clients/.env.example apps/clients/.env
+cp apps/employees/.env.example apps/employees/.env
+# then copy the PROJECTS_*/CALENDARS_*/FILES_*/MESSAGES_*/CLIENTS_*/EMPLOYEES_* pairs written by:
 npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
 ```
 
 Start Copilot and the domain apps together (`npm run dev` starts all of them).
 The remaining apps copy the template in
 [`docs/domain-app-template.md`](./docs/domain-app-template.md). Copilot
-308-redirects the old `/{locale}/{orgSlug}/projects|calendars|files|messages`
-paths to the owning host, so bookmarks and notification links keep working.
-
-### Control tower
+308-redirects the old
+`/{locale}/{orgSlug}/projects|calendars|files|messages|clients|contacts|deals|employees|hr`
+paths to the owning host, so bookmarks and notification links keep working.### Control tower
 
 The internal administration app is a separate Next.js app on
 http://localhost:3001. It has its own Better Auth secret, host-only session
@@ -299,18 +303,22 @@ npm run verify:large-object --workspace=copilot
 
 ## Deployment
 
-The Docker workflow publishes four images to GHCR:
+The Docker workflow publishes these images to GHCR:
 
 | Image                                                      | Dockerfile stage               | Runs                       |
 | ---------------------------------------------------------- | ------------------------------ | -------------------------- |
 | `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` (`APP=copilot`)       | Copilot (identity + OAuth) |
+| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` (`APP=projects`)      | Projects domain app        |
+| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` (`APP=clients`)       | Clients (CRM) domain app   |
+| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` (`APP=employees`)     | Employees (HR) domain app  |
 | `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` (`APP=control-tower`) | Internal control tower     |
 | `ghcr.io/preskater/asynchrone-space-landing`               | `runner` (`APP=landing`)       | Public landing site        |
 | `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` (`APP=copilot`)      | One-shot Prisma migrations |
 
 Deploy them with the Helm umbrella chart in `charts/asynchrone-space`, which composes the
-`asynchrone-space-landing`, `asynchrone-space-copilot` and
-`asynchrone-space-control-tower` subcharts:
+`asynchrone-space-landing`, `asynchrone-space-copilot`,
+`asynchrone-space-projects`, `asynchrone-space-clients`,
+`asynchrone-space-employees` and `asynchrone-space-control-tower` subcharts:
 
 ```bash
 helm dependency build charts/asynchrone-space
@@ -320,6 +328,16 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secre
   --from-literal=DATABASE_URL='postgresql://…' \
   --from-literal=BETTER_AUTH_SECRET='…' \
   --from-literal=CRON_SECRET='…'
+
+kubectl -n asynchrone-space create secret generic asynchrone-space-clients-secrets \
+  --from-literal=DATABASE_URL='postgresql://…' \
+  --from-literal=CLIENTS_OAUTH_CLIENT_ID='…' \
+  --from-literal=CLIENTS_OAUTH_CLIENT_SECRET='…'
+
+kubectl -n asynchrone-space create secret generic asynchrone-space-employees-secrets \
+  --from-literal=DATABASE_URL='postgresql://…' \
+  --from-literal=EMPLOYEES_OAUTH_CLIENT_ID='…' \
+  --from-literal=EMPLOYEES_OAUTH_CLIENT_SECRET='…'
 
 kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower-secrets \
   --from-literal=DATABASE_URL='postgresql://…' \

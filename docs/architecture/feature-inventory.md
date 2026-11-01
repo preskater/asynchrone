@@ -1,7 +1,6 @@
 # Feature inventory and parity checklist
 
-Last audited: 2026-11-01 (issues #146–#162).
-
+Last audited: 2026-11-02 (issues #146–#163).
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
 portal surface, internal endpoint, environment variable and test is assigned to
@@ -38,9 +37,9 @@ See also:
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
 `apps/landing`, `apps/copilot`, `apps/projects`, `apps/calendars`, `apps/files`,
-`apps/messages` and `apps/control-tower` exist today. Copilot still hosts the
-clients and employees routes until #163–#164 move them; the portal stays inside
-Copilot (there is no `apps/portal`).
+`apps/messages`, `apps/clients`, `apps/employees` and `apps/control-tower` exist
+today. Copilot keeps only the workspace shell, identity and the portal; the
+portal stays inside Copilot (there is no `apps/portal`).
 
 ## Landing
 
@@ -136,7 +135,8 @@ organization 2FA policy.
   messages. The organization home (`/{locale}/{orgSlug}`) loads the list on the
   server, renders the streaming transcript and tool cards, and exposes new chat,
   reopen and delete with the same organization/user isolation. Copilot is the
-  home; there is no separate shell redirect, and `/mcp` stays here.- Assistant tools currently call the domain services in-process:
+  home; there is no separate shell redirect, and `/mcp` stays here.
+- Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
   `list_files`, `list_conversations`, `send_message`. Calendar tools call
@@ -365,18 +365,18 @@ Copilot keeps an in-process binding for the assistant, MCP and search.
 
 ## Clients
 
-Target: `apps/clients` / `@workspace/clients`. Renamed from CRM by #147 and
-extracted in #157.
+Live at `apps/clients` (`clients.copilot.asynchrone.space`, #163) with
+`@workspace/clients`. Renamed from CRM by #147 and extracted in #157.
 
 The package owns the CRM clients, contacts, pipelines, deals, activities, field
 definitions, documents, access checks, schemas, services, CSV/date helpers,
-types and UI. Server actions, pages and the database/audit/notification wiring
-stay in Copilot until #163 moves them with the app.
+types and UI. The app owns the server actions, the pages, the organization
+shell, the host-only OIDC session and the audit/notification wiring.
 
 | Surface            | Inventory                                                                                                                                                                                                                                                   |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pages              | `/[orgSlug]/(clients)/clients`, `clients/[clientId]`, `contacts`, `contacts/[contactId]`, `deals`, `deals/[dealId]` (per-route rows below)                                                                                                                  |
-| Server actions     | `actions/clients.ts` (clients, contacts, deals, pipelines/stages, custom fields, activities, CSV import/export, document links, project links)                                                                                                              |
+| Server actions     | `apps/clients/actions/clients.ts` (clients, contacts, deals, pipelines/stages, custom fields, activities, CSV import/export, document links, project links)                                                                                              |
 | MCP tools          | `get_clients_overview`, `get_client`, `get_deal`, `save_client`, `save_contact`, `save_deal`, `move_deal`, `log_client_activity`, `list_client_documents`, `link_client_document`, `unlink_client_document`, `link_client_project`, `unlink_client_project` |
 | Prisma models      | `Client`, `Contact`, `ContactCompany`, `Pipeline`, `PipelineStage`, `Deal`, `DealContact`, `ClientActivity`, `ClientFieldDefinition`, `ClientDocument`, `AuditLog`                                                                                          |
 | Audit actions      | `client.*`, `contact.*`, `deal.*`, `pipeline.*`, `stage.*`, `clientsField.*`, `activity.*`, `client.project.*`, `client.document.linked`                                                                                                                    |
@@ -398,36 +398,50 @@ stay in Copilot until #163 moves them with the app.
 | `packages/clients/src/components/*`                          | Clients/contacts/deals UI, dialogs, timeline, documents, custom fields, pipeline settings and portal access |
 | `packages/clients/src/components/actions.tsx`                | `ClientActions` port + `ClientActionsProvider` / `useClientActions()`                                       |
 | `packages/clients/src/components/use-clients.ts`             | Formatting, CSV download and `datetime-local` helpers                                                       |
-| `apps/copilot/lib/clients/index.ts`                              | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
-| `apps/copilot/app/[locale]/(app)/[orgSlug]/(clients)/layout.tsx` | Builds `CLIENT_ACTIONS` from `actions/clients.ts` + `actions/portal.ts` and mounts the provider             |
+| `apps/clients/lib/clients/index.ts`                               | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
+| `apps/clients/lib/client-actions.ts`                              | Builds `CLIENT_ACTIONS` from `actions/clients.ts` and exposes it through `ClientActionsProvider`             |
+| `apps/copilot/lib/clients/index.ts`                               | Copilot adapter for the assistant, MCP, portal and search (in-process until #190)                            |
 
 ### Routes
 
 | Route                                                      | Kind   | Inventory                                                                            |
 | ---------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| `/[locale]/(app)/[orgSlug]/(clients)`                      | Layout | `(clients)/layout.tsx`; `ClientsTabs` + `ClientActionsProvider`                      |
-| `/[locale]/(app)/[orgSlug]/(clients)/clients`              | Page   | `clients/page.tsx`; `clientsService.getOverview` → `ClientsPanel`                    |
-| `/[locale]/(app)/[orgSlug]/(clients)/clients/[clientId]`   | Page   | `clients/[clientId]/page.tsx`; `clientsService.getClientDetail` → `ClientDetail`     |
-| `/[locale]/(app)/[orgSlug]/(clients)/contacts`             | Page   | `contacts/page.tsx`; `clientsService.getOverview` → `ContactsPanel`                  |
-| `/[locale]/(app)/[orgSlug]/(clients)/contacts/[contactId]` | Page   | `contacts/[contactId]/page.tsx`; `clientsService.getContactDetail` → `ContactDetail` |
-| `/[locale]/(app)/[orgSlug]/(clients)/deals`                | Page   | `deals/page.tsx`; `clientsService.getOverview` → `DealsWorkspace`                    |
-| `/[locale]/(app)/[orgSlug]/(clients)/deals/[dealId]`       | Page   | `deals/[dealId]/page.tsx`; `clientsService.getDealDetail` → `DealDetail`             |
+| `/[locale]/[orgSlug]`                  | Page   | `page.tsx`; redirects to `/clients`                                     |
+| `/[locale]/[orgSlug]/(clients)`        | Layout | `(clients)/layout.tsx`; `ClientsTabs` (actions come from the org layout) |
+| `/[locale]/[orgSlug]/clients`          | Page   | `clients/page.tsx`; `clientsService.getOverview` → `ClientsPanel`        |
+| `/[locale]/[orgSlug]/clients/[id]`     | Page   | `clients/[clientId]/page.tsx`; `getClientDetail` → `ClientDetail`        |
+| `/[locale]/[orgSlug]/contacts`         | Page   | `contacts/page.tsx`; `clientsService.getOverview` → `ContactsPanel`      |
+| `/[locale]/[orgSlug]/contacts/[id]`    | Page   | `contacts/[contactId]/page.tsx`; `getContactDetail` → `ContactDetail`    |
+| `/[locale]/[orgSlug]/deals`            | Page   | `deals/page.tsx`; `clientsService.getOverview` → `DealsWorkspace`        |
+| `/[locale]/[orgSlug]/deals/[dealId]`   | Page   | `deals/[dealId]/page.tsx`; `getDealDetail` → `DealDetail`                |
+| `/api/auth/*`, `/api/health`           | API    | OIDC relying party (`@workspace/oidc`), organization switch and probe   |
+| Tests                                  | Playwright | `e2e/clients.spec.ts` (sign-in, switch, company flow) and `e2e/authorization.spec.ts` (cross-organization read denied) |
+
+Old Copilot `/{locale}/{orgSlug}/clients|contacts|deals` paths 308-redirect to
+the clients host (`apps/copilot/proxy.ts`).
+
+**Known gap (#171/#190):** portal access management (invite / revoke / cancel)
+still creates Better Auth invitations inside Copilot, so the client detail card
+is read-only on the clients host until the identity API exposes invitations.
+The list itself (portal members and pending invites) reads the shared database
+through `apps/clients/lib/portal-access.ts`.
 
 ## Employees
 
-Target: `apps/employees` / `@workspace/employees`. Renamed from HR by #147 and
-extracted in #157.
+Live at `apps/employees` (`employees.copilot.asynchrone.space`, #163) with
+`@workspace/employees`. Renamed from HR by #147 and extracted in #157.
 
 The package owns employee profiles, attendance, leave, balances, adjustments,
 settings, salary, capacity, access checks, schemas, services, CSV/date helpers,
 types and UI. Salary and payroll stay behind `isAdmin`/`requireAdmin` exactly as
-before. Server actions, pages and the database/audit wiring stay in Copilot
-until #163 moves them with the app.
+before: the app passes the OIDC session's membership role into the service and
+never widens it. The app owns the server actions, the page, the organization
+shell, the host-only OIDC session and the audit wiring.
 
 | Surface            | Inventory                                                                                                                                                                                                       |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pages              | `/[orgSlug]/employees` (per-route rows below)                                                                                                                                                                   |
-| Server actions     | `actions/employees.ts` (attendance, time tracking, payroll, leave, balances, allowances, settings, profiles, salaries, project employee settings, CSV export)                                                   |
+| Server actions     | `apps/employees/actions/employees.ts` (attendance, time tracking, payroll, leave, balances, allowances, settings, profiles, salaries, project employee settings, CSV export)                                   |
 | MCP tools          | `get_employees_overview`, `list_attendance`, `set_attendance`, `request_leave`, `decide_leave`, `get_time_tracking`                                                                                             |
 | Prisma models      | `EmployeeProfile`, `AttendanceEntry`, `LeaveRequest`, `LeaveBalance`, `LeaveAdjustment`, `EmployeeSettings`, `SalaryProfile`, `InternalActivity`, `AuditLog`                                                    |
 | Audit actions      | `client.create`, `client.update` (payroll clients), `project.update`, `settings.update`, `salary.update`, `profile.update`, `balance.set`, `balance.adjust`, `attendance.clear`, `leave.create`, `leave.cancel` |
@@ -453,15 +467,22 @@ until #163 moves them with the app.
 | `packages/employees/src/services/*`                        | Overview, attendance, leave, settings, payroll, records, fetch and CSV exports                     |
 | `packages/employees/src/components/*`                      | Today, calendar, leave, tracking, capacity, payroll, admin and dialog UI                           |
 | `packages/employees/src/components/actions.tsx`            | `EmployeeActions` port + `EmployeeActionsProvider` / `useEmployeeActions()`                        |
-| `apps/copilot/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
-| `apps/copilot/app/[locale]/(app)/[orgSlug]/employees/page.tsx` | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
+| `apps/employees/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
+| `apps/employees/lib/employee-actions.ts`                         | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
+| `apps/copilot/lib/employees/index.ts`                            | Copilot adapter for the assistant and MCP (in-process until #190)                                  |
 
 ### Routes
 
 | Route                                         | Kind    | Inventory                                                                                     |
 | --------------------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `/[locale]/(app)/[orgSlug]/employees`         | Page    | `employees/page.tsx`; `employeesService.getOverview` → `EmployeesWorkspace` with the provider |
-| `/[locale]/(app)/[orgSlug]/employees/loading` | Loading | `employees/loading.tsx`; `GridSkeleton`                                                       |
+| `/[locale]/[orgSlug]`              | Page    | `page.tsx`; redirects to `/employees`                                              |
+| `/[locale]/[orgSlug]/employees`    | Page    | `employees/page.tsx`; `employeesService.getOverview` → `EmployeesWorkspace`        |
+| `/[locale]/[orgSlug]/employees`    | Loading | `employees/loading.tsx`; `GridSkeleton`                                            |
+| `/api/auth/*`, `/api/health`       | API     | OIDC relying party (`@workspace/oidc`), organization switch and probe              |
+| Tests                              | Playwright | `e2e/employees.spec.ts` (sign-in, switch, owner sees payroll) and `e2e/authorization.spec.ts` (member sees no payroll, cross-organization read denied) |
+
+Old Copilot `/{locale}/{orgSlug}/employees` paths 308-redirect to the employees
+host; `/hr` (the pre-#147 name) lands on the employees host's `/employees` screen.
 
 ## Control tower
 

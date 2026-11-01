@@ -91,6 +91,8 @@ services:
       - CALENDARS_APP_URL=http://localhost:3005
       - FILES_APP_URL=http://localhost:3006
       - MESSAGES_APP_URL=http://localhost:3007
+      - CLIENTS_APP_URL=http://localhost:3008
+      - EMPLOYEES_APP_URL=http://localhost:3009
       - MCP_RESOURCE_URL=http://localhost:3003/mcp
       - CONTROL_TOWER_URL=http://localhost:3001
     depends_on:
@@ -203,6 +205,58 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
       - CALENDARS_APP_URL=http://localhost:3005
+      - COPILOT_APP_URL=http://localhost:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # CRM (#163): its own image and chart, same database client as Copilot until
+  # #171/#190 move the remaining identity reads behind the internal APIs.
+  clients:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: clients
+    ports:
+      - "3008:3000"
+    env_file:
+      - path: apps/clients/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - CLIENTS_APP_URL=http://localhost:3008
+      - COPILOT_APP_URL=http://localhost:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # HR (#163): its own image and chart. Salary and payroll stay behind
+  # `requireAdmin` in the domain package.
+  employees:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: employees
+    ports:
+      - "3009:3000"
+    env_file:
+      - path: apps/employees/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - EMPLOYEES_APP_URL=http://localhost:3009
       - COPILOT_APP_URL=http://localhost:3003
     depends_on:
       postgres:

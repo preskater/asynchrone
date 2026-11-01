@@ -119,7 +119,11 @@ export function SiteHeader({
               ⌘K
             </kbd>
           </Button>
-          <NotificationBell orgSlug={orgSlug} initial={notifications} />
+          <NotificationBell
+            orgSlug={orgSlug}
+            clientsUrl={domainApps.clients}
+            initial={notifications}
+          />
           <OrgSwitcher activeOrganizationId={activeOrganizationId} compact />
           <ThemeToggle ariaLabel={common("toggleTheme")} />
           <NavUser user={user} orgSlug={orgSlug} compact />
