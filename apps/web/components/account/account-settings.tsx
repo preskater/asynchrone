@@ -34,7 +34,7 @@ import { UserAppearanceCard } from "@/components/appearance/user-appearance-card
 import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_COMPROMISED,
-} from "@/lib/account/password-policy"
+} from "@workspace/auth/password-policy"
 import { authClient } from "@/lib/auth-client"
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"

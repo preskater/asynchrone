@@ -1,6 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
-
-vi.mock("@/lib/prisma", () => ({ prisma: {} }))
+import { describe, expect, it } from "vitest"
 
 import { sessionAuditAction } from "./session-audit"
 

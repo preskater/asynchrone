@@ -1,0 +1,44 @@
+{
+  "name": "@workspace/auth",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@better-auth/cimd": "^1.7.13",
+    "@better-auth/mcp": "^1.7.13",
+    "@better-auth/oauth-provider": "^1.7.13",
+    "@workspace/audit": "*",
+    "@workspace/contracts": "*",
+    "@workspace/core": "*",
+    "@workspace/oidc": "*",
+    "better-auth": "^1.7.13",
+    "next": "16.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.13.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./impersonation": "./src/impersonation.ts",
+    "./password-policy": "./src/password-policy.ts",
+    "./server": "./src/create-auth.ts",
+    "./session": "./src/session.ts",
+    "./session-audit": "./src/session-audit.ts",
+    "./signup-policy": "./src/signup-policy.ts",
+    "./two-factor-audit": "./src/two-factor-audit.ts",
+    "./user-agent": "./src/user-agent.ts",
+    "./oidc": "./src/oidc.ts"
+  }
+}

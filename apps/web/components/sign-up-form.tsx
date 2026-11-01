@@ -29,7 +29,7 @@ import { Turnstile } from "@/components/turnstile"
 import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_COMPROMISED,
-} from "@/lib/account/password-policy"
+} from "@workspace/auth/password-policy"
 import { authClient } from "@/lib/auth-client"
 import { safeRedirect } from "@workspace/core/redirect"
 

@@ -13,7 +13,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { IMPERSONATION_TTL_MS } from "@/lib/platform/impersonation"
+import { IMPERSONATION_TTL_MS } from "@workspace/auth/impersonation"
 import { getOrganizationAppearance } from "@/lib/appearance/service"
 import { AssistantProvider } from "@/lib/assistant/use-assistant"
 import { calendarService } from "@/lib/calendars"

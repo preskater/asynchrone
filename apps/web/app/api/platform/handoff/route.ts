@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import {
   IMPERSONATION_TTL_MS,
   IMPERSONATION_TTL_SECONDS,
-} from "@/lib/platform/impersonation"
+} from "@workspace/auth/impersonation"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"

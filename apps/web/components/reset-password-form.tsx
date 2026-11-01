@@ -28,7 +28,7 @@ import { Input } from "@workspace/ui/components/input"
 import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_COMPROMISED,
-} from "@/lib/account/password-policy"
+} from "@workspace/auth/password-policy"
 import { authClient } from "@/lib/auth-client"
 
 export function ResetPasswordForm({
