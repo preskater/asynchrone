@@ -20,7 +20,7 @@ fails if the app imports `@workspace/db`.
 
 `PlatformHandoff` exists in both schemas. The **live** handoff row is created by
 Copilot when the control tower calls `createHandoff`, because
-`apps/web/app/api/platform/handoff/route.ts` must claim it in the same
+`apps/copilot/app/api/platform/handoff/route.ts` must claim it in the same
 transaction that opens the impersonated session. The control-tower copy is kept
 in the schema (and copied by the cutover script) so a future move of the claim
 path does not need another migration. No cookies are shared between the two

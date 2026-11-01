@@ -4,7 +4,7 @@ There is no transaction across app databases. Export and deletion are therefore
 explicit sagas: durable state in the identity database, one idempotent call per
 app, and identity last. The rules live in `@workspace/sagas`
 (`packages/sagas`); the identity persistence adapter is
-`apps/web/lib/sagas/store.ts`.
+`apps/copilot/lib/sagas/store.ts`.
 
 ## Tables
 
@@ -32,7 +32,7 @@ are not present in domain databases.
 5. otherwise mark the job `partial` with the failing apps.
 
 A deadline stops a stuck job; it never deletes identity. The caller retries the
-same job id. `deleteOrganizationAcrossApps` in `apps/web/lib/sagas/service.ts`
+same job id. `deleteOrganizationAcrossApps` in `apps/copilot/lib/sagas/service.ts`
 wraps the orchestrator and keeps the legacy single-database path when no domain
 origin is configured.
 

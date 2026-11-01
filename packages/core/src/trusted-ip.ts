@@ -5,7 +5,7 @@
  * They are only trustworthy behind a proxy that overwrites them: ingress-nginx
  * sets `X-Real-IP` to `$remote_addr` and appends the hop to
  * `X-Forwarded-For`. A directly exposed process (a bare `next start`, the
- * `docker compose` web container, `kubectl port-forward`) lets a client pick
+ * `docker compose` Copilot container, `kubectl port-forward`) lets a client pick
  * any value and dodge the limits, so production must never be reachable
  * without such a proxy. Kept dependency-free: `lib/env.ts` imports it at boot.
  */

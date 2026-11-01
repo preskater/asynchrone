@@ -52,7 +52,7 @@ Restore **identity first**, then the domain apps, then files last:
 Restoring identity first makes the organization and member ids consistent for
 the other databases. Run the restore from a point in time before the incident
 for every database, then run `npm run verify:migrations` and the relevant
-`verify:*` scripts. Do not start the web app until the migration status is
+`verify:*` scripts. Do not start the Copilot app until the migration status is
 clear.
 
 ## Pool budget

@@ -8,7 +8,7 @@ import type {
  * Resolved identity of a signed-in client-portal user.
  *
  * The owning app resolves it from its Better Auth session (`getPortalContext`
- * in `apps/web/lib/core/auth-context.ts`), which requires a `Member` row linked
+ * in `apps/copilot/lib/core/auth-context.ts`), which requires a `Member` row linked
  * to a client company. The structural copy keeps this package independent from
  * the app's session wiring.
  */

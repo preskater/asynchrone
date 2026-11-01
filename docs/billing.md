@@ -13,16 +13,16 @@ Team trial is separate and lives in
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Tables                            | `Subscription`, `Invoice`, `BillingEvent` (`packages/db/prisma/schema.prisma`)                              |
 | Invoice mirror                    | filled by `invoice.paid` / `invoice.payment_failed`, backfilled on view when empty                          |
-| Plan state and status mapping     | `apps/web/lib/billing/plans.ts`                                                                             |
-| Stripe client and request shaping | `apps/web/lib/billing/stripe-provider.ts`                                                                   |
-| Webhook handling                  | `apps/web/lib/billing/service.ts`, `apps/web/app/api/webhooks/stripe/route.ts`                              |
-| Settings → Billing                | `apps/web/components/billing/billing-panel.tsx`                                                             |
+| Plan state and status mapping     | `apps/copilot/lib/billing/plans.ts`                                                                             |
+| Stripe client and request shaping | `apps/copilot/lib/billing/stripe-provider.ts`                                                                   |
+| Webhook handling                  | `apps/copilot/lib/billing/service.ts`, `apps/copilot/app/api/webhooks/stripe/route.ts`                              |
+| Settings → Billing                | `apps/copilot/components/billing/billing-panel.tsx`                                                             |
 | Billing tab deep link             | `/{locale}/{orgSlug}/settings?tab=billing` (also the user menu's "Billing")                                 |
 | Pricing CTAs                      | Team card starts Checkout; signed-out visitors sign up first (`?redirect=/onboarding?subscribe=<interval>`) |
-| Trial window and reminders        | `apps/web/lib/organization/trial-service.ts` (ADR 0021)                                                     |
+| Trial window and reminders        | `apps/copilot/lib/organization/trial-service.ts` (ADR 0021)                                                     |
 | Manual override                   | `apps/control-tower/actions/organizations.ts`                                                               |
 
-Plan resolution order (`apps/web/lib/organization/entitlements.ts`):
+Plan resolution order (`apps/copilot/lib/organization/entitlements.ts`):
 `Subscription.plan` first, then `organization.metadata.plan` — the field the
 control tower writes and what a Stripe-less workspace still uses. An open Team
 trial then upgrades a free organization to Team (ADR 0021). Every entitlement —
@@ -35,9 +35,9 @@ organization, so checkout charges the first invoice immediately.
 
 ## Configuration
 
-Set these in `apps/web/.env`. On Kubernetes, `STRIPE_SECRET_KEY` and
-`STRIPE_WEBHOOK_SECRET` belong in the `asynchrone-space-web-secrets` Secret; the
-rest are non-secret and go under `asynchrone-space-web.config` (see
+Set these in `apps/copilot/.env`. On Kubernetes, `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET` belong in the `asynchrone-space-copilot-secrets` Secret; the
+rest are non-secret and go under `asynchrone-space-copilot.config` (see
 [deployment/helm.md](deployment/helm.md)):
 
 | Variable                                                 | Purpose                                                                                        |
@@ -71,7 +71,7 @@ boot (`lib/env.ts`).
    only a reference, and this endpoint parses snapshot payloads
    (`event.data.object`), so they would be ignored.
 
-   `localhost:3000` is `npm run dev`; under `docker compose` the web app is on
+   `localhost:3000` is `npm run dev`; under `docker compose` the Copilot app is on
    `localhost:3003`. The port must match `BETTER_AUTH_URL` (or
    `NEXT_PUBLIC_APP_URL` when set), because the same origin is used for the
    Checkout success/cancel URLs.
@@ -147,7 +147,7 @@ boot (`lib/env.ts`).
 - Enable the Customer Portal in Stripe with cancellation and plan switching
   allowed; the app never edits subscriptions itself.
 - Configure tax registrations before setting `STRIPE_AUTOMATIC_TAX=true`.
-- Keep `CRON_SECRET` set so `asynchrone-space-web-trial-expiry` (daily 06:00)
+- Keep `CRON_SECRET` set so `asynchrone-space-copilot-trial-expiry` (daily 06:00)
   can run the trial reminders and expiry.
 - Do not reuse test keys in production, and never commit either key.
 
@@ -186,5 +186,5 @@ the visitor to the billing tab instead.
 - Usage-based metering, revenue recognition, accounting exports, filing VAT
   returns and non-Stripe currencies are out of scope.
 - Downgrading keeps rows and files; writes that exceed the new storage quota
-  are rejected by the existing quota checks (`packages/files/src/storage.ts`, bound in `apps/web/lib/files.ts`). Other
+  are rejected by the existing quota checks (`packages/files/src/storage.ts`, bound in `apps/copilot/lib/files.ts`). Other
   feature limits belong to the entitlement layer.

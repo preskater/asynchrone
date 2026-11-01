@@ -1,4 +1,4 @@
-{{- $web := index .Values "asynchrone-space-web" -}}
+{{- $copilot := index .Values "asynchrone-space-copilot" -}}
 {{- $ct := index .Values "asynchrone-space-control-tower" -}}
 Asynchrone Space installed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
 
@@ -8,13 +8,13 @@ left behind for logs:
 
   kubectl -n {{ .Release.Namespace }} logs job/{{ include "asynchrone-space.fullname" . }}-migrate
 
-Customer app:
-{{- if $web.ingress.enabled }}
-{{- range $web.ingress.hosts }}
-  - http{{ if $web.ingress.tls }}s{{ end }}://{{ .host }}
+Copilot:
+{{- if $copilot.ingress.enabled }}
+{{- range $copilot.ingress.hosts }}
+  - http{{ if $copilot.ingress.tls }}s{{ end }}://{{ .host }}
 {{- end }}
 {{- else }}
-  - service {{ .Release.Name }}-web:{{ $web.service.port }} (cluster-internal)
+  - service {{ .Release.Name }}-copilot:{{ $copilot.service.port }} (cluster-internal)
 {{- end }}
 
 Control tower:
@@ -27,13 +27,13 @@ Control tower:
 {{- end }}
 
 Required secrets:
-  - {{ $web.secret.existingSecret }} (DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET, optional
+  - {{ $copilot.secret.existingSecret }} (DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET, optional
     OPENAI_API_KEY, RESEND_API_KEY, GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET,
     TURNSTILE_SECRET_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET)
   - {{ $ct.secret.existingSecret }} (DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET)
 
 Scheduled jobs (formerly Vercel crons):
-{{- range $job := list (dict "name" "uploads-sweep" "config" $web.cronjobs.uploadsSweep) (dict "name" "repository-sync" "config" $web.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" $web.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" $web.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" $web.cronjobs.auditRetention) (dict "name" "data-exports" "config" $web.cronjobs.dataExports) }}
+{{- range $job := list (dict "name" "uploads-sweep" "config" $copilot.cronjobs.uploadsSweep) (dict "name" "repository-sync" "config" $copilot.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" $copilot.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" $copilot.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" $copilot.cronjobs.auditRetention) (dict "name" "data-exports" "config" $copilot.cronjobs.dataExports) }}
 {{- if $job.config.enabled }}
   - {{ $job.name }} {{ $job.config.schedule }} -> {{ $job.config.path }}
 {{- end }}

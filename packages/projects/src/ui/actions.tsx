@@ -38,7 +38,7 @@ import type {
 /**
  * The server actions of the owning app, injected into the UI.
  *
- * Server actions stay in `apps/web` (and move with `apps/projects` in #160),
+ * Server actions stay in `apps/copilot` (and move with `apps/projects` in #160),
  * so the package components cannot import them. The app passes this object to
  * `ProjectStoreProvider`; every component reaches it through
  * `useProjectActions()`.

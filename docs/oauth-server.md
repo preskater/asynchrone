@@ -2,7 +2,7 @@
 
 Copilot is the OAuth 2.1/OIDC authorization server for workspace apps
 ([ADR 0029](../adr/0029-use-copilot-as-oauth-authorization-server.md)). The
-implementation lives in `apps/web/lib/auth.ts` and `apps/web/lib/oauth/`.
+implementation lives in `apps/copilot/lib/auth.ts` and `apps/copilot/lib/oauth/`.
 
 ## Provider
 
@@ -22,7 +22,7 @@ MCP remains a protected resource at `MCP_RESOURCE_URL` (default
 
 ## Resources and scopes
 
-`apps/web/lib/oauth/resources.ts` builds the provider resources from
+`apps/copilot/lib/oauth/resources.ts` builds the provider resources from
 `@workspace/contracts`:
 
 | Resource                                                                                                    | Scopes                                                                                                                                             |
@@ -81,8 +81,8 @@ adds a stricter post-selection redirect.
 
 | Variable                                                    | Purpose                                                                  |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `BETTER_AUTH_URL`                                           | Issuer and default MCP origin                                            |
-| `MCP_RESOURCE_URL`                                          | MCP protected-resource identifier                                        |
+| `BETTER_AUTH_URL`                                           | Issuer and Copilot origin (`https://copilot.asynchrone.space` in production) |
+| `MCP_RESOURCE_URL`                                          | MCP protected-resource identifier (`https://copilot.asynchrone.space/mcp`)  |
 | `LANDING_APP_URL`, `COPILOT_APP_URL`, `PROJECTS_APP_URL`, … | App origins used to build OAuth resources                                |
 | `OAUTH_TRUSTED_CLIENT_IDS`                                  | Comma-separated first-party client IDs that skip the client lookup cache |
 
@@ -91,13 +91,13 @@ There is **no `AUTH_COOKIE_DOMAIN`** and no shared customer cookie.
 ## Validation
 
 ```bash
-npm run test:unit --workspace=web
+npm run test:unit --workspace=copilot
 npm run test:unit --workspace=@workspace/contracts
 npm run typecheck
 npm run lint
 ```
 
-The claim builder is covered by `apps/web/lib/oauth/claims.unit.test.ts`; the
+The claim builder is covered by `apps/copilot/lib/oauth/claims.unit.test.ts`; the
 resource/scope matrix is covered by the contracts package.
 
 ## Follow-up

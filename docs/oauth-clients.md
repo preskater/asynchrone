@@ -1,8 +1,8 @@
 # First-party OAuth clients
 
 Copilot issues tokens to first-party workspace apps. The client manifest lives in
-`apps/web/lib/oauth/clients.ts`; the provisioning command is
-`apps/web/scripts/provision-oauth-clients.ts`.
+`apps/copilot/lib/oauth/clients.ts`; the provisioning command is
+`apps/copilot/scripts/provision-oauth-clients.ts`.
 
 ## Clients
 
@@ -30,7 +30,7 @@ Client IDs and secrets use the environment names in
 Dry run (safe, no secrets, no DB writes):
 
 ```bash
-npm run oauth:clients --workspace=web
+npm run oauth:clients --workspace=copilot
 ```
 
 Apply with an admin session cookie:
@@ -38,7 +38,7 @@ Apply with an admin session cookie:
 ```bash
 OAUTH_ADMIN_COOKIE="better-auth.session_token=..." \
 BETTER_AUTH_URL="https://copilot.asynchrone.space" \
-npm run oauth:clients --workspace=web -- --apply --write-env apps/web/.env.oauth
+npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
 ```
 
 The script:
@@ -58,7 +58,7 @@ them; `.env*` is gitignored.
 
 ```bash
 OAUTH_ADMIN_COOKIE="..." BETTER_AUTH_URL="..." \
-npm run oauth:clients --workspace=web -- --apply --rotate --write-env apps/web/.env.oauth
+npm run oauth:clients --workspace=copilot -- --apply --rotate --write-env apps/copilot/.env.oauth
 ```
 
 Rotation calls `/api/auth/oauth2/client/rotate-secret` for every client. The old
@@ -68,7 +68,7 @@ during a maintenance window if you need all clients to reconnect at once.
 
 ## Change the manifest
 
-1. Edit `apps/web/lib/oauth/clients.ts`.
+1. Edit `apps/copilot/lib/oauth/clients.ts`.
 2. Run the dry run.
 3. Apply to a development environment and inspect the diff.
 4. Apply to production during a window.

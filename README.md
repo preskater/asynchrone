@@ -35,7 +35,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 
 | Path                         | Description                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
-| `apps/web`                   | Next.js application (App Router, i18n, API + MCP routes).                           |
+| `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
 | `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
 | `packages/ui`                | Shared UI component library.                                                        |
@@ -68,7 +68,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 3. Create your environment file and fill in the values:
 
    ```bash
-   cp apps/web/.env.example apps/web/.env
+   cp apps/copilot/.env.example apps/copilot/.env
    ```
 
    At minimum set `DATABASE_URL` and `BETTER_AUTH_SECRET`. An `OPENAI_API_KEY`
@@ -91,11 +91,11 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
    The app is available at http://localhost:3000.
 
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
-> migrations, serves the public landing site on port **3002**, the customer app
+> migrations, serves the public landing site on port **3002**, the Copilot app
 > on port **3003** and the control tower on port **3001**. Each container loads
 > its app's `.env` (then overrides `DATABASE_URL` and the public URLs), so local
 > dev and Docker share the same secrets. The image is parameterised with
-> `--build-arg APP=web|control-tower|landing`.
+> `--build-arg APP=copilot|control-tower|landing`.
 
 ### Control tower
 
@@ -111,7 +111,7 @@ cp apps/control-tower/.env.example apps/control-tower/.env
 npm run dev --workspace=control-tower
 ```
 
-Accounts are created by the customer app. Grant a platform role to an existing
+Accounts are created by Copilot. Grant a platform role to an existing
 account:
 
 ```bash
@@ -132,8 +132,8 @@ asserts that cross-subdomain cookies stay disabled (see
 
 ## Environment variables
 
-Customer-app variables live in `apps/web/.env` (see
-[`apps/web/.env.example`](./apps/web/.env.example)); the control tower reads
+Copilot variables live in `apps/copilot/.env` (see
+[`apps/copilot/.env.example`](./apps/copilot/.env.example)); the control tower reads
 `apps/control-tower/.env` (see
 [`apps/control-tower/.env.example`](./apps/control-tower/.env.example)).
 
@@ -219,35 +219,35 @@ former Vercel Blob integration has been removed).
 
 ### Verifying
 
-`apps/web/scripts/verify-large-object.ts` uploads ≥8 MiB of random bytes, reads
+`apps/copilot/scripts/verify-large-object.ts` uploads ≥8 MiB of random bytes, reads
 them back, and asserts equal size and SHA‑256 for both the single-shot and the
 chunked create/append/hash paths; it then deletes/aborts and asserts
 `pg_largeobject_metadata` returns to its baseline (no orphans):
 
 ```bash
-npm run verify:large-object --workspace=web
+npm run verify:large-object --workspace=copilot
 ```
 
 ## Deployment
 
 The Docker workflow publishes four images to GHCR:
 
-| Image                                              | Dockerfile stage               | Runs                       |
-| -------------------------------------------------- | ------------------------------ | -------------------------- |
-| `ghcr.io/preskater/asynchrone-space`               | `runner` (`APP=web`)           | Customer app               |
-| `ghcr.io/preskater/asynchrone-space-control-tower` | `runner` (`APP=control-tower`) | Internal control tower     |
-| `ghcr.io/preskater/asynchrone-space-landing`       | `runner` (`APP=landing`)       | Public landing site        |
-| `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate` (`APP=web`)          | One-shot Prisma migrations |
+| Image                                                      | Dockerfile stage               | Runs                       |
+| ---------------------------------------------------------- | ------------------------------ | -------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` (`APP=copilot`)       | Copilot (identity + OAuth) |
+| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` (`APP=control-tower`) | Internal control tower     |
+| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` (`APP=landing`)       | Public landing site        |
+| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` (`APP=copilot`)      | One-shot Prisma migrations |
 
 Deploy them with the Helm umbrella chart in `charts/asynchrone-space`, which composes the
-`asynchrone-space-landing`, `asynchrone-space-web` and
+`asynchrone-space-landing`, `asynchrone-space-copilot` and
 `asynchrone-space-control-tower` subcharts:
 
 ```bash
 helm dependency build charts/asynchrone-space
 kubectl create namespace asynchrone-space
 
-kubectl -n asynchrone-space create secret generic asynchrone-space-web-secrets \
+kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secrets \
   --from-literal=DATABASE_URL='postgresql://…' \
   --from-literal=BETTER_AUTH_SECRET='…' \
   --from-literal=CRON_SECRET='…'

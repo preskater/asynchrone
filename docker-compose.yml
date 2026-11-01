@@ -1,5 +1,5 @@
 # Dev-only defaults. Override POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
-# from the shell or a repo-root .env (not apps/web/.env). Values are inlined
+# from the shell or a repo-root .env (not apps/copilot/.env). Values are inlined
 # into DATABASE_URL, so avoid URL-reserved characters (@ : / ?) in them.
 networks:
   postgres-network:
@@ -27,7 +27,7 @@ services:
       timeout: 5s
       retries: 5
 
-  web-migrate:
+  copilot-migrate:
     build:
       context: .
       dockerfile: Dockerfile
@@ -65,7 +65,7 @@ services:
     networks:
       - postgres-network
 
-  web:
+  copilot:
     build:
       context: .
       dockerfile: Dockerfile
@@ -77,17 +77,21 @@ services:
     # issuance ("Failed to decrypt private key"). The `environment` block
     # below still overrides the container-specific values.
     env_file:
-      - path: apps/web/.env
+      - path: apps/copilot/.env
         required: false
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      # Copilot owns the identity database; the container reaches PostgreSQL
+      # through the compose network, not localhost.
+      - IDENTITY_DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/asynchrone_identity?schema=public
       - BETTER_AUTH_URL=http://localhost:3003
+      - MCP_RESOURCE_URL=http://localhost:3003/mcp
       - CONTROL_TOWER_URL=http://localhost:3001
     depends_on:
       postgres:
         condition: service_healthy
-      web-migrate:
+      copilot-migrate:
         condition: service_completed_successfully
     networks:
       - postgres-network
@@ -100,7 +104,7 @@ services:
         APP: control-tower
     ports:
       - "3001:3000"
-    # Same as `web`: reuse the control tower's own env file (secret, local
+    # Same as `copilot`: reuse the control tower's own env file (secret, local
     # origins), then override the container-specific values below.
     # The control tower owns asynchrone_control_tower (ADR 0032); it is never
     # pointed at the customer database.
@@ -115,7 +119,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      web-migrate:
+      copilot-migrate:
         condition: service_completed_successfully
     networks:
       - postgres-network

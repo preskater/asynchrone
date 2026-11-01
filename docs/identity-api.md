@@ -108,7 +108,7 @@ use the monolith database. Local tests use a fake `IdentityRepository`; after
 ## Tests
 
 ```bash
-npm run test:unit --workspace=web
+npm run test:unit --workspace=copilot
 npm run test:unit --workspace=@workspace/contracts
 ```
 

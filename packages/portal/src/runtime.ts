@@ -37,7 +37,7 @@ export interface PortalRuntime {
 /**
  * Bind the portal domain to one app's database and services.
  *
- * Copilot calls this once from `apps/web/lib/portal/index.ts`. The portal has
+ * Copilot calls this once from `apps/copilot/lib/portal/index.ts`. The portal has
  * no app of its own: its routes and APIs stay in Copilot, and every cross-app
  * read goes through the domain packages until #190 replaces them with internal
  * clients.

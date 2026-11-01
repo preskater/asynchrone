@@ -2,11 +2,11 @@ dependencies:
 - name: asynchrone-space-landing
   repository: file://../asynchrone-space-landing
   version: 0.1.0
-- name: asynchrone-space-web
-  repository: file://../asynchrone-space-web
-  version: 0.1.0
+- name: asynchrone-space-copilot
+  repository: file://../asynchrone-space-copilot
+  version: 0.1.1
 - name: asynchrone-space-control-tower
   repository: file://../asynchrone-space-control-tower
-  version: 0.1.0
-digest: sha256:247790a16dbc49b1b76b93313a688f78e7ec04987f077a03ebd11a1477e225f8
-generated: "2026-11-01T14:48:52.097451+01:00"
+  version: 0.1.1
+digest: sha256:85ee882f2cf33e5dc21ad9dae34e7b3192b4890a1dd85fa8d896d74543f81d37
+generated: "2026-11-01T16:50:07.185854+01:00"

@@ -4,7 +4,7 @@ import type { PrismaClient } from "@workspace/db"
  * The slice of a Prisma client the projects domain needs.
  *
  * The package never opens a connection: the owning app binds its own client.
- * Today that is `apps/web` and the shared monolith client; once `apps/projects`
+ * Today that is `apps/copilot` and the shared monolith client; once `apps/projects`
  * exists (#160) it binds the `asynchrone_projects` client instead.
  *
  * `member`, `user` and `account` are identity tables that the project member

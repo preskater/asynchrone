@@ -5,8 +5,9 @@ Last audited: 2026-11-01 (issues #146–#158).
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
 portal surface, internal endpoint, environment variable and test is assigned to
-exactly one app. It is a snapshot of the monolith before phase 4: `apps/web`
-still serves every customer surface from one runtime and one database, while
+exactly one app. It is a snapshot of the domain-app split: Copilot
+(`apps/copilot`, renamed from `apps/web` in #175) still serves every customer
+surface from one runtime and one database, while
 the per-app database packages and the shared kernel (`@workspace/core`,
 `@workspace/auth`, `@workspace/organization`, `@workspace/app-shell`,
 `@workspace/i18n`, `@workspace/next-config`) already exist.
@@ -36,8 +37,9 @@ See also:
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
-Today only `apps/web` and `apps/control-tower` exist. `apps/web` is the future
-`apps/copilot`; the portal stays inside Copilot (there is no `apps/portal`).
+Only `apps/copilot` and `apps/control-tower` exist today. Copilot still hosts the
+domain routes until #160 moves them to their own apps; the portal stays inside
+Copilot (there is no `apps/portal`).
 
 ## Landing
 
@@ -56,7 +58,7 @@ and #167.
 
 ## Copilot
 
-Target: `apps/copilot` (the renamed `apps/web`). Owns the identity database and
+Target: `apps/copilot` (renamed from `apps/web` in #175). Owns the identity database and
 is the only OAuth 2.1/OIDC authorization server.
 
 ### Pages and layouts
@@ -83,7 +85,7 @@ is the only OAuth 2.1/OIDC authorization server.
 
 ### Server actions
 
-`apps/web/actions/account.ts`, `appearance.ts`, `audit.ts`, `billing.ts`,
+`apps/copilot/actions/account.ts`, `appearance.ts`, `audit.ts`, `billing.ts`,
 `data-export.ts`, `feedback.ts`, `notifications.ts`,
 `organization-deletion.ts`, `trial.ts`, `two-factor-policy.ts`.
 
@@ -115,15 +117,15 @@ organization 2FA policy.
 ### Assistant and MCP
 
 - Assistant agent/tools: `@workspace/ai` (chat parts, pricing, agent factory and
-  the quota ledger) plus `apps/web/lib/assistant/*` (tools and app wiring) and
-  `apps/web/app/api/assistant/route.ts`.
+  the quota ledger) plus `apps/copilot/lib/assistant/*` (tools and app wiring) and
+  `apps/copilot/app/api/assistant/route.ts`.
 - Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
   `list_files`, `list_conversations`, `send_message`. Calendar tools call
   `@workspace/calendars` through the app adapter.
-- MCP transport: `apps/web/app/mcp/route.ts`, `apps/web/lib/mcp/*`.
-- MCP tools (44) live in `apps/web/lib/mcp/tools/*` and are listed per domain
+- MCP transport: `apps/copilot/app/mcp/route.ts`, `apps/copilot/lib/mcp/*`.
+- MCP tools (44) live in `apps/copilot/lib/mcp/tools/*` and are listed per domain
   below.
 - #190 replaces the in-process calls with typed internal clients; the MCP
   transport and assistant stay in Copilot.
@@ -169,7 +171,7 @@ adapter; every other app goes through the internal contract.
 
 | Package                    | Ships                                                                      | Bound by                                                            |
 | -------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `@workspace/storage`       | PostgreSQL large-object engine for file bytes                              | Files app (`apps/web/lib/large-object.ts` today)                    |
+| `@workspace/storage`       | PostgreSQL large-object engine for file bytes                              | Files app (`apps/copilot/lib/large-object.ts` today)                    |
 | `@workspace/notifications` | Inbox types, schemas and the notification service over a repository port   | Copilot's identity repository; domain apps use `NotificationClient` |
 | `@workspace/integrations`  | Provider protocol, GitHub/GitLab clients and the token cipher              | The app that owns the connection; tokens stay in its database       |
 | `@workspace/ai`            | Chat parts, model pricing, agent factory and the quota ledger over a store | Copilot's `AiUsageEvent`; tools call domain APIs (#190)             |
@@ -210,9 +212,9 @@ pages and app wiring stay in Copilot until #160 moves them with the app.
 | `packages/projects/src/ui/store.tsx`              | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`           |
 | `packages/projects/src/ui/actions.tsx`            | `ProjectActions` contract + `useProjectActions()`                                                                             |
 | `packages/projects/src/components/*`              | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)         |
-| `apps/web/lib/projects/index.ts`                  | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                 |
-| `apps/web/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                        |
-| `apps/web/lib/integrations/index.ts`              | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                        |
+| `apps/copilot/lib/projects/index.ts`                  | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                 |
+| `apps/copilot/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                        |
+| `apps/copilot/lib/integrations/index.ts`              | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                        |
 
 App-only imports are forbidden in the package (`npm run check:boundaries`).
 `member`, `user` and `account` remain in the `ProjectDb` port because the
@@ -234,8 +236,8 @@ they move behind the identity internal API in #190.
 | `POST /api/webhooks/repositories/[connectionId]`             | API         | `repositoryWebhookHandler` from the package adapter                                                      |
 | `GET /api/cron/repository-sync`                              | Cron        | `repositoryIntegrationService.syncAllConnections()` from the package adapter                             |
 | `/api/health`                                                | API         | App health check (not project domain)                                                                    |
-| MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …) | MCP tools   | `apps/web/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
-| Assistant tools                                              | In-process  | `apps/web/lib/assistant/tools.ts` → `projectService` adapter                                             |
+| MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …) | MCP tools   | `apps/copilot/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
+| Assistant tools                                              | In-process  | `apps/copilot/lib/assistant/tools.ts` → `projectService` adapter                                             |
 
 Repository integration (GitHub/GitLab) is part of Projects and also writes
 project activity. `GITHUB_*` / `GITLAB_*` OAuth env vars are read by the
@@ -249,8 +251,8 @@ Target: `apps/calendars` / `@workspace/calendars` + `@workspace/meetings`.
 
 | Package                | Ships                                                                                                  | Bound by                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers            | `apps/web/lib/calendars/index.ts` binds `CalendarDb` over the transitional Prisma client |
-| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters | `apps/web/lib/meetings/index.ts` binds `MeetingDb` and Copilot's notification inbox      |
+| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers            | `apps/copilot/lib/calendars/index.ts` binds `CalendarDb` over the transitional Prisma client |
+| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters | `apps/copilot/lib/meetings/index.ts` binds `MeetingDb` and Copilot's notification inbox      |
 
 Both packages are Next-free and depend only on `@workspace/core` and
 `@workspace/organization`. Repositories take narrow structural ports
@@ -262,13 +264,13 @@ client. Unit tests use the repository ports.
 
 | Surface            | Location                                                                                                                                                                                                 | Notes                                                                                             |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Calendars page     | `apps/web/app/[locale]/(app)/[orgSlug]/calendars/{page,loading,not-found}.tsx`                                                                                                                           | Loads its own data through `listCalendarDataAction`; the app layout only mounts an empty provider |
-| Meeting inbox      | Dialog on the calendars page (`apps/web/components/meetings/meeting-requests-dialog.tsx`)                                                                                                                | No route of its own                                                                               |
-| Meeting settings   | `apps/web/app/[locale]/(app)/[orgSlug]/settings/page.tsx` + `components/meetings/meeting-settings-form.tsx`                                                                                              | Owners/admins                                                                                     |
-| Portal meetings    | `apps/web/app/[locale]/portal/meetings/page.tsx`                                                                                                                                                         | Server-renders `meetingService.getPortalMeetings`                                                 |
+| Calendars page     | `apps/copilot/app/[locale]/(app)/[orgSlug]/calendars/{page,loading,not-found}.tsx`                                                                                                                           | Loads its own data through `listCalendarDataAction`; the app layout only mounts an empty provider |
+| Meeting inbox      | Dialog on the calendars page (`apps/copilot/components/meetings/meeting-requests-dialog.tsx`)                                                                                                                | No route of its own                                                                               |
+| Meeting settings   | `apps/copilot/app/[locale]/(app)/[orgSlug]/settings/page.tsx` + `components/meetings/meeting-settings-form.tsx`                                                                                              | Owners/admins                                                                                     |
+| Portal meetings    | `apps/copilot/app/[locale]/portal/meetings/page.tsx`                                                                                                                                                         | Server-renders `meetingService.getPortalMeetings`                                                 |
 | Server actions     | `actions/calendars.ts` (list data/events, create/update/move/delete event, add/toggle calendar, respond) and `actions/meetings.ts` (portal create/cancel, team list/accept/decline, settings get/update) | Set `"use server"`; URLs unchanged                                                                |
 | API                | `/api/health` only                                                                                                                                                                                       | No dedicated calendar or meeting route                                                            |
-| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings`                     | `apps/web/lib/mcp/tools/{calendars,meetings}.ts`                                                  |
+| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings`                     | `apps/copilot/lib/mcp/tools/{calendars,meetings}.ts`                                                  |
 | Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `AuditLog`                                                                           | `asynchrone_calendars` (`@workspace/db-calendars`)                                                |
 | Audit actions      | none today                                                                                                                                                                                               |                                                                                                   |
 | Internal endpoints | search / export / delete as above                                                                                                                                                                        | Not wired yet                                                                                     |
@@ -276,25 +278,25 @@ client. Unit tests use the repository ports.
 ## Files
 
 Target: `apps/files` / `@workspace/files`. The package landed in #155; the
-routes still run in `apps/web` (Copilot) and bind the package through
-`apps/web/lib/files.ts` and `apps/web/components/files-provider.tsx`.
+routes still run in `apps/copilot` (Copilot) and bind the package through
+`apps/copilot/lib/files.ts` and `apps/copilot/components/files-provider.tsx`.
 
 | Surface                                       | Location                                                                                                                                                                                                                       | Notes                                                                                                      |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Page                                          | `apps/web/app/[locale]/(app)/[orgSlug]/files/page.tsx`                                                                                                                                                                         | renders `@workspace/files/components/files-workspace`                                                      |
-| `POST /api/files/uploads`                     | `apps/web/app/api/files/uploads/route.ts`                                                                                                                                                                                      | starts a chunked upload session (`createUploadSession`)                                                    |
-| `GET /api/files/uploads`                      | `apps/web/app/api/files/uploads/route.ts`                                                                                                                                                                                      | 405; the session is resumable through the uploadId routes                                                  |
-| `GET /api/files/uploads/[uploadId]`           | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | resumable session state                                                                                    |
-| `PUT /api/files/uploads/[uploadId]`           | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | one ordered chunk (`x-chunk-offset`)                                                                       |
-| `DELETE /api/files/uploads/[uploadId]`        | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | aborts and unlinks the partial large object                                                                |
-| `POST /api/files/uploads/[uploadId]/complete` | `apps/web/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | validates bytes and creates the file (or returns the attachment oid)                                       |
-| `GET /api/files/uploads/[uploadId]/complete`  | `apps/web/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | 405                                                                                                        |
-| `GET /api/files/[fileId]/download`            | `apps/web/app/api/files/[fileId]/download/route.ts`                                                                                                                                                                            | streams the file’s large object after an access check                                                      |
-| `GET /api/files/uploads/sweep`                | `apps/web/app/api/files/uploads/sweep/route.ts`                                                                                                                                                                                | unlinks expired upload sessions (`CRON_SECRET`-guarded)                                                    |
-| `GET /api/portal/files/[fileId]/download`     | `apps/web/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; `@workspace/portal` resolves the client-visible link and streams its large object            |
-| Server actions                                | `apps/web/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
+| Page                                          | `apps/copilot/app/[locale]/(app)/[orgSlug]/files/page.tsx`                                                                                                                                                                         | renders `@workspace/files/components/files-workspace`                                                      |
+| `POST /api/files/uploads`                     | `apps/copilot/app/api/files/uploads/route.ts`                                                                                                                                                                                      | starts a chunked upload session (`createUploadSession`)                                                    |
+| `GET /api/files/uploads`                      | `apps/copilot/app/api/files/uploads/route.ts`                                                                                                                                                                                      | 405; the session is resumable through the uploadId routes                                                  |
+| `GET /api/files/uploads/[uploadId]`           | `apps/copilot/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | resumable session state                                                                                    |
+| `PUT /api/files/uploads/[uploadId]`           | `apps/copilot/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | one ordered chunk (`x-chunk-offset`)                                                                       |
+| `DELETE /api/files/uploads/[uploadId]`        | `apps/copilot/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | aborts and unlinks the partial large object                                                                |
+| `POST /api/files/uploads/[uploadId]/complete` | `apps/copilot/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | validates bytes and creates the file (or returns the attachment oid)                                       |
+| `GET /api/files/uploads/[uploadId]/complete`  | `apps/copilot/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | 405                                                                                                        |
+| `GET /api/files/[fileId]/download`            | `apps/copilot/app/api/files/[fileId]/download/route.ts`                                                                                                                                                                            | streams the file’s large object after an access check                                                      |
+| `GET /api/files/uploads/sweep`                | `apps/copilot/app/api/files/uploads/sweep/route.ts`                                                                                                                                                                                | unlinks expired upload sessions (`CRON_SECRET`-guarded)                                                    |
+| `GET /api/portal/files/[fileId]/download`     | `apps/copilot/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; `@workspace/portal` resolves the client-visible link and streams its large object            |
+| Server actions                                | `apps/copilot/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
 | Cron                                          | `uploads-sweep` (`/api/files/uploads/sweep`, daily 03:00)                                                                                                                                                                      |                                                                                                            |
-| MCP tools                                     | `apps/web/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
+| MCP tools                                     | `apps/copilot/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
 | Prisma models                                 | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `AuditLog`                                                                                                                                            |                                                                                                            |
 | Storage                                       | `packages/files/src/objects.ts` + `@workspace/storage`                                                                                                                                                                         | PostgreSQL large objects; resumable uploads; the app binds its own pool                                    |
 | Audit actions                                 | `file.created`, `file.folder.created`, `file.renamed`, `file.moved`, `file.duplicated`, `file.trashed`, `file.restored`, `file.deleted`, `file.access.updated`, `file.share.added`, `file.share.updated`, `file.share.removed` |                                                                                                            |
@@ -304,26 +306,26 @@ routes still run in `apps/web` (Copilot) and bind the package through
 ## Messages
 
 Target: `apps/messages` / `@workspace/messaging`. The package landed in #156;
-the routes still run in `apps/web` (Copilot) and bind the package through
-`apps/web/lib/messaging.ts`, `apps/web/components/messaging-provider.tsx` and
-`apps/web/components/messaging-workspace.tsx`.
+the routes still run in `apps/copilot` (Copilot) and bind the package through
+`apps/copilot/lib/messaging.ts`, `apps/copilot/components/messaging-provider.tsx` and
+`apps/copilot/components/messaging-workspace.tsx`.
 
 | Surface                                        | Location                                                                                                        | Notes                                                                                                                                |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Page                                           | `apps/web/app/[locale]/(app)/[orgSlug]/messages/page.tsx`                                                       | renders `apps/web/components/messaging-workspace.tsx`, which binds the package's `MessagingWorkspace`                                |
-| Loading                                        | `apps/web/app/[locale]/(app)/[orgSlug]/messages/loading.tsx`                                                    | route-level skeleton                                                                                                                 |
-| Not found                                      | `apps/web/app/[locale]/(app)/[orgSlug]/messages/not-found.tsx`                                                  | route-level empty state                                                                                                              |
-| `GET /api/messages/attachments/[attachmentId]` | `apps/web/app/api/messages/attachments/[attachmentId]/route.ts`                                                 | streams one attachment after an organization-scoped lookup (`messagingService.openAttachment`)                                       |
-| Server actions                                 | `apps/web/actions/messaging.ts`                                                                                 | channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin                                                 |
-| Sidebar                                        | `apps/web/components/app-sidebar.tsx`                                                                           | renders `ConversationSidebar` with the workspace navigation while on `/[orgSlug]/messages`                                           |
-| MCP tools                                      | `apps/web/lib/mcp/tools/messaging.ts`                                                                           | `list_conversations`, `list_messages`, `send_message`, `create_channel`                                                              |
-| Assistant tools                                | `apps/web/lib/assistant/tools.ts`                                                                               | `list_conversations`, `send_message` over the same read/write service                                                                |
+| Page                                           | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/page.tsx`                                                       | renders `apps/copilot/components/messaging-workspace.tsx`, which binds the package's `MessagingWorkspace`                                |
+| Loading                                        | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/loading.tsx`                                                    | route-level skeleton                                                                                                                 |
+| Not found                                      | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/not-found.tsx`                                                  | route-level empty state                                                                                                              |
+| `GET /api/messages/attachments/[attachmentId]` | `apps/copilot/app/api/messages/attachments/[attachmentId]/route.ts`                                                 | streams one attachment after an organization-scoped lookup (`messagingService.openAttachment`)                                       |
+| Server actions                                 | `apps/copilot/actions/messaging.ts`                                                                                 | channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin                                                 |
+| Sidebar                                        | `apps/copilot/components/app-sidebar.tsx`                                                                           | renders `ConversationSidebar` with the workspace navigation while on `/[orgSlug]/messages`                                           |
+| MCP tools                                      | `apps/copilot/lib/mcp/tools/messaging.ts`                                                                           | `list_conversations`, `list_messages`, `send_message`, `create_channel`                                                              |
+| Assistant tools                                | `apps/copilot/lib/assistant/tools.ts`                                                                               | `list_conversations`, `send_message` over the same read/write service                                                                |
 | Package read API                               | `packages/messaging/src/service.ts`                                                                             | `list`, `listConversations`, `listMessages`, `messagesFor`, `listThreadReplies`, `listTeams`                                         |
 | Package write API                              | `packages/messaging/src/service.ts`                                                                             | `sendMessage`, `editMessage`, `deleteMessage`, `toggleReaction`, `addThreadReply`, `markRead`, DM/channel, mute/pin, `touchPresence` |
 | Attachments                                    | `packages/messaging/src/service.ts`, `../files/src/upload-client.ts` (`uploadAttachment`)                       | metadata in `messageAttachment`; bytes are PostgreSQL large objects through `@workspace/storage`                                     |
-| Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/web/lib/large-object.ts`; the package never opens a pool                                                         |
+| Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/copilot/lib/large-object.ts`; the package never opens a pool                                                         |
 | Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `AuditLog` |                                                                                                                                      |
-| Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; bound in `apps/web/lib/messaging.ts`                                       |
+| Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; bound in `apps/copilot/lib/messaging.ts`                                       |
 | Audit actions                                  | none today                                                                                                      |                                                                                                                                      |
 | Internal endpoints                             | search / export / delete as above; attachments are served by the messages app                                   |                                                                                                                                      |
 | Tests                                          | `packages/messaging/src/service.unit.test.ts`                                                                   | membership, unread state, threads, attachment upload/download, cross-org authorization                                               |
@@ -363,8 +365,8 @@ stay in Copilot until #163 moves them with the app.
 | `packages/clients/src/components/*`                          | Clients/contacts/deals UI, dialogs, timeline, documents, custom fields, pipeline settings and portal access |
 | `packages/clients/src/components/actions.tsx`                | `ClientActions` port + `ClientActionsProvider` / `useClientActions()`                                       |
 | `packages/clients/src/components/use-clients.ts`             | Formatting, CSV download and `datetime-local` helpers                                                       |
-| `apps/web/lib/clients/index.ts`                              | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
-| `apps/web/app/[locale]/(app)/[orgSlug]/(clients)/layout.tsx` | Builds `CLIENT_ACTIONS` from `actions/clients.ts` + `actions/portal.ts` and mounts the provider             |
+| `apps/copilot/lib/clients/index.ts`                              | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
+| `apps/copilot/app/[locale]/(app)/[orgSlug]/(clients)/layout.tsx` | Builds `CLIENT_ACTIONS` from `actions/clients.ts` + `actions/portal.ts` and mounts the provider             |
 
 ### Routes
 
@@ -418,8 +420,8 @@ until #163 moves them with the app.
 | `packages/employees/src/services/*`                        | Overview, attendance, leave, settings, payroll, records, fetch and CSV exports                     |
 | `packages/employees/src/components/*`                      | Today, calendar, leave, tracking, capacity, payroll, admin and dialog UI                           |
 | `packages/employees/src/components/actions.tsx`            | `EmployeeActions` port + `EmployeeActionsProvider` / `useEmployeeActions()`                        |
-| `apps/web/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
-| `apps/web/app/[locale]/(app)/[orgSlug]/employees/page.tsx` | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
+| `apps/copilot/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
+| `apps/copilot/app/[locale]/(app)/[orgSlug]/employees/page.tsx` | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
 
 ### Routes
 
@@ -462,7 +464,7 @@ packages until #190 replaces them with internal API calls.
 | Pages          | `/[locale]/portal`, `/[locale]/portal/projects/[projectId]`, `/[locale]/portal/projects/[projectId]/tasks/[taskId]`, `/[locale]/portal/documents`, `/[locale]/portal/meetings` (per-route rows below)                          |
 | Server actions | `actions/portal.ts` (invite, revoke, cancel invite, claim access, post message, mark seen, post task comment); `actions/meetings.ts` (portal create/cancel)                                                                   |
 | API            | `POST /api/portal/documents/upload`, `GET /api/portal/files/[fileId]/download`                                                                                                                                                |
-| Library        | `@workspace/portal` (`context`, `schemas`, `repository`, `service`, `runtime`, `types`, `components/*`); `apps/web/lib/portal/index.ts` binds Prisma, storage, files, projects, meetings, Better Auth, audit and notifications |
+| Library        | `@workspace/portal` (`context`, `schemas`, `repository`, `service`, `runtime`, `types`, `components/*`); `apps/copilot/lib/portal/index.ts` binds Prisma, storage, files, projects, meetings, Better Auth, audit and notifications |
 | Models         | `PortalInvite`, `Member.clientId` (identity); `Client` (clients); `Project`, `Task`, `ProjectMessage`, `TaskComment` (projects); `FileNode` (files)                                                                           |
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
@@ -481,8 +483,8 @@ packages until #190 replaces them with internal API calls.
 | `packages/portal/src/service.ts`   | `PortalService`: dashboard, project/task reads, documents, upload/download, seen state, access management and meetings                              |
 | `packages/portal/src/runtime.ts`   | `createPortalRuntime` binds db + storage + files + collaboration + meetings + invitations + audit + notifications                                  |
 | `packages/portal/src/components/*` | Portal header/nav, seen tracker, upload, discussion, task comments and meetings UI; actions come through `PortalActions`                           |
-| `apps/web/lib/portal/index.ts`     | Adapter: binds Prisma, `@workspace/storage`, `@workspace/files`, `@workspace/projects`, `@workspace/meetings`, Better Auth, audit and notifications |
-| `apps/web/lib/portal/context.ts`   | Adapter: resolves `Member.clientId` from Copilot's Better Auth session (`getPortalContext` / `isPortalMember`)                                     |
+| `apps/copilot/lib/portal/index.ts`     | Adapter: binds Prisma, `@workspace/storage`, `@workspace/files`, `@workspace/projects`, `@workspace/meetings`, Better Auth, audit and notifications |
+| `apps/copilot/lib/portal/context.ts`   | Adapter: resolves `Member.clientId` from Copilot's Better Auth session (`getPortalContext` / `isPortalMember`)                                     |
 
 ### Routes
 
@@ -557,7 +559,7 @@ Never bake secrets into an image.
 
 | Suite                     | Location                                                                                                                                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                                                                                                                                       |
+| Unit — Copilot shell      | `apps/copilot/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                                                                                                                                       |
 | Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest                                                                                                                           |
 | Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                                                                                                                     |
 | Unit — Clients/Employees  | `packages/clients/src/{access,import-export}.unit.test.ts` (role permissions, CSV export); `packages/employees/src/{access,exports}.unit.test.ts` (role/validator permissions, leave and audit exports)                                                        |
@@ -565,9 +567,9 @@ Never bake secrets into an image.
 | Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
-| E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
-| Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
-| Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
+| E2E                       | `apps/copilot/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
+| Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
+| Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
 | Boundaries                | `scripts/check-boundaries.mjs`                                                                                                                                                                                                                                 |
 | Prisma/migrations         | `scripts/{verify-prisma-schemas,verify-migrations}.mjs`                                                                                                                                                                                                        |
@@ -589,6 +591,9 @@ parentheses; keep the checklist honest rather than pre-checking it.
 
 ### Copilot (#149, #150, #151, #152, #175, #164, #165, #166, #190)
 
+- [x] Renamed from `apps/web` to `apps/copilot`, deployed from the
+      `asynchrone-space-copilot` image and chart at `copilot.asynchrone.space`
+      (#175).
 - [ ] Auth, 2FA, onboarding, organization selection, settings, billing, audit,
       search, help, feedback, MCP, platform handoff and the assistant run here.
 - [ ] OIDC authorization server, JWKS, consent and token lifecycle are unchanged.
@@ -663,7 +668,7 @@ parentheses; keep the checklist honest rather than pre-checking it.
 These are the concrete blockers the inventory exposes. They are covered by the
 phase issues rather than fixed in #146.
 
-1. `apps/web/lib/prisma.ts` re-exports `@workspace/db` (the monolith schema).
+1. `apps/copilot/lib/prisma.ts` re-exports `@workspace/db` (the monolith schema).
    Domain pages and actions still read every table through that one client.
 2. The assistant (`lib/assistant/tools.ts`) and MCP tools import the Projects,
    Files and Messages services in-process; calendar tools import

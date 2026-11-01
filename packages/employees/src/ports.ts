@@ -1,7 +1,7 @@
 /**
  * Ports the owning app binds in its adapter.
  *
- * The package never imports `apps/web/lib/*`: audit rows are injected so
+ * The package never imports `apps/copilot/lib/*`: audit rows are injected so
  * Employees can run inside Copilot today and inside `apps/employees` later
  * without changing the service.
  */

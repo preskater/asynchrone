@@ -3,8 +3,9 @@
 This document is the working contract for the split described in ADRs
 [0028](../adr/0028-split-workspace-into-domain-apps.md),
 [0029](../adr/0029-use-copilot-as-oauth-authorization-server.md),
-[0032](../adr/0032-give-each-app-its-own-database.md) and
-[0033](../adr/0033-keep-audit-export-and-deletion-consistent-across-databases.md).
+[0032](../adr/0032-give-each-app-its-own-database.md),
+[0033](../adr/0033-keep-audit-export-and-deletion-consistent-across-databases.md)
+and [0035](../adr/0035-rename-web-app-to-copilot.md).
 It is owned by the foundation milestone (#2) and expanded by the feature
 inventory in [#146](./feature-inventory.md).
 
@@ -103,7 +104,7 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
 - Cross-domain services are port-parameterized packages (#152): storage,
   notifications, integrations, AI, appearance, billing and audit. The owning
   app binds the pool, database client, provider or notifier in a thin adapter
-  (`apps/web/lib/*`); the package never opens a second app's database.
+  (`apps/copilot/lib/*`); the package never opens a second app's database.
 
 ## Validation
 
@@ -144,4 +145,6 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Calendars and meetings domain packages (#154)
 - [x] Projects domain package: repository, service, schemas, types, UI and repository sync (#153)
 - [x] Landing app extracted to `apps/landing` (#176)
+- [x] Customer app renamed to `apps/copilot`; it owns identity and serves
+      `copilot.asynchrone.space` (#175)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

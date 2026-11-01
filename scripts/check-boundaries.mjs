@@ -120,8 +120,8 @@ function workspaceAt(absolutePath) {
 
 /**
  * Resolve a bare import to a workspace package. Workspace apps are unscoped
- * (`web`, `control-tower`), so the check cannot rely on the `@workspace/`
- * prefix alone. A subpath such as `@workspace/ui/button` or `web/lib/x`
+ * (`copilot`, `control-tower`), so the check cannot rely on the `@workspace/`
+ * prefix alone. A subpath such as `@workspace/ui/button` or `copilot/lib/x`
  * resolves to its owning package.
  */
 function workspacePackageName(specifier, packages) {
@@ -151,9 +151,8 @@ function report(file, specifier, rule, message) {
 }
 
 const DB_OWNER_ALIASES = {
-  // The identity database is owned by the workspace shell; the app is still
-  // `web` during the migration and becomes `copilot` in milestone #1.
-  identity: new Set(["web", "copilot"]),
+  // Copilot owns the identity database (#175).
+  identity: new Set(["copilot"]),
 }
 
 function checkDbOwnership(importer, packageName, file, specifier) {
@@ -187,7 +186,10 @@ const MONOLITH_DATABASE = "@workspace/db"
 
 function checkMonolithDatabase(importer, file, specifier) {
   if (importer.appKey !== "control-tower") return
-  if (specifier !== MONOLITH_DATABASE && !specifier.startsWith(`${MONOLITH_DATABASE}/`)) {
+  if (
+    specifier !== MONOLITH_DATABASE &&
+    !specifier.startsWith(`${MONOLITH_DATABASE}/`)
+  ) {
     return
   }
   report(

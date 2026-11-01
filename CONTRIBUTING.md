@@ -45,7 +45,7 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    values:
 
    ```bash
-   cp apps/web/.env.example apps/web/.env
+   cp apps/copilot/.env.example apps/copilot/.env
    ```
 
    At minimum, set `DATABASE_URL` and a `BETTER_AUTH_SECRET` (any random
@@ -64,7 +64,7 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    `db:create` creates `asynchrone_identity`, the seven domain databases and
    their shadow databases from the fixed map in
    `packages/migrate/src/databases.mjs`. Provide the `*_DATABASE_URL` keys (see
-   `apps/web/.env.example`).
+   `apps/copilot/.env.example`).
 
 5. **Run the app:**
 
@@ -72,7 +72,7 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    npm run dev
    ```
 
-   The customer app is available at http://localhost:3000 and the control tower
+   The Copilot app is available at http://localhost:3000 and the control tower
    at http://localhost:3001.
 
 ## Project structure
@@ -82,7 +82,7 @@ workspaces.
 
 | Path                                                   | Description                                                           |
 | ------------------------------------------------------ | --------------------------------------------------------------------- |
-| `apps/web`                                             | Customer Next.js app (App Router, i18n, API + MCP + internal routes). |
+| `apps/copilot`                                         | Copilot: workspace shell, identity and OAuth 2.1/OIDC authorization server. |
 | `apps/control-tower`                                   | Internal platform administration app.                                 |
 | `packages/contracts`                                   | App/database registry, internal API contracts and typed clients.      |
 | `packages/audit`                                       | Per-app audit write/read/export/prune core.                           |
@@ -105,9 +105,9 @@ workspaces.
 | `npm run lint`                                       | Lint all workspaces.                                                                              |
 | `npm run typecheck`                                  | Type-check all workspaces.                                                                        |
 | `npm run format`                                     | Format with Prettier.                                                                             |
-| `npm run test:unit --workspace=web`                  | Vitest unit tests next to the app code.                                                           |
+| `npm run test:unit --workspace=copilot`                  | Vitest unit tests next to the app code.                                                           |
 | `npm run test:unit --workspace=@workspace/contracts` | Contract/client tests (repeat for `@workspace/audit`, `sagas`, `search`, `oidc`, `service-auth`). |
-| `npm run test:e2e --workspace=web`                   | Playwright against a migrated database.                                                           |
+| `npm run test:e2e --workspace=copilot`                   | Playwright against a migrated database.                                                           |
 | `npm run check:boundaries`                           | Enforce workspace and database ownership.                                                         |
 | `npm run verify:prisma-schemas`                      | Validate every generated Prisma schema.                                                           |
 

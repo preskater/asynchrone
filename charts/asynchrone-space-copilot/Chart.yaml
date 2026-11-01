@@ -1,0 +1,6 @@
+apiVersion: v2
+name: asynchrone-space-copilot
+description: "Copilot: workspace shell, identity and OAuth 2.1/OIDC authorization server"
+type: application
+version: 0.1.1
+appVersion: "0.0.1"

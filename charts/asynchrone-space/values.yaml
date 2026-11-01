@@ -2,7 +2,7 @@
 #
 # Secrets are never stored here. Create the two Secrets first:
 #
-#   asynchrone-space-web-secrets:           DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET,
+#   asynchrone-space-copilot-secrets:           DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET,
 #                                           optional OPENAI_API_KEY, RESEND_API_KEY,
 #                                           GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET
 #   asynchrone-space-control-tower-secrets: DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET
@@ -53,13 +53,13 @@ asynchrone-space-landing:
 # ---------------------------------------------------------------------------
 # Customer-facing app (the workspace shell until #175 moves it to Copilot)
 # ---------------------------------------------------------------------------
-asynchrone-space-web:
+asynchrone-space-copilot:
   enabled: true
 
-  # Release `asynchrone-space` yields the resources `asynchrone-space-web-*`.
-  nameOverride: web
+  # Release `asynchrone-space` yields the resources `asynchrone-space-copilot-*`.
+  nameOverride: copilot
   image:
-    repository: ghcr.io/preskater/asynchrone-space
+    repository: ghcr.io/preskater/asynchrone-space-copilot
     tag: ""
     pullPolicy: IfNotPresent
 
@@ -88,14 +88,14 @@ asynchrone-space-web:
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "10"
-    MCP_RESOURCE_URL: ""
+    MCP_RESOURCE_URL: https://copilot.asynchrone.space/mcp
     OPENAI_API_URL: ""
     ASSISTANT_MODEL: gpt-4o-mini
     EMAIL_FROM: ""
     REQUIRE_EMAIL_VERIFICATION: "false"
     GITHUB_CLIENT_ID: ""
     GITLAB_CLIENT_ID: ""
-    # Pair with TURNSTILE_SECRET_KEY in asynchrone-space-web-secrets.
+    # Pair with TURNSTILE_SECRET_KEY in asynchrone-space-copilot-secrets.
     TURNSTILE_SITE_KEY: ""
     SIGNUP_INVITE_ONLY: "false"
     SIGNUP_BLOCKED_EMAIL_DOMAINS: ""
@@ -108,7 +108,7 @@ asynchrone-space-web:
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ""
 
   secret:
-    existingSecret: asynchrone-space-web-secrets
+    existingSecret: asynchrone-space-copilot-secrets
 
   # Replace the former Vercel crons.
   cronjobs:
@@ -196,7 +196,7 @@ migrate:
     tag: ""
     pullPolicy: IfNotPresent
   imagePullSecrets: []
-  # Defaults to asynchrone-space-web.secret.existingSecret when empty.
+  # Defaults to asynchrone-space-copilot.secret.existingSecret when empty.
   existingSecret: ""
   secretKey: DATABASE_URL
   backoffLimit: 2
