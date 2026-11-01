@@ -3,7 +3,7 @@
   "ui": "tui",
   "tasks": {
     "generate": {
-      "cache": true,
+      "cache": false,
       "inputs": ["prisma/schema.prisma", "prisma.config.ts", "package.json"],
       "outputs": ["lib/generated/**"],
       "env": ["DATABASE_URL"]
