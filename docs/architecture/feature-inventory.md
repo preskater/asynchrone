@@ -197,22 +197,22 @@ pages and app wiring stay in Copilot until #160 moves them with the app.
 
 ### Package layout (#153)
 
-| Module                                     | Exports                                                                                                                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/projects/src/types.ts`           | Project, task, template, label, comment, activity and member types plus enum values                                                                           |
-| `packages/projects/src/schemas.ts`         | Zod inputs for projects, tasks, templates, labels, members, comments and portal policies                                                                       |
-| `packages/projects/src/repository.ts`      | `ProjectRepository` over the structural `ProjectDb` port                                                                                                       |
-| `packages/projects/src/service.ts`         | `ProjectService`; audit, notification and repository-sync ports are injected                                                                                   |
-| `packages/projects/src/task-comments.ts`   | `listTaskComments` / `createTaskComment` over the injected db + notifier                                                                                       |
-| `packages/projects/src/thread.ts`          | `listProjectMessages` / `createProjectMessage` over the injected db + notifier                                                                                 |
-| `packages/projects/src/task-key.ts`        | Shared identifier prefix/allocation used by the service and repository sync                                                                                    |
-| `packages/projects/src/integrations/*`     | `RepositoryConnectionRepository`, `RepositoryIntegrationService`, `RepositoryWebhookHandler`, sync helpers, schemas and types                                  |
-| `packages/projects/src/ui/store.tsx`       | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`                                            |
-| `packages/projects/src/ui/actions.tsx`     | `ProjectActions` contract + `useProjectActions()`                                                                                                              |
-| `packages/projects/src/components/*`       | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)                                           |
-| `apps/web/lib/projects/index.ts`           | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                                                   |
-| `apps/web/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                                                  |
-| `apps/web/lib/integrations/index.ts`       | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                                                          |
+| Module                                            | Exports                                                                                                                       |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/projects/src/types.ts`                  | Project, task, template, label, comment, activity and member types plus enum values                                           |
+| `packages/projects/src/schemas.ts`                | Zod inputs for projects, tasks, templates, labels, members, comments and portal policies                                      |
+| `packages/projects/src/repository.ts`             | `ProjectRepository` over the structural `ProjectDb` port                                                                      |
+| `packages/projects/src/service.ts`                | `ProjectService`; audit, notification and repository-sync ports are injected                                                  |
+| `packages/projects/src/task-comments.ts`          | `listTaskComments` / `createTaskComment` over the injected db + notifier                                                      |
+| `packages/projects/src/thread.ts`                 | `listProjectMessages` / `createProjectMessage` over the injected db + notifier                                                |
+| `packages/projects/src/task-key.ts`               | Shared identifier prefix/allocation used by the service and repository sync                                                   |
+| `packages/projects/src/integrations/*`            | `RepositoryConnectionRepository`, `RepositoryIntegrationService`, `RepositoryWebhookHandler`, sync helpers, schemas and types |
+| `packages/projects/src/ui/store.tsx`              | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`           |
+| `packages/projects/src/ui/actions.tsx`            | `ProjectActions` contract + `useProjectActions()`                                                                             |
+| `packages/projects/src/components/*`              | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)         |
+| `apps/web/lib/projects/index.ts`                  | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                 |
+| `apps/web/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                        |
+| `apps/web/lib/integrations/index.ts`              | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                        |
 
 App-only imports are forbidden in the package (`npm run check:boundaries`).
 `member`, `user` and `account` remain in the `ProjectDb` port because the
@@ -221,21 +221,21 @@ they move behind the identity internal API in #190.
 
 ### Routes
 
-| Route                                                          | Kind         | Inventory                                                                                              |
-| -------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| `/[locale]/(app)/[orgSlug]/projects`                           | Page         | `projects/page.tsx`; grid + create dialog from `@workspace/projects/components/project`                |
-| `/[locale]/(app)/[orgSlug]/projects/loading`                   | Loading      | `projects/loading.tsx`                                                                                  |
-| `/[locale]/(app)/[orgSlug]/projects/[projectId]`               | Page         | `projects/[projectId]/page.tsx`; guards with `projectService.get`, renders `ProjectWorkspace`           |
-| `/[locale]/(app)/[orgSlug]/projects/[projectId]/loading`       | Loading      | `projects/[projectId]/loading.tsx`                                                                      |
-| `/[locale]/(app)/[orgSlug]/projects/[projectId]/not-found`     | Not found    | `projects/[projectId]/not-found.tsx`                                                                    |
-| `/[locale]/portal/projects/[projectId]`                        | Portal page  | `portal/projects/[projectId]/page.tsx`; reads `portalService` (projects thread/comments)               |
-| `/[locale]/portal/projects/[projectId]/tasks/[taskId]`         | Portal page  | `portal/.../tasks/[taskId]/page.tsx`; reads `portalService` + task comments                             |
-| `/[locale]/(app)/layout`                                       | Layout       | Builds `PROJECT_ACTIONS` from the app's server actions and passes them + `canManageMembers` to the store |
-| `POST /api/webhooks/repositories/[connectionId]`               | API          | `repositoryWebhookHandler` from the package adapter                                                     |
-| `GET /api/cron/repository-sync`                                | Cron         | `repositoryIntegrationService.syncAllConnections()` from the package adapter                            |
-| `/api/health`                                                  | API          | App health check (not project domain)                                                                   |
-| MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …)   | MCP tools    | `apps/web/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
-| Assistant tools                                                 | In-process   | `apps/web/lib/assistant/tools.ts` → `projectService` adapter                                            |
+| Route                                                        | Kind        | Inventory                                                                                                |
+| ------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `/[locale]/(app)/[orgSlug]/projects`                         | Page        | `projects/page.tsx`; grid + create dialog from `@workspace/projects/components/project`                  |
+| `/[locale]/(app)/[orgSlug]/projects/loading`                 | Loading     | `projects/loading.tsx`                                                                                   |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]`             | Page        | `projects/[projectId]/page.tsx`; guards with `projectService.get`, renders `ProjectWorkspace`            |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]/loading`     | Loading     | `projects/[projectId]/loading.tsx`                                                                       |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]/not-found`   | Not found   | `projects/[projectId]/not-found.tsx`                                                                     |
+| `/[locale]/portal/projects/[projectId]`                      | Portal page | `portal/projects/[projectId]/page.tsx`; reads `portalService` (projects thread/comments)                 |
+| `/[locale]/portal/projects/[projectId]/tasks/[taskId]`       | Portal page | `portal/.../tasks/[taskId]/page.tsx`; reads `portalService` + task comments                              |
+| `/[locale]/(app)/layout`                                     | Layout      | Builds `PROJECT_ACTIONS` from the app's server actions and passes them + `canManageMembers` to the store |
+| `POST /api/webhooks/repositories/[connectionId]`             | API         | `repositoryWebhookHandler` from the package adapter                                                      |
+| `GET /api/cron/repository-sync`                              | Cron        | `repositoryIntegrationService.syncAllConnections()` from the package adapter                             |
+| `/api/health`                                                | API         | App health check (not project domain)                                                                    |
+| MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …) | MCP tools   | `apps/web/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
+| Assistant tools                                              | In-process  | `apps/web/lib/assistant/tools.ts` → `projectService` adapter                                             |
 
 Repository integration (GitHub/GitLab) is part of Projects and also writes
 project activity. `GITHUB_*` / `GITLAB_*` OAuth env vars are read by the
@@ -247,10 +247,10 @@ Target: `apps/calendars` / `@workspace/calendars` + `@workspace/meetings`.
 
 ### Domain packages (#154)
 
-| Package              | Ships                                                                                                                              | Bound by                                                                                   |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers                                        | `apps/web/lib/calendars/index.ts` binds `CalendarDb` over the transitional Prisma client   |
-| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters                             | `apps/web/lib/meetings/index.ts` binds `MeetingDb` and Copilot's notification inbox         |
+| Package                | Ships                                                                                                  | Bound by                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers            | `apps/web/lib/calendars/index.ts` binds `CalendarDb` over the transitional Prisma client |
+| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters | `apps/web/lib/meetings/index.ts` binds `MeetingDb` and Copilot's notification inbox      |
 
 Both packages are Next-free and depend only on `@workspace/core` and
 `@workspace/organization`. Repositories take narrow structural ports
@@ -260,18 +260,18 @@ client. Unit tests use the repository ports.
 
 ### Routes and surfaces
 
-| Surface            | Location                                                                                                                                                       | Notes                                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Calendars page     | `apps/web/app/[locale]/(app)/[orgSlug]/calendars/{page,loading,not-found}.tsx`                                                                                | Loads its own data through `listCalendarDataAction`; the app layout only mounts an empty provider |
-| Meeting inbox      | Dialog on the calendars page (`apps/web/components/meetings/meeting-requests-dialog.tsx`)                                                                    | No route of its own                                                                            |
-| Meeting settings   | `apps/web/app/[locale]/(app)/[orgSlug]/settings/page.tsx` + `components/meetings/meeting-settings-form.tsx`                                                   | Owners/admins                                                                                  |
-| Portal meetings    | `apps/web/app/[locale]/portal/meetings/page.tsx`                                                                                                              | Server-renders `meetingService.getPortalMeetings`                                              |
-| Server actions     | `actions/calendars.ts` (list data/events, create/update/move/delete event, add/toggle calendar, respond) and `actions/meetings.ts` (portal create/cancel, team list/accept/decline, settings get/update) | Set `"use server"`; URLs unchanged |
-| API                | `/api/health` only                                                                                                                                            | No dedicated calendar or meeting route                                                         |
-| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings` | `apps/web/lib/mcp/tools/{calendars,meetings}.ts`                                               |
-| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `AuditLog`                                  | `asynchrone_calendars` (`@workspace/db-calendars`)                                             |
-| Audit actions      | none today                                                                                                                                                     |                                                                                                |
-| Internal endpoints | search / export / delete as above                                                                                                                              | Not wired yet                                                                                  |
+| Surface            | Location                                                                                                                                                                                                 | Notes                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Calendars page     | `apps/web/app/[locale]/(app)/[orgSlug]/calendars/{page,loading,not-found}.tsx`                                                                                                                           | Loads its own data through `listCalendarDataAction`; the app layout only mounts an empty provider |
+| Meeting inbox      | Dialog on the calendars page (`apps/web/components/meetings/meeting-requests-dialog.tsx`)                                                                                                                | No route of its own                                                                               |
+| Meeting settings   | `apps/web/app/[locale]/(app)/[orgSlug]/settings/page.tsx` + `components/meetings/meeting-settings-form.tsx`                                                                                              | Owners/admins                                                                                     |
+| Portal meetings    | `apps/web/app/[locale]/portal/meetings/page.tsx`                                                                                                                                                         | Server-renders `meetingService.getPortalMeetings`                                                 |
+| Server actions     | `actions/calendars.ts` (list data/events, create/update/move/delete event, add/toggle calendar, respond) and `actions/meetings.ts` (portal create/cancel, team list/accept/decline, settings get/update) | Set `"use server"`; URLs unchanged                                                                |
+| API                | `/api/health` only                                                                                                                                                                                       | No dedicated calendar or meeting route                                                            |
+| MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings`                     | `apps/web/lib/mcp/tools/{calendars,meetings}.ts`                                                  |
+| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `AuditLog`                                                                           | `asynchrone_calendars` (`@workspace/db-calendars`)                                                |
+| Audit actions      | none today                                                                                                                                                                                               |                                                                                                   |
+| Internal endpoints | search / export / delete as above                                                                                                                                                                        | Not wired yet                                                                                     |
 
 ## Files
 
@@ -317,39 +317,103 @@ Target: `apps/messages` / `@workspace/messaging`.
 
 ## Clients
 
-Target: `apps/clients` / `@workspace/clients`. Renamed from Clients by #147.
+Target: `apps/clients` / `@workspace/clients`. Renamed from CRM by #147 and
+extracted in #157.
+
+The package owns the CRM clients, contacts, pipelines, deals, activities, field
+definitions, documents, access checks, schemas, services, CSV/date helpers,
+types and UI. Server actions, pages and the database/audit/notification wiring
+stay in Copilot until #163 moves them with the app.
 
 | Surface            | Inventory                                                                                                                                                                                                                                                   |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pages              | `/[orgSlug]/(clients)/clients`, `clients/[clientId]`, `contacts`, `contacts/[contactId]`, `deals`, `deals/[dealId]`                                                                                                                                         |
+| Pages              | `/[orgSlug]/(clients)/clients`, `clients/[clientId]`, `contacts`, `contacts/[contactId]`, `deals`, `deals/[dealId]` (per-route rows below)                                                                                                                  |
 | Server actions     | `actions/clients.ts` (clients, contacts, deals, pipelines/stages, custom fields, activities, CSV import/export, document links, project links)                                                                                                              |
 | MCP tools          | `get_clients_overview`, `get_client`, `get_deal`, `save_client`, `save_contact`, `save_deal`, `move_deal`, `log_client_activity`, `list_client_documents`, `link_client_document`, `unlink_client_document`, `link_client_project`, `unlink_client_project` |
-| Prisma models      | `Client`, `Contact`, `ContactCompany`, `Pipeline`, `PipelineStage`, `Deal`, `DealContact`, `CrmActivity`, `CrmFieldDefinition`, `CrmDocument`, `AuditLog`                                                                                                   |
+| Prisma models      | `Client`, `Contact`, `ContactCompany`, `Pipeline`, `PipelineStage`, `Deal`, `DealContact`, `ClientActivity`, `ClientFieldDefinition`, `ClientDocument`, `AuditLog`                                                                                          |
 | Audit actions      | `client.*`, `contact.*`, `deal.*`, `pipeline.*`, `stage.*`, `clientsField.*`, `activity.*`, `client.project.*`, `client.document.linked`                                                                                                                    |
 | Audit entities     | `client`, `contact`, `deal`, `pipeline`, `stage`, `clientsField`, `activity`                                                                                                                                                                                |
 | Cross-domain reads | project options for `link_client_project`; file options for document linking (both move behind internal APIs)                                                                                                                                               |
 | Internal endpoints | search / export / delete as above                                                                                                                                                                                                                           |
 
-`#147` renames the models to `ClientActivity`, `ClientFieldDefinition`,
-`ClientDocument` and the tables with an `ALTER TABLE RENAME` migration.
+### Package layout (#157)
+
+| Module                                                       | Exports                                                                                                     |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `packages/clients/src/access.ts`                             | `resolveClientAccess` (edit / manage / export ranks)                                                        |
+| `packages/clients/src/schemas.ts`                            | Zod inputs for clients, contacts, deals, pipelines, stages, fields, activities, imports, exports and links  |
+| `packages/clients/src/types.ts`                              | Client, contact, deal, pipeline, field, document and overview types plus enum values                        |
+| `packages/clients/src/dates.ts`                              | `YYYY-MM-DD` day-key helpers used by custom date fields                                                     |
+| `packages/clients/src/repository.ts`                         | `ClientsRepository` over the Prisma client; audit rows are injected through `ClientAudit`                   |
+| `packages/clients/src/service.ts`                            | `ClientsService` facade over the sub-domain services; notifications are injected through `ClientNotify`     |
+| `packages/clients/src/services/*`                            | Overview, companies, contacts, deals, pipelines, fields, documents, links, activities and CSV import/export |
+| `packages/clients/src/components/*`                          | Clients/contacts/deals UI, dialogs, timeline, documents, custom fields, pipeline settings and portal access |
+| `packages/clients/src/components/actions.tsx`                | `ClientActions` port + `ClientActionsProvider` / `useClientActions()`                                       |
+| `packages/clients/src/components/use-clients.ts`             | Formatting, CSV download and `datetime-local` helpers                                                       |
+| `apps/web/lib/clients/index.ts`                              | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
+| `apps/web/app/[locale]/(app)/[orgSlug]/(clients)/layout.tsx` | Builds `CLIENT_ACTIONS` from `actions/clients.ts` + `actions/portal.ts` and mounts the provider             |
+
+### Routes
+
+| Route                                                      | Kind   | Inventory                                                                            |
+| ---------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `/[locale]/(app)/[orgSlug]/(clients)`                      | Layout | `(clients)/layout.tsx`; `ClientsTabs` + `ClientActionsProvider`                      |
+| `/[locale]/(app)/[orgSlug]/(clients)/clients`              | Page   | `clients/page.tsx`; `clientsService.getOverview` → `ClientsPanel`                    |
+| `/[locale]/(app)/[orgSlug]/(clients)/clients/[clientId]`   | Page   | `clients/[clientId]/page.tsx`; `clientsService.getClientDetail` → `ClientDetail`     |
+| `/[locale]/(app)/[orgSlug]/(clients)/contacts`             | Page   | `contacts/page.tsx`; `clientsService.getOverview` → `ContactsPanel`                  |
+| `/[locale]/(app)/[orgSlug]/(clients)/contacts/[contactId]` | Page   | `contacts/[contactId]/page.tsx`; `clientsService.getContactDetail` → `ContactDetail` |
+| `/[locale]/(app)/[orgSlug]/(clients)/deals`                | Page   | `deals/page.tsx`; `clientsService.getOverview` → `DealsWorkspace`                    |
+| `/[locale]/(app)/[orgSlug]/(clients)/deals/[dealId]`       | Page   | `deals/[dealId]/page.tsx`; `clientsService.getDealDetail` → `DealDetail`             |
 
 ## Employees
 
-Target: `apps/employees` / `@workspace/employees`. Renamed from Employees by #147.
+Target: `apps/employees` / `@workspace/employees`. Renamed from HR by #147 and
+extracted in #157.
 
-| Surface            | Inventory                                                                                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pages              | `/[orgSlug]/employees` (becomes `/[orgSlug]/employees` with a permanent redirect)                                                                                                                                         |
-| Server actions     | `actions/employees.ts` (attendance, time tracking, payroll, leave, balances, allowances, settings, profiles, salaries, project Employees settings, CSV export)                                                            |
-| MCP tools          | `get_employees_overview`, `list_attendance`, `set_attendance`, `request_leave`, `decide_leave`, `get_time_tracking`                                                                                                       |
-| Prisma models      | `HrProfile`, `AttendanceEntry`, `LeaveRequest`, `LeaveBalance`, `LeaveAdjustment`, `HrSettings`, `SalaryProfile`, `InternalActivity`, `AuditLog`                                                                          |
-| Audit actions      | `client.create`, `client.update` (Employees payroll clients), `project.update`, `settings.update`, `salary.update`, `profile.update`, `balance.set`, `balance.adjust`, `attendance.clear`, `leave.create`, `leave.cancel` |
-| Audit entities     | `employeeProfile`, `employeeSettings`, `salaryProfile`, `attendance`, `leaveRequest`, `leaveBalance`, `leaveAdjustment`, `internalActivity`                                                                               |
-| Cross-domain reads | project names/tasks for time allocation (internal projects API after the split)                                                                                                                                           |
-| Internal endpoints | search / export / delete as above                                                                                                                                                                                         |
+The package owns employee profiles, attendance, leave, balances, adjustments,
+settings, salary, capacity, access checks, schemas, services, CSV/date helpers,
+types and UI. Salary and payroll stay behind `isAdmin`/`requireAdmin` exactly as
+before. Server actions, pages and the database/audit wiring stay in Copilot
+until #163 moves them with the app.
 
-`#147` renames the models to `EmployeeProfile` and `EmployeeSettings` and the
-tables with an `ALTER TABLE RENAME` migration.
+| Surface            | Inventory                                                                                                                                                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pages              | `/[orgSlug]/employees` (per-route rows below)                                                                                                                                                                   |
+| Server actions     | `actions/employees.ts` (attendance, time tracking, payroll, leave, balances, allowances, settings, profiles, salaries, project employee settings, CSV export)                                                   |
+| MCP tools          | `get_employees_overview`, `list_attendance`, `set_attendance`, `request_leave`, `decide_leave`, `get_time_tracking`                                                                                             |
+| Prisma models      | `EmployeeProfile`, `AttendanceEntry`, `LeaveRequest`, `LeaveBalance`, `LeaveAdjustment`, `EmployeeSettings`, `SalaryProfile`, `InternalActivity`, `AuditLog`                                                    |
+| Audit actions      | `client.create`, `client.update` (payroll clients), `project.update`, `settings.update`, `salary.update`, `profile.update`, `balance.set`, `balance.adjust`, `attendance.clear`, `leave.create`, `leave.cancel` |
+| Audit entities     | `employeeProfile`, `employeeSettings`, `salaryProfile`, `attendance`, `leaveRequest`, `leaveBalance`, `leaveAdjustment`, `internalActivity`                                                                     |
+| Cross-domain reads | project names/tasks for time allocation (internal projects API after the split)                                                                                                                                 |
+| Internal endpoints | search / export / delete as above                                                                                                                                                                               |
+
+### Package layout (#157)
+
+| Module                                                     | Exports                                                                                            |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `packages/employees/src/access.ts`                         | `resolveEmployeeAccess` (admin / validator / track ranks)                                          |
+| `packages/employees/src/schemas.ts`                        | Zod inputs for attendance, leave, balances, allowances, settings, profiles, salaries and exports   |
+| `packages/employees/src/types.ts`                          | Employee profile, attendance, leave, balance, salary, overview and capacity types plus enum values |
+| `packages/employees/src/date-utils.ts`                     | Day/week/month key arithmetic, business days and local-date helpers                                |
+| `packages/employees/src/holidays.ts`                       | French public holidays and working-day checks                                                      |
+| `packages/employees/src/capacity.ts`                       | Capacity month/week/row/total computation                                                          |
+| `packages/employees/src/csv.ts`                            | Re-export of `@workspace/core/csv` (`toCsv`, `formatCsvNumber`)                                    |
+| `packages/employees/src/alerts.ts`                         | Dashboard alerts (missing entries, pending leave, low balances)                                    |
+| `packages/employees/src/utils.ts`                          | Leave halves, working-day ranges, hours formatting and entry lookup                                |
+| `packages/employees/src/repository.ts`                     | `EmployeesRepository` over the Prisma client; audit rows are injected through `EmployeeAudit`      |
+| `packages/employees/src/service.ts`                        | `EmployeesService` facade over the sub-domain services                                             |
+| `packages/employees/src/services/*`                        | Overview, attendance, leave, settings, payroll, records, fetch and CSV exports                     |
+| `packages/employees/src/components/*`                      | Today, calendar, leave, tracking, capacity, payroll, admin and dialog UI                           |
+| `packages/employees/src/components/actions.tsx`            | `EmployeeActions` port + `EmployeeActionsProvider` / `useEmployeeActions()`                        |
+| `apps/web/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
+| `apps/web/app/[locale]/(app)/[orgSlug]/employees/page.tsx` | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
+
+### Routes
+
+| Route                                         | Kind    | Inventory                                                                                     |
+| --------------------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
+| `/[locale]/(app)/[orgSlug]/employees`         | Page    | `employees/page.tsx`; `employeesService.getOverview` → `EmployeesWorkspace` with the provider |
+| `/[locale]/(app)/[orgSlug]/employees/loading` | Loading | `employees/loading.tsx`; `GridSkeleton`                                                       |
 
 ## Control tower
 
@@ -447,19 +511,20 @@ Never bake secrets into an image.
 
 ## Tests
 
-| Suite                     | Location                                                                                                                                     |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
-| Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest              |
-| Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                  |
+| Suite                     | Location                                                                                                                                                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                                                                                                                                       |
+| Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest                                                                                                                           |
+| Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                                                                                                                     |
+| Unit — Clients/Employees  | `packages/clients/src/{access,import-export}.unit.test.ts` (role permissions, CSV export); `packages/employees/src/{access,exports}.unit.test.ts` (role/validator permissions, leave and audit exports)                                                        |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
-| Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts` |
-| E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                    |
-| Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts` |
-| Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                      |
-| Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                  |
-| Boundaries                | `scripts/check-boundaries.mjs`                                                                                                               |
-| Prisma/migrations         | `scripts/{verify-prisma-schemas,verify-migrations}.mjs`                                                                                      |
+| Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
+| E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
+| Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts`                                                                                                                   |
+| Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
+| Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
+| Boundaries                | `scripts/check-boundaries.mjs`                                                                                                                                                                                                                                 |
+| Prisma/migrations         | `scripts/{verify-prisma-schemas,verify-migrations}.mjs`                                                                                                                                                                                                        |
 
 There is no general test script. Add a unit test next to a non-trivial
 extraction; #159 and #210 add the cross-domain and end-to-end coverage.
@@ -522,16 +587,18 @@ parentheses; keep the checklist honest rather than pre-checking it.
 
 ### Clients (#157, #163)
 
-- [ ] `#147` rename has landed and no `clients*` identifier remains.
-- [ ] Clients/contacts/deals/pipelines/fields/activities pages, actions and MCP tools.
+- [x] `#147` rename has landed and no `crm*` identifier remains in the package.
+- [x] Clients/contacts/deals/pipelines/fields/activities pages, actions and MCP tools.
+- [x] `@workspace/clients` owns the repository, service, schemas, access checks, CSV/date helpers, types and UI (`#157`).
 - [ ] Models live in `asynchrone_clients`; document links reference files by id only.
 - [ ] Project linking uses the projects internal API.
 - [ ] Audit, search, export and deletion endpoints are wired.
 
 ### Employees (#157, #163)
 
-- [ ] `#147` rename has landed and no `employees*` identifier remains.
-- [ ] Attendance, leave, capacity, payroll, settings, profile and CSV export.
+- [x] `#147` rename has landed and no `hr*` identifier remains in the package.
+- [x] Attendance, leave, capacity, payroll, settings, profile and CSV export.
+- [x] `@workspace/employees` owns the repository, service, schemas, access checks, CSV/date helpers, types and UI; salary stays behind `isAdmin` (`#157`).
 - [ ] Models live in `asynchrone_employees`.
 - [ ] Project allocation uses the projects internal API.
 - [ ] Audit, search, export and deletion endpoints are wired.
@@ -564,10 +631,11 @@ phase issues rather than fixed in #146.
 6. Notifications are written directly to the identity database by the Copilot
    web app; domain apps must use `POST /internal/v1/notifications`.
 
-The #147 rename is complete: the route group is `(clients)`, the folders are
-`lib/clients` and `lib/employees`, the tables are `clientActivity`,
-`clientFieldDefinition`, `clientDocument`, `employeeProfile` and
-`employeeSettings`, and the MCP tools use `clients_*` / `employees_*`.
+The #147 rename is complete: the route group is `(clients)`, the packages are
+`@workspace/clients` and `@workspace/employees` (extracted in #157), the tables
+are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
+`employeeProfile` and `employeeSettings`, and the MCP tools use `clients_*` /
+`employees_*`.
 
 ## How to update this document
 

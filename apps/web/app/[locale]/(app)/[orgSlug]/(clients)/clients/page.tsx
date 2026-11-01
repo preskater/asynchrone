@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 
-import { ClientsPanel } from "@/components/clients/clients-panel"
+import { ClientsPanel } from "@workspace/clients/components/clients-panel"
 
 import { auth } from "@/lib/auth"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"

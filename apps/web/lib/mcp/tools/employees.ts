@@ -5,7 +5,7 @@ import {
   attendanceStatusSchema,
   createLeaveBase,
   fetchRangeSchema,
-} from "@/lib/employees/schemas"
+} from "@workspace/employees/schemas"
 
 import type { McpTool } from "./projects"
 

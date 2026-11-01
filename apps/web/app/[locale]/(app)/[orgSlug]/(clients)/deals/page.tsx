@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 
-import { DealsWorkspace } from "@/components/clients/deals-workspace"
+import { DealsWorkspace } from "@workspace/clients/components/deals-workspace"
 
 import { auth } from "@/lib/auth"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
