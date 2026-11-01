@@ -74,6 +74,7 @@ export function createNextConfig(
       "@workspace/ui",
       "@workspace/core",
       "@workspace/auth",
+      "@workspace/organization",
       "@workspace/i18n",
       ...(options.transpilePackages ?? []),
     ],

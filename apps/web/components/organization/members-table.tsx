@@ -38,8 +38,8 @@ import {
 
 import { authClient } from "@/lib/auth-client"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { ORG_ROLES, roleRank, type OrgRole } from "@/lib/organization/roles"
-import { getInitials, parseRoles } from "@/lib/organization/utils"
+import { ORG_ROLES, roleRank, type OrgRole } from "@workspace/organization/roles"
+import { getInitials, parseRoles } from "@workspace/organization/utils"
 
 export interface OrgMember {
   id: string

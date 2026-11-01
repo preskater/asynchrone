@@ -1,6 +1,6 @@
 import type { OrgPlan } from "@workspace/db/plans"
 
-import { parseRoles } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/utils"
 
 /**
  * Pure claim construction for the OAuth provider. Keeping this out of

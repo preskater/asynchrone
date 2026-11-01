@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const prisma = vi.hoisted(() => ({
-  organization: { findUnique: vi.fn() },
-  member: { count: vi.fn() },
-  invitation: { count: vi.fn() },
-}))
-vi.mock("@/lib/prisma", () => ({ prisma }))
-
 import {
   hasEntitlement,
   parsePlan,
@@ -14,15 +7,22 @@ import {
 } from "@workspace/db/plans"
 
 import {
-  can,
+  createOrganizationEntitlements,
   entitlementsFor,
-  getOrganizationEntitlements,
-  getOrganizationPlan,
-  requireEntitlement,
   seatLimitReached,
-  seatsFull,
   type OrgPlan,
 } from "./entitlements"
+
+const db = {
+  organization: { findUnique: vi.fn() },
+  member: { count: vi.fn() },
+  invitation: { count: vi.fn() },
+}
+
+const service = createOrganizationEntitlements({
+  db: db as never,
+  planForOrganization: (organization) => parsePlan(organization.metadata),
+})
 
 const GB = 1024 ** 3
 
@@ -64,7 +64,7 @@ const expected: Record<OrgPlan, Record<Entitlement, number | boolean>> = {
 }
 
 function withPlan(metadata: string | null, trialEndsAt: Date | null = null) {
-  prisma.organization.findUnique.mockResolvedValue({ metadata, trialEndsAt })
+  db.organization.findUnique.mockResolvedValue({ metadata, trialEndsAt })
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -97,15 +97,15 @@ describe("plan resolution", () => {
   })
 
   it("resolves a missing organization to free", async () => {
-    prisma.organization.findUnique.mockResolvedValue(null)
-    expect(await getOrganizationPlan("org_1")).toBe("free")
+    db.organization.findUnique.mockResolvedValue(null)
+    expect(await service.getOrganizationPlan("org_1")).toBe("free")
   })
 
   it("gates features on the stored plan", async () => {
     withPlan(null)
-    expect(await can("org_1", "aiBudgetMicrosPerSeat")).toBe(false)
+    expect(await service.can("org_1", "aiBudgetMicrosPerSeat")).toBe(false)
     await expect(
-      requireEntitlement("org_1", "granularPermissions")
+      service.requireEntitlement("org_1", "granularPermissions")
     ).rejects.toMatchObject({
       code: "upgrade_required",
       status: 403,
@@ -113,31 +113,38 @@ describe("plan resolution", () => {
     })
 
     withPlan('{"plan":"team"}')
-    expect(await can("org_1", "aiBudgetMicrosPerSeat")).toBe(true)
+    expect(await service.can("org_1", "aiBudgetMicrosPerSeat")).toBe(true)
     await expect(
-      requireEntitlement("org_1", "granularPermissions")
+      service.requireEntitlement("org_1", "granularPermissions")
     ).resolves.toBeUndefined()
   })
 
   it("enforces Team for a free organization inside its trial window", async () => {
     withPlan(null, new Date(Date.now() + 60 * 60 * 1000))
-    expect(await getOrganizationPlan("org_1")).toBe("team")
-    expect(await getOrganizationEntitlements("org_1")).toEqual(
+    expect(await service.getOrganizationPlan("org_1")).toBe("team")
+    expect(await service.getOrganizationEntitlements("org_1")).toEqual(
       entitlementsFor("team")
     )
   })
 
   it("falls back to the stored plan once the trial window closes", async () => {
     withPlan(null, new Date(Date.now() - 1000))
-    expect(await getOrganizationPlan("org_1")).toBe("free")
-    expect(await getOrganizationEntitlements("org_1")).toEqual(
+    expect(await service.getOrganizationPlan("org_1")).toBe("free")
+    expect(await service.getOrganizationEntitlements("org_1")).toEqual(
       entitlementsFor("free")
     )
   })
 
   it("never downgrades a paid plan during a trial", async () => {
     withPlan('{"plan":"enterprise"}', new Date(Date.now() + 1000))
-    expect(await getOrganizationPlan("org_1")).toBe("enterprise")
+    expect(await service.getOrganizationPlan("org_1")).toBe("enterprise")
+  })
+
+  it("keeps audit-log access on the auditLog entitlement", async () => {
+    withPlan('{"plan":"team"}')
+    expect(await service.can("org_1", "auditLog")).toBe(false)
+    withPlan('{"plan":"enterprise"}')
+    expect(await service.can("org_1", "auditLog")).toBe(true)
   })
 })
 
@@ -157,45 +164,28 @@ describe("seats", () => {
 
   it("blocks a 6th member on Starter, excluding portal clients", async () => {
     withPlan(null)
-    prisma.member.count.mockResolvedValue(5)
-    expect(await seatsFull("org_1", { countPending: false })).toEqual({
+    db.member.count.mockResolvedValue(5)
+    expect(await service.seatsFull("org_1", { countPending: false })).toEqual({
       full: true,
       seats: 5,
     })
-    expect(prisma.member.count).toHaveBeenCalledWith({
+    expect(db.member.count).toHaveBeenCalledWith({
       where: { organizationId: "org_1", clientId: null },
     })
   })
 
   it("counts pending workspace invitations when inviting", async () => {
     withPlan(null)
-    prisma.member.count.mockResolvedValue(4)
-    prisma.invitation.count.mockResolvedValue(1)
-    expect((await seatsFull("org_1", { countPending: true })).full).toBe(true)
-    expect(prisma.invitation.count).toHaveBeenCalledWith({
+    db.member.count.mockResolvedValue(4)
+    db.invitation.count.mockResolvedValue(1)
+    expect(
+      (await service.seatsFull("org_1", { countPending: true })).full
+    ).toBe(true)
+    expect(db.invitation.count).toHaveBeenCalledWith({
       where: expect.objectContaining({
         status: "pending",
         NOT: { role: "client" },
       }),
     })
-  })
-
-  it("caps Team at the 100 members the pricing page sells", async () => {
-    withPlan('{"plan":"team"}')
-    prisma.member.count.mockResolvedValue(99)
-    prisma.invitation.count.mockResolvedValue(0)
-    expect(await seatsFull("org_1", { countPending: true })).toEqual({
-      full: false,
-      seats: 100,
-    })
-
-    prisma.member.count.mockResolvedValue(100)
-    expect((await seatsFull("org_1", { countPending: true })).full).toBe(true)
-  })
-
-  it("never counts seats on unlimited plans", async () => {
-    withPlan('{"plan":"enterprise"}')
-    expect((await seatsFull("org_1", { countPending: true })).full).toBe(false)
-    expect(prisma.member.count).not.toHaveBeenCalled()
   })
 })

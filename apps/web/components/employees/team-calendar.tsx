@@ -59,7 +59,7 @@ import { ATTENDANCE_STATUSES } from "@/lib/employees/types"
 import { entryIndex, entryOn, leaveStatusOnDate } from "@/lib/employees/utils"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { getInitials } from "@/lib/organization/utils"
+import { getInitials } from "@workspace/organization/utils"
 
 import { EntryDialog } from "./entry-dialog"
 import { useTodayKey } from "./use-employees"

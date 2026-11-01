@@ -1,7 +1,7 @@
 "use client"
 
 import { authClient } from "@/lib/auth-client"
-import { parseRoles } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/utils"
 
 type OrgPermissions = {
   organization?: ("update" | "delete")[]

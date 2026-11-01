@@ -38,8 +38,8 @@ import {
 } from "@workspace/ui/components/tabs"
 
 import { authClient } from "@/lib/auth-client"
-import { roleRank } from "@/lib/organization/roles"
-import { parseRoles } from "@/lib/organization/utils"
+import { roleRank } from "@workspace/organization/roles"
+import { parseRoles } from "@workspace/organization/utils"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 
 /** Tab ids are part of the URL (`?tab=billing`), so links can deep-link here. */

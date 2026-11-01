@@ -12,7 +12,7 @@ import type {
 } from "@workspace/contracts"
 
 import { planForOrganization } from "@/lib/billing/plans"
-import { parseRoles } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/utils"
 
 /**
  * Read model for the identity internal API. Backed by the identity database so

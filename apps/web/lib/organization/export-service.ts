@@ -17,7 +17,9 @@ import {
 import { prisma } from "@/lib/prisma"
 
 /** How long a finished archive can be downloaded. */
-export const EXPORT_TTL_DAYS = 7
+import { DATA_EXPORT_TTL_DAYS } from "@workspace/organization/lifecycle"
+
+export const EXPORT_TTL_DAYS = DATA_EXPORT_TTL_DAYS
 
 const DAY = 24 * 60 * 60 * 1000
 const STALE_AFTER_MS = 60 * 60 * 1000

@@ -22,7 +22,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Spinner } from "@workspace/ui/components/spinner"
 
 import { authClient } from "@/lib/auth-client"
-import { slugify } from "@/lib/organization/utils"
+import { slugify } from "@workspace/organization/utils"
 
 export function OrganizationGeneralForm({
   organization,

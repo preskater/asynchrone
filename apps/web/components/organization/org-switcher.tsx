@@ -28,7 +28,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 import { authClient } from "@/lib/auth-client"
-import { getInitials } from "@/lib/organization/utils"
+import { getInitials } from "@workspace/organization/utils"
 
 export function OrgSwitcher({
   activeOrganizationId,

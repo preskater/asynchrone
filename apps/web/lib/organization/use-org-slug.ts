@@ -1,8 +1,1 @@
-"use client"
-
-import { useParams } from "next/navigation"
-
-export function useOrgSlug() {
-  const params = useParams<{ orgSlug: string }>()
-  return params.orgSlug
-}
+export { useOrgSlug } from "@workspace/organization/use-org-slug"

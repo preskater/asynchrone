@@ -13,7 +13,7 @@ import {
 } from "@workspace/ui/components/card"
 
 import { authClient } from "@/lib/auth-client"
-import { getInitials } from "@/lib/organization/utils"
+import { getInitials } from "@workspace/organization/utils"
 
 export function SelectOrganizationForm() {
   const t = useTranslations("Oauth.selectOrganization")

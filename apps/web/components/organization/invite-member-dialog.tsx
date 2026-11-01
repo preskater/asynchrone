@@ -36,8 +36,8 @@ import { Spinner } from "@workspace/ui/components/spinner"
 import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
 import { authClient } from "@/lib/auth-client"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { INVITABLE_ROLES, type OrgRole } from "@/lib/organization/roles"
-import { buildInviteUrl } from "@/lib/organization/utils"
+import { INVITABLE_ROLES, type OrgRole } from "@workspace/organization/roles"
+import { buildInviteUrl } from "@workspace/organization/utils"
 
 export function InviteMemberDialog({
   onInvited,

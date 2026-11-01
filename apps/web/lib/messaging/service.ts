@@ -9,7 +9,7 @@ import {
   type PageInput,
 } from "@workspace/core/pagination"
 import { unlinkLargeObject } from "@/lib/large-object"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 import { prisma } from "@/lib/prisma"
 
 import { MessagingRepository } from "./repository"

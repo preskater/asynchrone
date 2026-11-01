@@ -6,7 +6,7 @@ import {
   ValidationError,
 } from "@workspace/core/errors"
 import { notificationService } from "@/lib/notifications"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 import type { PortalContext } from "@/lib/portal/context"
 
 import { resolveMeetingProvider } from "./providers"

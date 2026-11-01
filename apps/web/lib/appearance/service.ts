@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank, ROLE_RANK } from "@/lib/organization/roles"
+import { roleRank, ROLE_RANK } from "@workspace/organization/roles"
 
 import {
   parseOrganizationAppearance,

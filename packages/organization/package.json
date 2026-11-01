@@ -1,0 +1,42 @@
+{
+  "name": "@workspace/organization",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@workspace/core": "*",
+    "@workspace/db": "*",
+    "better-auth": "^1.7.13",
+    "next": "16.4.3",
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.13.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./access": "./src/access.ts",
+    "./directory": "./src/directory.ts",
+    "./entitlements": "./src/entitlements.ts",
+    "./paths": "./src/paths.ts",
+    "./roles": "./src/roles.ts",
+    "./shell": "./src/shell.ts",
+    "./use-entitlements": "./src/use-entitlements.tsx",
+    "./use-org-slug": "./src/use-org-slug.ts",
+    "./utils": "./src/utils.ts",
+    "./lifecycle": "./src/lifecycle.ts"
+  }
+}

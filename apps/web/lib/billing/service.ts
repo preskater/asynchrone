@@ -7,7 +7,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "@workspace/core/errors"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 
 import {
   isPaidPlan,

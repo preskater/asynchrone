@@ -29,8 +29,8 @@ import { Spinner } from "@workspace/ui/components/spinner"
 
 import { authClient } from "@/lib/auth-client"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { parseRoles } from "@/lib/organization/roles"
-import { getInitials, slugify } from "@/lib/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
+import { getInitials, slugify } from "@workspace/organization/utils"
 
 interface PendingInvitation {
   id: string

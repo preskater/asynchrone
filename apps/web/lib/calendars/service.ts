@@ -1,6 +1,6 @@
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@/lib/organization/roles"
+import { roleRank } from "@workspace/organization/roles"
 
 import { CalendarRepository } from "./repository"
 import type {
