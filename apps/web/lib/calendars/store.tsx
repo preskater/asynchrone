@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
   addCalendarAction,
   createEventAction,
+  listCalendarDataAction,
   deleteEventAction,
   listCalendarEventsAction,
   moveEventAction,
@@ -17,6 +18,7 @@ import {
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import type { Member } from "@/lib/projects/types"
+import { useProjectStore } from "@/lib/projects/store"
 
 import type { CalendarData, CalendarEvent, CalendarSource } from "./types"
 
@@ -73,24 +75,41 @@ export function CalendarsProvider({
   children,
   initialData,
   currentUserId,
-  members = [],
+  members: initialMembers = [],
 }: {
   children: React.ReactNode
   initialData: CalendarData
   currentUserId: string
   members?: Member[]
 }) {
+  const projectMembers = useProjectStore().members
+  const members = initialMembers.length > 0 ? initialMembers : projectMembers
+
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [calendars, setCalendars] = React.useState<CalendarSource[]>(
     initialData.calendars
   )
-  const [events, setEvents] = React.useState<CalendarEvent[]>(initialData.events)
+  const [events, setEvents] = React.useState<CalendarEvent[]>(
+    initialData.events
+  )
   const [showTasks, setShowTasks] = React.useState(false)
   const [eventsLoaded, setEventsLoaded] = React.useState(
     initialData.events.length > 0
   )
   const eventsLoadedRef = React.useRef(eventsLoaded)
+
+  React.useEffect(() => {
+    if (initialData.calendars.length === 0) {
+      void listCalendarDataAction()
+        .then((result) => {
+          const data = unwrapActionResult(result)
+          setCalendars(data.calendars)
+          if (!eventsLoadedRef.current) setEvents(data.events)
+        })
+        .catch(() => {})
+    }
+  }, [initialData.calendars.length])
 
   React.useEffect(() => {
     setCalendars(initialData.calendars)
@@ -175,13 +194,17 @@ export function CalendarsProvider({
             toast.success(t("eventCreated", { title: event.title }))
           })
           .catch((error) => {
-            setEvents((prev) => prev.filter((item) => item.id !== optimistic.id))
+            setEvents((prev) =>
+              prev.filter((item) => item.id !== optimistic.id)
+            )
             toast.error(te(error, "createEventFailed"))
           })
       },
       updateEvent: (id, patch) => {
         setEvents((prev) =>
-          prev.map((event) => (event.id === id ? { ...event, ...patch } : event))
+          prev.map((event) =>
+            event.id === id ? { ...event, ...patch } : event
+          )
         )
         void updateEventAction(id, patch)
           .then((result) => {

@@ -22,6 +22,7 @@ import {
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import type { Member } from "@/lib/projects/types"
+import { useProjectStore } from "@/lib/projects/store"
 
 import type {
   Attachment,
@@ -96,12 +97,17 @@ export function MessagingProvider({
   organizationId: string
   members?: Member[]
 }) {
+  const projectMembers = useProjectStore().members
+  const members = initialMembers.length > 0 ? initialMembers : projectMembers
+
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [conversations, setConversations] = React.useState<Conversation[]>(
     initialData.conversations
   )
-  const [messages, setMessages] = React.useState<Message[]>(initialData.messages)
+  const [messages, setMessages] = React.useState<Message[]>(
+    initialData.messages
+  )
   const [cursors, setCursors] = React.useState<Record<string, string | null>>(
     {}
   )
@@ -116,8 +122,6 @@ export function MessagingProvider({
   const [typing, setTypingState] = React.useState<Record<string, string[]>>(
     initialData.typing
   )
-
-  const members = initialMembers
 
   React.useEffect(() => {
     setConversations(initialData.conversations)
@@ -408,9 +412,7 @@ export function MessagingProvider({
       },
       deleteMessage: (id) => {
         setMessages((prev) =>
-          prev.filter(
-            (message) => message.id !== id && message.parentId !== id
-          )
+          prev.filter((message) => message.id !== id && message.parentId !== id)
         )
         void deleteMessageAction(id)
           .then((result) => {
@@ -438,7 +440,9 @@ export function MessagingProvider({
           .catch((error) => toast.error(te(error, "reactionFailed")))
       },
       addThreadReply: (parentId, body) => {
-        const parentMessage = messages.find((message) => message.id === parentId)
+        const parentMessage = messages.find(
+          (message) => message.id === parentId
+        )
         if (!parentMessage) return
         const optimistic: Message = {
           id: uid("m"),
@@ -458,9 +462,7 @@ export function MessagingProvider({
               prev.map((item) => (item.id === optimistic.id ? message : item))
             )
           })
-          .catch((error) =>
-            toast.error(te(error, "replyFailed"))
-          )
+          .catch((error) => toast.error(te(error, "replyFailed")))
       },
       markRead: (conversationId) => {
         const target = getConversation(conversationId)

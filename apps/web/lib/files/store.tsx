@@ -26,6 +26,7 @@ import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { uploadFile } from "@/lib/files/upload-client"
 import type { Member } from "@/lib/projects/types"
+import { useProjectStore } from "@/lib/projects/store"
 
 import { kindFromName } from "./file-utils"
 import type {
@@ -92,7 +93,7 @@ export function FilesProvider({
   currentUserId,
   organizationId,
   storageQuotaBytes,
-  members = [],
+  members: initialMembers = [],
 }: {
   children: React.ReactNode
   initialData: FilesData
@@ -101,20 +102,21 @@ export function FilesProvider({
   storageQuotaBytes: number
   members?: Member[]
 }) {
+  const projectMembers = useProjectStore().members
+  const members = initialMembers.length > 0 ? initialMembers : projectMembers
+
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [files, setFiles] = React.useState<FileNode[]>(initialData.files)
   const [shares, setShares] = React.useState<Record<string, ShareEntry[]>>(
     initialData.shares
   )
-  const [versions, setVersions] =
-    React.useState<Record<string, FilesData["versions"][string]>>(
-      initialData.versions
-    )
-  const [activities, setActivities] =
-    React.useState<Record<string, FilesData["activities"][string]>>(
-      initialData.activities
-    )
+  const [versions, setVersions] = React.useState<
+    Record<string, FilesData["versions"][string]>
+  >(initialData.versions)
+  const [activities, setActivities] = React.useState<
+    Record<string, FilesData["activities"][string]>
+  >(initialData.activities)
   const [uploads, setUploads] = React.useState<UploadItem[]>([])
   const [filesLoaded, setFilesLoaded] = React.useState(
     initialData.files.length > 0
@@ -208,8 +210,9 @@ export function FilesProvider({
     }
 
     const locationCounts: Record<FileLocation, number> = {
-      "my-files": files.filter((file) => !file.trashed && file.kind !== "folder")
-        .length,
+      "my-files": files.filter(
+        (file) => !file.trashed && file.kind !== "folder"
+      ).length,
       shared: files.filter(
         (file) =>
           !file.trashed &&
@@ -321,9 +324,7 @@ export function FilesProvider({
             toast.success(t("folderCreated", { name: folder.name }))
           })
           .catch((error) => {
-            setFiles((prev) =>
-              prev.filter((item) => item.id !== optimistic.id)
-            )
+            setFiles((prev) => prev.filter((item) => item.id !== optimistic.id))
             toast.error(te(error, "createFolderFailed"))
           })
       },
@@ -389,9 +390,7 @@ export function FilesProvider({
             toast.success(t("duplicateCreated"))
           })
           .catch((error) => {
-            setFiles((prev) =>
-              prev.filter((item) => item.id !== optimistic.id)
-            )
+            setFiles((prev) => prev.filter((item) => item.id !== optimistic.id))
             toast.error(te(error, "duplicateFailed"))
           })
       },
@@ -407,9 +406,7 @@ export function FilesProvider({
         void toggleStarAction(id)
           .then((result) => {
             unwrapActionResult(result)
-            toast.success(
-              starred ? t("favoriteAdded") : t("favoriteRemoved")
-            )
+            toast.success(starred ? t("favoriteAdded") : t("favoriteRemoved"))
           })
           .catch((error) => toast.error(te(error, "updateFailed")))
       },
@@ -491,7 +488,9 @@ export function FilesProvider({
           return { ...prev, [id]: [...existing, { memberId, permission }] }
         })
         setFiles((prev) =>
-          prev.map((file) => (file.id === id ? { ...file, shared: true } : file))
+          prev.map((file) =>
+            file.id === id ? { ...file, shared: true } : file
+          )
         )
         void addShareAction(id, { memberId, permission })
           .then((result) => unwrapActionResult(result))

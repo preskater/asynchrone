@@ -4,6 +4,7 @@ import {
   BriefcaseIcon,
   CalendarIcon,
   CircleHelpIcon,
+  CirclePlusIcon,
   CommandIcon,
   FileIcon,
   FolderIcon,
@@ -16,10 +17,12 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
+import { ProjectFormDialog } from "@/components/project/project-dialog"
 import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
 import { ConversationSidebar } from "@/components/messaging/conversation-sidebar"
 import { FilesSidebar } from "@/components/files/files-sidebar"
-import { NavMain, type NavApp } from "@/components/nav-main"
+import { NavMain, type NavApp } from "@workspace/app-shell/nav-main"
+import { useMessaging } from "@/lib/messaging/store"
 import { NavSecondary } from "@workspace/ui/components/nav-secondary"
 import { Link, usePathname } from "@workspace/i18n/navigation"
 import {
@@ -111,6 +114,8 @@ export function AppSidebar({
   orgSlug: string
 }) {
   const pathname = usePathname()
+  const t = useTranslations("Sidebar")
+  const { unreadTotal } = useMessaging()
   const navMain = useNavMain(orgSlug)
   const navSecondary = useNavSecondary(orgSlug)
 
@@ -153,7 +158,24 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
+        <NavMain
+          items={navMain}
+          orgSlug={orgSlug}
+          unreadTotal={unreadTotal}
+          quickCreate={
+            <ProjectFormDialog
+              trigger={
+                <SidebarMenuButton
+                  tooltip={t("quickCreate")}
+                  className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                >
+                  <CirclePlusIcon />
+                  <span>{t("quickCreate")}</span>
+                </SidebarMenuButton>
+              }
+            />
+          }
+        />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

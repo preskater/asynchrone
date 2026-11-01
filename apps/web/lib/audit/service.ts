@@ -20,7 +20,7 @@ import {
 } from "@workspace/audit"
 import type { PrismaClient } from "@workspace/db"
 
-import { parseOrganizationMetadata } from "@/lib/appearance/types"
+import { parseOrganizationMetadata } from "@workspace/app-shell/appearance-types"
 import { toCsv } from "@workspace/core/csv"
 import type { RequestContext } from "@workspace/core/context"
 import {

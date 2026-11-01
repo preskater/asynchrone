@@ -135,4 +135,5 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Shared kernel: core, i18n and next-config (#148)
 - [x] Auth package and session helpers (#149)
 - [x] Organization roles, entitlements, shell and directory (#150)
+- [x] App shell and lazy domain hydration (#151)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

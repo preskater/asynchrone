@@ -13,6 +13,7 @@ import {
   createTaskTemplateAction,
   deleteProjectAction,
   deleteTaskAction,
+  listProjectShellAction,
   loadProjectWorkspaceAction,
   moveTaskAction,
   removeLabelAction,
@@ -160,6 +161,20 @@ export function ProjectStoreProvider({
     initialData.tasks.length > 0 || initialData.activities.length > 0
   )
   const tasksLoadedRef = React.useRef(tasksLoaded)
+
+  React.useEffect(() => {
+    if (initialData.projects.length === 0) {
+      void listProjectShellAction()
+        .then((result) => {
+          const data = unwrapActionResult(result)
+          setProjects(data.projects)
+          setMembers(data.members)
+          setLabels(data.labels)
+          setTemplates(data.templates)
+        })
+        .catch(() => {})
+    }
+  }, [initialData.projects.length])
 
   React.useEffect(() => {
     setProjects(initialData.projects)
