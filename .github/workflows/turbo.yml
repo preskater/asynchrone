@@ -221,8 +221,17 @@ jobs:
       - name: Create per-app databases
         run: npm run db:create
 
-      - name: Generate Prisma client
-        run: npm run generate --workspace=@workspace/db
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+          npm run generate --workspace=@workspace/db-projects
+          npm run generate --workspace=@workspace/db-calendars
+          npm run generate --workspace=@workspace/db-files
+          npm run generate --workspace=@workspace/db-messages
+          npm run generate --workspace=@workspace/db-clients
+          npm run generate --workspace=@workspace/db-employees
+          npm run generate --workspace=@workspace/db-control-tower
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
