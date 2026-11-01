@@ -71,6 +71,7 @@ const DIRECT = [
   "subscription",
   "invoice",
   "ai_usage_event",
+  "assistantConversation",
   "dataExport",
 ].map((table) => ({
   table,
@@ -99,6 +100,7 @@ const TABLES = [
   child("fileActivity", "fileId", "fileNode"),
   child("conversationMember", "conversationId", "conversation"),
   child("message", "conversationId", "conversation"),
+  child("assistantMessage", "conversationId", "assistantConversation"),
   child("contactCompany", "contactId", "contact"),
   child("pipelineStage", "pipelineId", "pipeline"),
   child("dealContact", "dealId", "deal"),

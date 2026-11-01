@@ -141,7 +141,7 @@ export default async function AppLayout({
                     storageQuotaBytes={storageQuotaBytes}
                     members={members}
                   >
-                    <AssistantProvider>
+                    <AssistantProvider organizationId={organization.id}>
                       <WorkspaceShell
                         skipLabel={t("skipToContent")}
                         sidebar={

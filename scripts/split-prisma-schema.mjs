@@ -54,6 +54,8 @@ const DATABASES = {
       "Invoice",
       "BillingEvent",
       "AiUsageEvent",
+      "AssistantConversation",
+      "AssistantMessage",
       "RateLimit",
       "DataExport",
       "DataExportApp",

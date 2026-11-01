@@ -99,7 +99,8 @@ organization 2FA policy.
 
 | Route                                                 | Method   | Owner                         |
 | ----------------------------------------------------- | -------- | ----------------------------- |
-| `/api/assistant`                                      | POST     | Copilot (assistant)           |
+| `/api/assistant`                                      | POST     | Copilot (assistant run)       |
+| `/api/assistant?conversationId=`                      | GET      | Copilot (assistant reload)    |
 | `/api/auth/[...all]`                                  | GET/POST | Copilot (Better Auth + OIDC)  |
 | `/api/health`                                         | GET      | every app (same payload)      |
 | `/api/cron/audit-retention`                           | GET      | Copilot (audit)               |
@@ -117,9 +118,17 @@ organization 2FA policy.
 
 ### Assistant and MCP
 
-- Assistant agent/tools: `@workspace/ai` (chat parts, pricing, agent factory and
-  the quota ledger) plus `apps/copilot/lib/assistant/*` (tools and app wiring) and
-  `apps/copilot/app/api/assistant/route.ts`.
+- Assistant agent/tools: `@workspace/ai` (chat parts, stream reducer, pricing,
+  agent factory and the quota ledger) plus `apps/copilot/lib/assistant/*` (tools,
+  persistence and app wiring) and `apps/copilot/app/api/assistant/route.ts`.
+- History is server-owned: `POST /api/assistant` accepts `{ conversationId?,
+  text }`, loads the stored turns and persists the accepted user message before
+  the model call and the assistant parts when the stream completes.
+  `GET /api/assistant?conversationId=…` reloads the current conversation for the
+  `AssistantProvider` (`packages/ai/src/use-assistant.tsx`), which keeps only the
+  conversation id in `localStorage` per organization. Every read and write is
+  scoped to the active organization and the signed-in user; see
+  [assistant](../assistant.md).
 - Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
@@ -138,7 +147,8 @@ organization 2FA policy.
 `Jwks`, `OauthClient`, `OauthResource`, `OauthClientResource`,
 `OauthRefreshToken`, `OauthAccessToken`, `OauthConsent`,
 `OauthClientAssertion`, `TwoFactor`, `CustomerTwoFactor`, `Subscription`,
-`Invoice`, `BillingEvent`, `AiUsageEvent`, `RateLimit`, `DataExport`,
+`Invoice`, `BillingEvent`, `AiUsageEvent`, `AssistantConversation`,
+`AssistantMessage`, `RateLimit`, `DataExport`,
 `DataExportApp`, `PlatformHandoff`, `OrganizationDeletionJob`,
 `OrganizationDeletionApp`, `UserDeletionJob`, `UserDeletionApp`, `AuditLog`.
 
@@ -580,7 +590,9 @@ Never bake secrets into an image.
 | Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
-| E2E                       | `apps/copilot/e2e/{a11y,audit-log,password-reset,portal,upload}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160)                                                                                                                  |
+| Unit — Assistant          | `packages/ai/src/chat.unit.test.ts` (stream reducer, deterministic replay); `apps/copilot/lib/assistant/history.unit.test.ts`; `apps/copilot/app/api/assistant/route.unit.test.ts` (server-owned history, failed stream)                                       |
+| Contracts (DB)            | `apps/copilot/scripts/contracts/assistant-persistence.contract.test.ts` (stored turns, reload, cross-org/cross-user rejection)                                                                                                                                |
+| E2E                       | `apps/copilot/e2e/{a11y,assistant,audit-log,password-reset,portal,upload}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160)                                                                                              |
 | Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
 | Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
@@ -615,7 +627,7 @@ parentheses; keep the checklist honest rather than pre-checking it.
       and the workspace/portal redirects, with Playwright coverage (#164).
 - [ ] The portal reads domain data through internal APIs instead of the
       in-process packages (#190).
-- [ ] Conversations persist and the server owns model history.
+- [x] Conversations persist and the server owns model history (#165).
 - [ ] No domain Prisma import remains after #190.
 
 ### Projects (#153, #160)

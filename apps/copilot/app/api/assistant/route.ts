@@ -1,12 +1,28 @@
-import { run, type AgentInputItem, type RunStreamEvent } from "@openai/agents"
+import { run, type RunStreamEvent } from "@openai/agents"
+import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getRequestContext } from "@/lib/core/auth-context"
-import { AppError } from "@workspace/core/errors"
+import {
+  applyAssistantEvent,
+  finishAssistantParts,
+  toAgentInput,
+  type AssistantPart,
+  type AssistantStreamEvent,
+  type ChatMessage,
+} from "@workspace/ai/chat"
+import { AppError, isAppError } from "@workspace/core/errors"
 import { jsonError, rejectCrossOrigin } from "@workspace/core/http"
 import { upgradeRequired } from "@/lib/organization/entitlements"
 import { rateLimit } from "@/lib/core/rate-limit"
 import { assistantAgent } from "@/lib/assistant/agent"
+import {
+  beginTurn,
+  completeTurn,
+  loadConversation,
+  MAX_MESSAGE_CHARS,
+  type AssistantTurn,
+} from "@/lib/assistant/conversations"
 import { DEFAULT_ASSISTANT_MODEL } from "@workspace/ai/model"
 import { getAiQuota, quotaExceeded, recordAiUsage } from "@/lib/assistant/usage"
 
@@ -14,22 +30,20 @@ export const runtime = "nodejs"
 export const maxDuration = 60
 
 const MAX_TURNS = 8
-const MAX_HISTORY_ITEMS = 40
-const MAX_HISTORY_BYTES = 100_000
 const STREAM_ERROR_MESSAGE =
   "The assistant could not complete your request. Please try again."
 
-const bodySchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(MAX_HISTORY_ITEMS),
-})
-
-type AssistantEvent =
-  | { type: "text"; delta: string }
-  | { type: "reasoning"; text: string }
-  | { type: "tool_call"; name: string; callId: string; args: string }
-  | { type: "tool_output"; name: string; callId: string; output: string }
-  | { type: "error"; message: string }
-  | { type: "done" }
+/**
+ * The client sends only the new turn. History is loaded from the database, so
+ * a request cannot smuggle assistant text or tool results into the model
+ * context. Unknown keys are rejected rather than silently ignored.
+ */
+const bodySchema = z
+  .object({
+    conversationId: z.string().min(1).max(64).optional(),
+    text: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
+  })
+  .strict()
 
 function toOutputString(output: unknown): string {
   if (typeof output === "string") return output
@@ -40,7 +54,9 @@ function toOutputString(output: unknown): string {
   }
 }
 
-function toClientEvent(event: RunStreamEvent): AssistantEvent | undefined {
+function toClientEvent(
+  event: RunStreamEvent
+): AssistantStreamEvent | undefined {
   if (event.type === "raw_model_stream_event") {
     if (event.data.type === "output_text_delta") {
       return { type: "text", delta: event.data.delta }
@@ -87,6 +103,27 @@ function toClientEvent(event: RunStreamEvent): AssistantEvent | undefined {
   return undefined
 }
 
+/** Reloads the signed-in user's conversation, scoped to the active org. */
+export async function GET(request: Request) {
+  try {
+    const ctx = await getRequestContext({ request })
+    const conversationId = new URL(request.url).searchParams.get(
+      "conversationId"
+    )
+    if (!conversationId) {
+      return new Response("Missing conversationId", { status: 422 })
+    }
+
+    const conversation = await loadConversation(ctx, conversationId)
+    return NextResponse.json(conversation, {
+      headers: { "Cache-Control": "no-store" },
+    })
+  } catch (error) {
+    if (isAppError(error)) return jsonError(error)
+    throw error
+  }
+}
+
 export async function POST(request: Request) {
   const blocked = rejectCrossOrigin(request)
   if (blocked) return blocked
@@ -126,8 +163,21 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return new Response("Invalid request", { status: 422 })
   }
-  if (JSON.stringify(parsed.data.messages).length > MAX_HISTORY_BYTES) {
-    return new Response("Request too large", { status: 413 })
+
+  // Resolves the conversation (rejecting another user's id) and stores the
+  // accepted user message before the model call.
+  let turn: AssistantTurn
+  try {
+    turn = await beginTurn(ctx, parsed.data)
+  } catch (error) {
+    if (isAppError(error)) return jsonError(error)
+    throw error
+  }
+
+  const userMessage: ChatMessage = {
+    id: turn.conversationId,
+    role: "user",
+    parts: [{ type: "text", text: parsed.data.text }],
   }
 
   // Stop spending tokens as soon as the client goes away.
@@ -138,7 +188,7 @@ export async function POST(request: Request) {
   const model = process.env.ASSISTANT_MODEL ?? DEFAULT_ASSISTANT_MODEL
   const stream = await run(
     assistantAgent,
-    parsed.data.messages as AgentInputItem[],
+    toAgentInput([...turn.history, userMessage]),
     {
       stream: true,
       context: ctx,
@@ -148,17 +198,30 @@ export async function POST(request: Request) {
   )
 
   const encoder = new TextEncoder()
+  let parts: AssistantPart[] = []
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: AssistantEvent) => {
+      const send = (event: AssistantStreamEvent) => {
         controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
       }
       try {
         for await (const event of stream) {
           const clientEvent = toClientEvent(event)
-          if (clientEvent) send(clientEvent)
+          if (!clientEvent) continue
+          parts = applyAssistantEvent(parts, clientEvent)
+          send(clientEvent)
         }
         await stream.completed
+
+        // Only a completed stream is written: an aborted or failed run leaves
+        // the accepted user message and no half-written answer.
+        if (!abort.signal.aborted) {
+          await completeTurn(
+            ctx,
+            turn.conversationId,
+            finishAssistantParts(parts)
+          )
+        }
         send({ type: "done" })
       } catch (error) {
         if (!abort.signal.aborted) {
@@ -188,6 +251,7 @@ export async function POST(request: Request) {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Assistant-Conversation-Id": turn.conversationId,
     },
   })
 }
