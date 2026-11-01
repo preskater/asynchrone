@@ -54,12 +54,15 @@ export function CalendarTasksProvider({
   )
 }
 
+const EMPTY_CALENDAR_TASKS: CalendarTasksStore = {
+  tasks: [],
+  ensureTasksLoaded: () => {},
+}
+
 export function useCalendarTasks(): CalendarTasksStore {
-  const context = React.useContext(CalendarTasksContext)
-  if (!context) {
-    throw new Error(
-      "useCalendarTasks must be used within a CalendarTasksProvider"
-    )
-  }
-  return context
+  // The Copilot shell no longer mounts the projects provider everywhere; the
+  // mini calendar can render outside the calendars screen (for example in an
+  // error boundary). Treat a missing provider as "no task overlay" instead of
+  // crashing the whole route.
+  return React.useContext(CalendarTasksContext) ?? EMPTY_CALENDAR_TASKS
 }

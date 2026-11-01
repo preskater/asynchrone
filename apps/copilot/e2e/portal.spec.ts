@@ -90,12 +90,10 @@ test("a portal client sees its shared project and uploads and downloads document
   const slug = await signUp(page)
 
   // Two projects in the workspace: only the linked one reaches the portal.
-  await page.goto(`/${slug}/projects`)
   const sharedProject = `Shared ${Date.now()}`
-  await createProject(page, sharedProject)
-  await page.goto(`/${slug}/projects`)
+  await createProject(slug, sharedProject)
   const privateProject = `Internal ${Date.now()}`
-  await createProject(page, privateProject)
+  await createProject(slug, privateProject)
 
   const clientName = `Acme ${Date.now()}`
   await createClient(page, slug, clientName)

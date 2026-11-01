@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test"
 
+import { prisma } from "@workspace/db"
+
 import { E2E_BASE_URL } from "./env"
 
 export function uniqueEmail() {
@@ -53,26 +55,35 @@ export async function signUp(page: Page): Promise<string> {
 }
 
 /**
- * Create a project from the projects page and return its persisted id.
+ * Create a project directly for an organization and return its id.
+ *
+ * Project screens now live in `apps/projects` (#160), so the Copilot e2e suite
+ * cannot create them through the UI. The portal tests only need a project row
+ * to link to a client; seeding it through the shared projects database keeps
+ * the portal spec independent of the projects app's dev server.
  */
-export async function createProject(page: Page, name: string): Promise<string> {
-  const dialog = page.getByRole("dialog")
-  // Retry the click: a click that lands before hydration is a no-op.
-  await expect(async () => {
-    await page.getByRole("button", { name: "Create project" }).first().click()
-    await expect(dialog).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 15_000 })
-  await dialog.getByLabel("Name", { exact: true }).fill(name)
-  await dialog.getByRole("button", { name: "Create", exact: true }).click()
-
-  const link = page.getByRole("link", { name })
-  await expect(link).toBeVisible({ timeout: 15_000 })
-  // The store first shows an optimistic `p_…` id; wait for the persisted
-  // cuid to land before reading the link. A cold `next dev` action can take a
-  // few seconds, so allow for it.
-  await expect(link).toHaveAttribute("href", /\/projects\/c[a-z0-9]+$/, {
-    timeout: 30_000,
+export async function createProject(
+  organizationSlug: string,
+  name: string
+): Promise<string> {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: organizationSlug },
+    select: { id: true },
   })
-  const href = await link.getAttribute("href")
-  return href!.split("/").pop()!
+  if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
+
+  const owner = await prisma.member.findFirst({
+    where: { organizationId: organization.id, role: "owner" },
+    select: { userId: true },
+  })
+
+  const project = await prisma.project.create({
+    data: {
+      organizationId: organization.id,
+      name,
+      ...(owner ? { members: { create: [{ userId: owner.userId }] } } : {}),
+    },
+    select: { id: true },
+  })
+  return project.id
 }
