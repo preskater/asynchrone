@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache"
 
 import { z } from "zod"
 
-import { prisma } from "@workspace/db"
-
 import { withPlatformAction } from "@/lib/platform/action"
 import { recordPlatformEvent } from "@/lib/platform/audit"
 import { identityAdmin } from "@/lib/platform/identity"
@@ -85,23 +83,18 @@ export async function setOAuthClientDisabled(
       }
     }
 
-    const client = await prisma.oauthClient.findUnique({
-      where: { clientId },
-      select: { disabled: true, name: true },
-    })
+    const admin = identityAdmin()
+    const client = await admin.getOAuthClient(clientId)
     if (!client) return { ok: false, error: "OAuth client not found." }
 
-    await prisma.oauthClient.update({
-      where: { clientId },
-      data: { disabled },
-    })
+    const updated = await admin.setOAuthClientDisabled(clientId, { disabled })
 
     await recordPlatformEvent(ctx, {
       action: disabled ? "oauth-client.disable" : "oauth-client.enable",
       targetType: "oauth_client",
       targetId: clientId,
       before: { disabled: client.disabled, name: client.name },
-      after: { disabled },
+      after: { disabled: updated.disabled, name: updated.name },
     })
 
     revalidatePath("/organizations")

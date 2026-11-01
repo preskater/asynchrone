@@ -1,4 +1,4 @@
-import { entitlementsFor } from "@workspace/db/plans"
+import { entitlementsFor } from "@workspace/core/plans"
 
 import type { RequestContext } from "@workspace/core/context"
 import {

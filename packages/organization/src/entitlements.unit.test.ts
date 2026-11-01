@@ -4,7 +4,7 @@ import {
   hasEntitlement,
   parsePlan,
   type Entitlement,
-} from "@workspace/db/plans"
+} from "@workspace/core/plans"
 
 import {
   createOrganizationEntitlements,

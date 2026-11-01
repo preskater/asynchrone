@@ -13,11 +13,13 @@
     "typecheck": "tsc --noEmit",
     "grant:platform-role": "tsx scripts/grant-platform-role.ts",
     "verify:auth-config": "tsx scripts/verify-auth-config.ts",
-    "verify:platform-authorization": "tsx scripts/verify-platform-authorization.ts"
+    "verify:platform-authorization": "tsx scripts/verify-platform-authorization.ts",
+    "cutover:control-tower": "tsx scripts/cutover-control-tower.ts"
   },
   "dependencies": {
     "@workspace/contracts": "*",
-    "@workspace/db": "*",
+    "@workspace/core": "*",
+    "@workspace/db-control-tower": "*",
     "@workspace/next-config": "*",
     "@workspace/service-auth": "*",
     "@workspace/ui": "*",
@@ -33,11 +35,13 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "eslint": "^10.13.0",
+    "pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^7"
   }

@@ -42,6 +42,8 @@ export const INTERNAL_ROUTES = {
   adminOrganizations: internalPath("admin", "organizations"),
   adminOrganization: (organizationId: string) =>
     internalPath("admin", "organizations", organizationId),
+  adminOrganizationDetail: (organizationId: string) =>
+    internalPath("admin", "organizations", organizationId, "detail"),
   adminOrganizationPlan: (organizationId: string) =>
     internalPath("admin", "organizations", organizationId, "plan"),
   adminOrganizationReleasePlan: (organizationId: string) =>
@@ -50,11 +52,18 @@ export const INTERNAL_ROUTES = {
     internalPath("admin", "organizations", organizationId, "trial"),
   adminUsers: internalPath("admin", "users"),
   adminUser: (userId: string) => internalPath("admin", "users", userId),
+  adminUserDetail: (userId: string) =>
+    internalPath("admin", "users", userId, "detail"),
   adminUserBan: (userId: string) =>
     internalPath("admin", "users", userId, "ban"),
   adminUserSessions: (userId: string) =>
     internalPath("admin", "users", userId, "sessions"),
   adminHandoffs: internalPath("admin", "handoffs"),
+  adminOverview: internalPath("admin", "overview"),
+  adminOps: internalPath("admin", "ops"),
+  adminAudit: internalPath("admin", "audit"),
+  adminOAuthClient: (clientId: string) =>
+    internalPath("admin", "oauth-clients", clientId),
 } as const
 
 export const SERVICE_SCOPES = {

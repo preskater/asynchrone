@@ -1,21 +1,23 @@
 import "./load-env"
 
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-control-tower"
 
-import {
-  PLATFORM_ROLES,
-  type PlatformRole,
-} from "../lib/platform/roles"
+import { PLATFORM_ROLES, type PlatformRole } from "../lib/platform/roles"
 
 /**
- * Grants or revokes a platform role for an existing account.
+ * Grants or revokes a platform role for an existing platform account.
  *
- * Accounts are created by the customer app; this script only flips
- * `user.role`. Platform roles are comma-separated like organization roles, so
- * unrelated values are preserved.
+ * The control tower signs in against its own database
+ * (`asynchrone_control_tower`), so the account must already exist there.
+ * Platform roles are comma-separated like organization roles, so unrelated
+ * values are preserved.
  *
  *   npm run grant:platform-role --workspace=control-tower -- \
  *     --email you@example.com [--role platform_support] [--revoke]
+ *
+ * A new operator first signs up in the customer app, then is copied into the
+ * platform database with
+ * `npm run cutover:control-tower --workspace=control-tower -- --user <email> --apply`.
  */
 
 function argument(name: string): string | undefined {
@@ -49,7 +51,9 @@ async function main() {
 
   if (!user) {
     usage(
-      `No account found for ${email}. Sign up in the customer app first, then run this script.`
+      `No platform account found for ${email} in the control-tower database. ` +
+        "Provision it first: npm run cutover:control-tower --workspace=control-tower -- " +
+        `--user ${email} --apply`
     )
   }
 

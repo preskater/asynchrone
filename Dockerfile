@@ -39,7 +39,8 @@ COPY --from=prepare ${WORKDIR}/out/full/ .
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV BETTER_AUTH_SECRET=build-placeholder-secret-not-used-at-runtime
 ENV BETTER_AUTH_URL=http://localhost:3000
-# Required by the control-tower build (unused by the web build).
+# Required by the control-tower build: its own database (ADR 0032) and secret.
+ENV CONTROL_TOWER_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV CONTROL_TOWER_BETTER_AUTH_SECRET=build-placeholder-control-tower-secret-not-used
 ENV PLATFORM_APP_URL=http://localhost:3000
 # Public Sentry DSN, inlined into the browser bundle (empty disables Sentry).

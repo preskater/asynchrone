@@ -16,7 +16,7 @@ orchestration is #184.
 | `asynchrone_messages`      | `@workspace/db-messages`      | Conversations, messages, reactions, attachment metadata                                                                  |
 | `asynchrone_clients`       | `@workspace/db-clients`       | Clients, contacts, pipelines, deals, activities, documents                                                               |
 | `asynchrone_employees`     | `@workspace/db-employees`     | Employees profiles, attendance, leave, settings, salary, internal activities                                             |
-| `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff                                                                               |
+| `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff copy (see [control-tower-database.md](./control-tower-database.md))            |
 
 `@workspace/db-core` owns the shared pool factory and `DATABASE_POOL_MAX`
 validation. `@workspace/db` remains the monolith database until #185.
@@ -122,4 +122,5 @@ migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
 - [x] CI schema validation (#183)
 - [x] Migration orchestration, baselines, shadow DBs and drift check (#184)
 - [x] Maintenance-window data split tooling and runbook (#185)
+- [x] Control-tower cutover: own database, platform audit and runbook (#209)
 - [ ] App wiring to the per-app clients (#186+)

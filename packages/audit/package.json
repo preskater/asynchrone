@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@workspace/contracts": "*",
+    "@workspace/core": "*",
     "@workspace/db": "*",
     "zod": "^4.6.7"
   },

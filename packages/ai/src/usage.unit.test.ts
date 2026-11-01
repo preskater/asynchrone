@@ -1,7 +1,7 @@
 import { Usage } from "@openai/agents"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { monthWindow } from "@workspace/db/plans"
+import { monthWindow } from "@workspace/core/plans"
 
 import type { RequestContext } from "@workspace/core/context"
 

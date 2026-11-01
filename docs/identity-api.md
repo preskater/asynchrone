@@ -44,21 +44,33 @@ typed caller; the control tower instantiates it in
 | ------ | --------------------------------------------------- | ------------------------------------- |
 | `GET`  | `/internal/v1/admin/organizations`                  | Search/list organizations             |
 | `GET`  | `/internal/v1/admin/organizations/:id`              | Organization details                  |
+| `GET`  | `/internal/v1/admin/organizations/:id/detail`       | Detail page: members, clients, audit  |
 | `POST` | `/internal/v1/admin/organizations/:id/plan`         | Manual plan/quota override            |
 | `POST` | `/internal/v1/admin/organizations/:id/release-plan` | Return to provider-driven state       |
 | `POST` | `/internal/v1/admin/organizations/:id/trial`        | Start/end a trial                     |
 | `GET`  | `/internal/v1/admin/users`                          | Search/list users                     |
 | `GET`  | `/internal/v1/admin/users/:id`                      | User details                          |
+| `GET`  | `/internal/v1/admin/users/:id/detail`               | Detail page: memberships, sessions    |
 | `POST` | `/internal/v1/admin/users/:id/ban`                  | Ban/unban and revoke sessions         |
 | `POST` | `/internal/v1/admin/users/:id/sessions`             | Revoke sessions (support-safe)        |
 | `POST` | `/internal/v1/admin/handoffs`                       | Create a single-use impersonation URL |
+| `GET`  | `/internal/v1/admin/overview`                       | Platform counts and newest orgs       |
+| `GET`  | `/internal/v1/admin/ops`                            | Sessions, keys, clients, AI spend     |
+| `GET`  | `/internal/v1/admin/audit`                          | Latest customer audit rows, all orgs  |
+| `GET`  | `/internal/v1/admin/oauth-clients/:clientId`        | One OAuth client                      |
+| `POST` | `/internal/v1/admin/oauth-clients/:clientId`        | Enable/disable an OAuth client        |
+
+The organization and user lists accept `query`, `cursor`, `offset` and `limit`
+(`limit` caps at 100). `offset` backs the page-number UI; `cursor` is available
+for cursor-style callers.
 
 Platform mutations are audited by the control tower in its own
 `PlatformAuditEvent`, never in the customer `AuditLog`. The handoff row is
 created in the identity database so the customer app can consume it; the
 control tower still owns its host-only session and never shares cookies
-(ADR 0018). The control-tower database cutover is tracked as a follow-up in
-milestone #1.
+(ADR 0018). Everything else the control tower displays — including
+`GET /admin/audit` — is read from this API; the two apps never share a database
+(ADR 0034, [control-tower-database.md](./control-tower-database.md)).
 
 ## Client
 
@@ -105,5 +117,4 @@ typed client’s caching/error mapping.
 
 ## Follow-up
 
-- Control-tower database cutover and platform-data copy (milestone #1).
 - #192 ingress/network enforcement.

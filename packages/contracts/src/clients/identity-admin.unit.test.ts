@@ -23,6 +23,21 @@ const organization = {
   createdAt: "2026-01-01T00:00:00.000Z",
 }
 
+const user = {
+  id: "user_1",
+  name: "Ada",
+  email: "ada@example.com",
+  emailVerified: true,
+  role: null,
+  banned: false,
+  banReason: null,
+  twoFactorEnabled: false,
+  lastSeenAt: null,
+  organizationCount: 1,
+  lastSessionAt: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+}
+
 describe("identity admin client", () => {
   it("lists organizations with the admin scope", async () => {
     const token = vi.fn(async () => "admin-token")
@@ -79,6 +94,106 @@ describe("identity admin client", () => {
     await expect(
       client.createHandoff({ userId: "user_1" })
     ).resolves.toMatchObject({ url: expect.stringContaining("handoff") })
+  })
+
+  it("fetches the detail and platform read models", async () => {
+    const requests: string[] = []
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requests.push(url)
+      if (url.includes("/organizations/org_1/detail")) {
+        return json({
+          data: {
+            ...organization,
+            trialStartedAt: null,
+            subscription: null,
+            seatCount: 1,
+            members: [],
+            oauthClients: [],
+            recentAudit: [],
+            aiUsage: {
+              costMicros: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              runs: 0,
+            },
+            previousMonthAiCostMicros: 0,
+          },
+        })
+      }
+      if (url.includes("/users/user_1/detail")) {
+        return json({
+          data: {
+            ...user,
+            memberships: [],
+            sessions: [],
+            accounts: [],
+            oauthClients: [],
+          },
+        })
+      }
+      if (url.includes("/admin/overview")) {
+        return json({
+          data: {
+            organizations: 1,
+            users: 1,
+            activeSessions: 0,
+            newestOrganizations: [organization],
+          },
+        })
+      }
+      if (url.includes("/admin/ops")) {
+        return json({
+          data: {
+            sessions: { active: 0, expired: 0 },
+            invitations: { pending: 0 },
+            signingKeys: [],
+            oauthClients: { total: 0, disabled: 0 },
+            aiUsage: {
+              costMicros: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              runs: 0,
+              windowDays: 30,
+            },
+          },
+        })
+      }
+      if (url.includes("/admin/audit")) {
+        return json({ data: { items: [] } })
+      }
+      return json({
+        data: {
+          clientId: "client_1",
+          name: "MCP",
+          disabled: true,
+          userId: null,
+          referenceId: null,
+          createdAt: null,
+        },
+      })
+    })
+    const client = new IdentityAdminClient({
+      baseUrl: "https://copilot.example",
+      getToken: async () => "token",
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    await expect(client.getOrganizationDetail("org_1")).resolves.toMatchObject({
+      id: "org_1",
+    })
+    await expect(client.getUserDetail("user_1")).resolves.toMatchObject({
+      id: "user_1",
+    })
+    await expect(client.overview()).resolves.toMatchObject({ users: 1 })
+    await expect(client.ops()).resolves.toMatchObject({ signingKeys: [] })
+    await expect(client.listAudit({ limit: 5 })).resolves.toEqual({ items: [] })
+    await expect(
+      client.setOAuthClientDisabled("client_1", { disabled: true })
+    ).resolves.toMatchObject({ disabled: true })
+    expect(
+      requests.some((url) => url.includes("/admin/oauth-clients/client_1"))
+    ).toBe(true)
   })
 
   it("maps an API error", async () => {

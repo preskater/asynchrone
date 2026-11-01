@@ -12,11 +12,12 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(projectRoot, "../../"),
   transpilePackages: [
     "@workspace/ui",
-    "@workspace/db",
+    "@workspace/db-control-tower",
     "@workspace/contracts",
+    "@workspace/core",
     "@workspace/service-auth",
   ],
-  // `pg` is a native CommonJS dependency of the shared database package.
+  // `pg` is a native CommonJS dependency of the per-app database package.
   serverExternalPackages: ["pg"],
   poweredByHeader: false,
   experimental: {

@@ -1,4 +1,4 @@
-import { entitlementsFor, parsePlan } from "@workspace/db/plans"
+import { entitlementsFor, parsePlan } from "@workspace/core/plans"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { createOrganizationShell } from "./shell"

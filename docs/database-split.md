@@ -111,6 +111,8 @@ short.
 ## Post-cutover
 
 - Remove the monolith database and its migrations in a later cleanup PR.
-- #186 starts reading `@workspace/db-identity`; #187–#190 add the internal APIs
-  and sagas.
+- The control tower is already cut over to `asynchrone_control_tower`
+  (see [control-tower-database.md](./control-tower-database.md)); #186 starts
+  Copilot reading `@workspace/db-identity`; #187–#190 add the internal APIs and
+  sagas.
 - Do not delete the snapshot until the rollback window closes.

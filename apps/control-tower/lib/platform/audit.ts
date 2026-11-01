@@ -1,4 +1,4 @@
-import { prisma, type Prisma } from "@workspace/db"
+import { prisma, type Prisma } from "@workspace/db-control-tower"
 
 import type { PlatformContext } from "./guard"
 
@@ -13,9 +13,7 @@ export interface PlatformAuditInput {
   userAgent?: string | null
 }
 
-function jsonValue(
-  value: unknown
-): Prisma.InputJsonValue | undefined {
+function jsonValue(value: unknown): Prisma.InputJsonValue | undefined {
   if (value === undefined) return undefined
   return value as Prisma.InputJsonValue
 }

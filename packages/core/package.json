@@ -36,6 +36,8 @@
     "./rate-limit": "./src/rate-limit.ts",
     "./redirect": "./src/redirect.ts",
     "./trusted-ip": "./src/trusted-ip.ts",
-    "./validation": "./src/validation.ts"
+    "./validation": "./src/validation.ts",
+    "./plans": "./src/plans.ts",
+    "./trial": "./src/trial.ts"
   }
 }

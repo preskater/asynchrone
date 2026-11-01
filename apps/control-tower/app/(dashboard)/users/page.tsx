@@ -1,6 +1,5 @@
 import Link from "next/link"
 
-import { prisma, type Prisma } from "@workspace/db"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -24,6 +23,7 @@ import {
 } from "@/lib/platform/params"
 import { parsePlatformRoles } from "@/lib/platform/roles"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 
 export const metadata = { title: "Users" }
 
@@ -38,48 +38,20 @@ export default async function UsersPage({
   const query = readString(params, "q").trim()
   const page = readPage(params)
 
-  const where: Prisma.UserWhereInput = query
-    ? {
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { email: { contains: query, mode: "insensitive" } },
-        ],
-      }
-    : {}
+  const result = await identityAdmin().listUsers({
+    query: query || undefined,
+    offset: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  })
 
-  const [total, users] = await Promise.all([
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailVerified: true,
-        banned: true,
-        role: true,
-        lastSeenAt: true,
-        createdAt: true,
-        _count: { select: { members: true } },
-        sessions: {
-          orderBy: { updatedAt: "desc" },
-          take: 1,
-          select: { updatedAt: true },
-        },
-      },
-    }),
-  ])
-
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const users = result.items
+  const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE))
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Users"
-        description={`${formatNumber(total)} account${total === 1 ? "" : "s"} across every organization.`}
+        description={`${formatNumber(result.total)} account${result.total === 1 ? "" : "s"} across every organization.`}
       />
 
       <form method="get" className="flex flex-wrap items-center gap-2">
@@ -93,7 +65,11 @@ export default async function UsersPage({
           Search
         </Button>
         {query ? (
-          <Button variant="ghost" nativeButton={false} render={<Link href="/users" />}>
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/users" />}
+          >
             Clear
           </Button>
         ) : null}
@@ -123,7 +99,7 @@ export default async function UsersPage({
               users.map((user) => {
                 const platformRoles = parsePlatformRoles(user.role)
                 const lastActivity =
-                  user.sessions[0]?.updatedAt ?? user.lastSeenAt ?? null
+                  user.lastSessionAt ?? user.lastSeenAt ?? null
 
                 return (
                   <TableRow key={user.id}>
@@ -152,7 +128,9 @@ export default async function UsersPage({
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.emailVerified ? "outline" : "secondary"}>
+                      <Badge
+                        variant={user.emailVerified ? "outline" : "secondary"}
+                      >
                         {user.emailVerified ? "verified" : "pending"}
                       </Badge>
                     </TableCell>
@@ -164,7 +142,7 @@ export default async function UsersPage({
                       )}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {formatNumber(user._count.members)}
+                      {formatNumber(user.organizationCount)}
                     </TableCell>
                     <TableCell className="text-end text-muted-foreground">
                       {formatRelative(lastActivity)}
@@ -185,7 +163,7 @@ export default async function UsersPage({
         page={page}
         pageCount={pageCount}
         query={query ? { q: query } : {}}
-        total={total}
+        total={result.total}
       />
     </div>
   )

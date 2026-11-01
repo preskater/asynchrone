@@ -1,5 +1,14 @@
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const
 
+/** The control-tower API returns ISO strings; pages may also pass Date rows. */
+type DateLike = Date | string | null | undefined
+
+function toDate(value: DateLike): Date | null {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B"
   const exponent = Math.min(
@@ -23,29 +32,32 @@ export function formatUsdMicros(micros: number): string {
   }).format(micros / 1_000_000)
 }
 
-export function formatDate(value: Date | null | undefined): string {
-  if (!value) return "—"
+export function formatDate(value: DateLike): string {
+  const date = toDate(value)
+  if (!date) return "—"
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
     day: "2-digit",
-  }).format(value)
+  }).format(date)
 }
 
-export function formatDateTime(value: Date | null | undefined): string {
-  if (!value) return "—"
+export function formatDateTime(value: DateLike): string {
+  const date = toDate(value)
+  if (!date) return "—"
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(value)
+  }).format(date)
 }
 
-export function formatRelative(value: Date | null | undefined): string {
-  if (!value) return "—"
-  const delta = Date.now() - value.getTime()
+export function formatRelative(value: DateLike): string {
+  const date = toDate(value)
+  if (!date) return "—"
+  const delta = Date.now() - date.getTime()
   const future = delta < 0
   const abs = Math.abs(delta)
   const minutes = Math.round(abs / 60_000)
@@ -60,7 +72,7 @@ export function formatRelative(value: Date | null | undefined): string {
     return null
   })()
 
-  if (relative === null) return formatDate(value)
+  if (relative === null) return formatDate(date)
   if (relative === "just now") return future ? "in <1m" : relative
   return future ? `in ${relative}` : `${relative} ago`
 }

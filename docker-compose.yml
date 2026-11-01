@@ -86,12 +86,14 @@ services:
       - "3001:3000"
     # Same as `web`: reuse the control tower's own env file (secret, local
     # origins), then override the container-specific values below.
+    # The control tower owns asynchrone_control_tower (ADR 0032); it is never
+    # pointed at the customer database.
     env_file:
       - path: apps/control-tower/.env
         required: false
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - CONTROL_TOWER_DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/asynchrone_control_tower?schema=public
       - BETTER_AUTH_URL=http://localhost:3001
       - PLATFORM_APP_URL=http://localhost:3002
     depends_on:

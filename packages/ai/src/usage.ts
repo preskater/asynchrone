@@ -1,5 +1,5 @@
 import type { Usage } from "@openai/agents"
-import { monthWindow } from "@workspace/db/plans"
+import { monthWindow } from "@workspace/core/plans"
 
 import { AppError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"

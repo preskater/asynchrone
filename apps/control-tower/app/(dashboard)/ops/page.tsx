@@ -1,6 +1,4 @@
-import Link from "next/link"
-
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-control-tower"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   Table,
@@ -20,255 +18,71 @@ import {
   formatUsdMicros,
 } from "@/lib/platform/format"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 
 export const metadata = { title: "Operations" }
-
-const OPEN = "open"
-const PENDING = "pending"
-const DAY_MS = 24 * 60 * 60 * 1000
 
 export default async function OperationsPage() {
   await requirePlatformContext()
 
-  const now = new Date()
+  // Latency of this app's own database; every customer metric comes from
+  // Copilot's identity admin API.
   const startedAt = Date.now()
   await prisma.$queryRaw`SELECT 1`
   const latency = Date.now() - startedAt
 
-  const [
-    activeSessions,
-    expiredSessions,
-    openUploads,
-    staleUploads,
-    pendingInvitations,
-    repositoryConnections,
-    repositories,
-    jwks,
-    oauthClients,
-    disabledOauthClients,
-    aiSpend,
-  ] = await Promise.all([
-    prisma.session.count({ where: { expiresAt: { gt: now } } }),
-    prisma.session.count({ where: { expiresAt: { lte: now } } }),
-    prisma.uploadSession.count({ where: { status: OPEN } }),
-    prisma.uploadSession.findMany({
-      where: { status: OPEN, expiresAt: { lt: now } },
-      orderBy: { expiresAt: "asc" },
-      take: 10,
-      select: {
-        id: true,
-        organizationId: true,
-        userId: true,
-        name: true,
-        receivedBytes: true,
-        expectedSize: true,
-        expiresAt: true,
-      },
-    }),
-    prisma.invitation.count({ where: { status: PENDING } }),
-    prisma.repositoryConnection.count(),
-    prisma.repositoryConnection.findMany({
-      orderBy: { lastSyncedAt: "asc" },
-      take: 10,
-      select: {
-        id: true,
-        organizationId: true,
-        provider: true,
-        owner: true,
-        repo: true,
-        lastSyncedAt: true,
-      },
-    }),
-    prisma.jwks.findMany({
-      orderBy: { createdAt: "desc" },
-      select: { id: true, alg: true, createdAt: true, expiresAt: true },
-    }),
-    prisma.oauthClient.count(),
-    prisma.oauthClient.count({ where: { disabled: true } }),
-    prisma.aiUsageEvent.aggregate({
-      where: { createdAt: { gte: new Date(now.getTime() - 30 * DAY_MS) } },
-      _sum: { costMicros: true, inputTokens: true, outputTokens: true },
-      _count: true,
-    }),
-  ])
-
-  const neverSynced = await prisma.repositoryConnection.count({
-    where: { lastSyncedAt: null },
-  })
-
-  const lastSync = repositories
-    .map((repository) => repository.lastSyncedAt)
-    .filter((value): value is Date => value !== null)
-    .sort((a, b) => b.getTime() - a.getTime())[0]
+  const ops = await identityAdmin().ops()
+  const newestKey = ops.signingKeys[0]
+  const aiUsage = ops.aiUsage
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Operations"
-        description="Live signals from the shared database. No historical metrics are stored yet."
+        description="Live signals. No historical metrics are stored yet."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Database latency"
+          label="Control-tower database latency"
           value={`${latency} ms`}
           hint={`Pool max ${process.env.DATABASE_POOL_MAX ?? "3"} per instance`}
         />
         <StatCard
-          label="Active sessions"
-          value={formatNumber(activeSessions)}
-          hint={`${formatNumber(expiredSessions)} expired rows`}
-        />
-        <StatCard
-          label="Open uploads"
-          value={formatNumber(openUploads)}
-          hint={`${staleUploads.length} past their lease`}
+          label="Active customer sessions"
+          value={formatNumber(ops.sessions.active)}
+          hint={`${formatNumber(ops.sessions.expired)} expired rows`}
         />
         <StatCard
           label="Pending invitations"
-          value={formatNumber(pendingInvitations)}
-        />
-        <StatCard
-          label="Repository connections"
-          value={formatNumber(repositoryConnections)}
-          hint={`${formatNumber(neverSynced)} never synced`}
-        />
-        <StatCard
-          label="Last repository sync"
-          value={lastSync ? formatRelative(lastSync) : "never"}
+          value={formatNumber(ops.invitations.pending)}
         />
         <StatCard
           label="Signing keys"
-          value={formatNumber(jwks.length)}
+          value={formatNumber(ops.signingKeys.length)}
           hint={
-            jwks[0]?.expiresAt
-              ? `newest expires ${formatRelative(jwks[0].expiresAt)}`
+            newestKey?.expiresAt
+              ? `newest expires ${formatRelative(newestKey.expiresAt)}`
               : "no key"
           }
         />
         <StatCard
-          label="AI spend (30 days)"
-          value={formatUsdMicros(aiSpend._sum.costMicros ?? 0)}
-          hint={`${formatNumber((aiSpend._sum.inputTokens ?? 0) + (aiSpend._sum.outputTokens ?? 0))} tokens in ${formatNumber(aiSpend._count)} runs`}
+          label={`AI spend (${aiUsage.windowDays} days)`}
+          value={formatUsdMicros(aiUsage.costMicros)}
+          hint={`${formatNumber(aiUsage.inputTokens + aiUsage.outputTokens)} tokens in ${formatNumber(aiUsage.runs)} runs`}
         />
         <StatCard
           label="MCP / OAuth clients"
-          value={formatNumber(oauthClients)}
-          hint={`${formatNumber(disabledOauthClients)} disabled`}
+          value={formatNumber(ops.oauthClients.total)}
+          hint={`${formatNumber(ops.oauthClients.disabled)} disabled`}
         />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Stale uploads</h2>
-          <p className="text-xs text-muted-foreground">
-            Open sessions past their lease. The daily sweep unlinks them.
-          </p>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>File</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead className="text-end">Expired</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {staleUploads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-muted-foreground">
-                      No stale upload.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  staleUploads.map((upload) => (
-                    <TableRow key={upload.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{upload.name}</span>
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {upload.id}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground tabular-nums">
-                        {formatNumber(upload.receivedBytes)}
-                        {upload.expectedSize
-                          ? ` / ${formatNumber(upload.expectedSize)}`
-                          : ""}
-                      </TableCell>
-                      <TableCell className="text-end text-muted-foreground">
-                        {formatRelative(upload.expiresAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Repository sync lag</h2>
-          <p className="text-xs text-muted-foreground">
-            Connections ordered by oldest sync. The hourly cron refreshes them.
-          </p>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Repository</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead className="text-end">Last sync</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {repositories.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-muted-foreground">
-                      No connected repository.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  repositories.map((repository) => (
-                    <TableRow key={repository.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {repository.owner}/{repository.repo}
-                          </span>
-                          <span className="text-xs text-muted-foreground capitalize">
-                            {repository.provider}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/organizations/${repository.organizationId}`}
-                          className="font-mono text-xs hover:underline"
-                        >
-                          {repository.organizationId}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-end text-muted-foreground">
-                        {repository.lastSyncedAt
-                          ? formatRelative(repository.lastSyncedAt)
-                          : "never"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
       </div>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Signing keys</h2>
         <p className="text-xs text-muted-foreground">
-          Shared JWKS rows used by MCP tokens. Only public metadata is read
-          here.
+          Signing keys of the customer app's OAuth server. Only public metadata
+          is read here; the control tower never decrypts them.
         </p>
         <div className="overflow-hidden rounded-xl border bg-card">
           <Table>
@@ -281,14 +95,14 @@ export default async function OperationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {jwks.length === 0 ? (
+              {ops.signingKeys.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
                     No signing key stored.
                   </TableCell>
                 </TableRow>
               ) : (
-                jwks.map((key) => (
+                ops.signingKeys.map((key) => (
                   <TableRow key={key.id}>
                     <TableCell className="font-mono text-xs">
                       {key.id}

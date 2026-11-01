@@ -3,8 +3,7 @@ import { notFound } from "next/navigation"
 
 import { ExternalLink } from "lucide-react"
 
-import { prisma } from "@workspace/db"
-import { entitlementsFor, monthWindow } from "@workspace/db/plans"
+import { prisma } from "@workspace/db-control-tower"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -29,15 +28,19 @@ import {
   formatUsdMicros,
 } from "@/lib/platform/format"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 import {
-  enforcedPlan,
-  orgQuotaBytes,
-  storedPlan,
+  aiBudgetMicros,
+  quotaBytes,
   trialSummary,
   usagePercent,
 } from "@/lib/platform/plan"
 
 export const metadata = { title: "Organization" }
+
+function toDate(value: string | null): Date | null {
+  return value ? new Date(value) : null
+}
 
 export default async function OrganizationDetailPage({
   params,
@@ -48,159 +51,37 @@ export default async function OrganizationDetailPage({
 
   const { orgId } = await params
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: orgId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      metadata: true,
-      storageQuotaBytes: true,
-      trialStartedAt: true,
-      trialEndsAt: true,
-      createdAt: true,
-      subscription: {
-        select: {
-          plan: true,
-          status: true,
-          provider: true,
-          billingInterval: true,
-          currentPeriodEnd: true,
-          trialEndsAt: true,
-          cancelAtPeriodEnd: true,
-          manualOverride: true,
-          providerCustomerId: true,
-          providerSubscriptionId: true,
-          updatedAt: true,
-        },
-      },
-      _count: {
-        select: {
-          members: true,
-          projects: true,
-          tasks: true,
-          clients: true,
-          deals: true,
-          files: true,
-          repositoryConnections: true,
-        },
-      },
-    },
-  })
+  // Customer data comes from Copilot's identity admin API; platform audit rows
+  // stay in this app's own database.
+  const organization = await identityAdmin().getOrganizationDetail(orgId)
 
   if (!organization) notFound()
 
-  const month = monthWindow()
-  const previousMonth = monthWindow(
-    new Date(month.start.getTime() - 24 * 60 * 60 * 1000)
-  )
-  const [
-    storage,
-    members,
-    repositories,
-    oauthClients,
-    auditLogs,
-    platformEvents,
-    aiThisMonth,
-    aiLastMonth,
-    seats,
-  ] = await Promise.all([
-    prisma.fileNode.aggregate({
-      where: { organizationId: orgId, trashed: false },
-      _sum: { sizeBytes: true },
-    }),
-    prisma.member.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: "asc" },
-      take: 100,
-      select: {
-        id: true,
-        role: true,
-        clientId: true,
-        createdAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            emailVerified: true,
-            banned: true,
-          },
-        },
-      },
-    }),
-    prisma.repositoryConnection.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        provider: true,
-        owner: true,
-        repo: true,
-        lastSyncedAt: true,
-        createdAt: true,
-      },
-    }),
-    prisma.oauthClient.findMany({
-      where: { referenceId: orgId },
-      orderBy: { createdAt: "desc" },
-      select: { clientId: true, name: true, disabled: true, createdAt: true },
-    }),
-    prisma.auditLog.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        action: true,
-        entityType: true,
-        entityId: true,
-        actorId: true,
-        createdAt: true,
-      },
-    }),
-    prisma.platformAuditEvent.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        action: true,
-        actorEmail: true,
-        actorRole: true,
-        targetType: true,
-        targetId: true,
-        createdAt: true,
-      },
-    }),
-    prisma.aiUsageEvent.aggregate({
-      where: { organizationId: orgId, createdAt: { gte: month.start } },
-      _sum: { costMicros: true, inputTokens: true, outputTokens: true },
-      _count: true,
-    }),
-    prisma.aiUsageEvent.aggregate({
-      where: {
-        organizationId: orgId,
-        createdAt: { gte: previousMonth.start, lt: month.start },
-      },
-      _sum: { costMicros: true },
-    }),
-    prisma.member.count({ where: { organizationId: orgId, clientId: null } }),
-  ])
+  const platformEvents = await prisma.platformAuditEvent.findMany({
+    where: { organizationId: orgId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      action: true,
+      actorEmail: true,
+      actorRole: true,
+      targetType: true,
+      targetId: true,
+      createdAt: true,
+    },
+  })
 
-  const used = Number(storage._sum.sizeBytes ?? 0)
-  const quota = orgQuotaBytes(organization)
-  const percent = usagePercent(used, quota)
-  const aiSpent = aiThisMonth._sum.costMicros ?? 0
-  const aiTokens =
-    (aiThisMonth._sum.inputTokens ?? 0) + (aiThisMonth._sum.outputTokens ?? 0)
-  const plan = enforcedPlan(organization)
-  const stored = storedPlan(organization)
-  const trial = trialSummary(organization)
-  // Back on the stored plan after a trial that is no longer running.
+  const plan = organization.plan
+  const quota = quotaBytes(plan, organization.storageQuotaBytes)
+  const trial = trialSummary(organization.trialEndsAt)
   const trialEnded =
-    !trial && organization.trialStartedAt !== null && stored === "free"
-  const aiBudget = entitlementsFor(plan).aiBudgetMicrosPerSeat * seats
+    !trial && organization.trialStartedAt !== null && plan === "free"
+  const aiBudget = aiBudgetMicros(plan, organization.seatCount)
+  const aiSpent = organization.aiUsage.costMicros
+  const aiTokens =
+    organization.aiUsage.inputTokens + organization.aiUsage.outputTokens
+  const subscription = organization.subscription
 
   return (
     <div className="space-y-6">
@@ -228,6 +109,11 @@ export default async function OrganizationDetailPage({
                 · ends {formatDate(trial.endsAt)}
               </span>
             ) : null}
+            {organization.deletionScheduledAt ? (
+              <Badge variant="destructive">
+                deletion {formatDate(organization.deletionScheduledAt)}
+              </Badge>
+            ) : null}
             <span>· created {formatDate(organization.createdAt)}</span>
             <span className="font-mono text-xs">· {organization.id}</span>
           </span>
@@ -253,34 +139,23 @@ export default async function OrganizationDetailPage({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
-          label="Storage"
-          value={formatBytes(used)}
-          hint={`${percent}% of ${formatBytes(quota)}${organization.storageQuotaBytes !== null ? " (override)" : ""}`}
+          label="Seats"
+          value={formatNumber(organization.seatCount)}
+          hint={`${formatNumber(organization.memberCount)} members including the client portal`}
         />
         <StatCard
-          label="Members"
-          value={formatNumber(organization._count.members)}
-        />
-        <StatCard
-          label="Projects"
-          value={formatNumber(organization._count.projects)}
-        />
-        <StatCard
-          label="Tasks"
-          value={formatNumber(organization._count.tasks)}
-        />
-        <StatCard
-          label="Clients"
-          value={formatNumber(organization._count.clients)}
-        />
-        <StatCard
-          label="Deals"
-          value={formatNumber(organization._count.deals)}
+          label="Storage quota"
+          value={formatBytes(quota)}
+          hint={
+            organization.storageQuotaBytes !== null
+              ? "per-organization override"
+              : "plan default"
+          }
         />
         <StatCard
           label="AI spend this month"
           value={formatUsdMicros(aiSpent)}
-          hint={`${usagePercent(aiSpent, aiBudget)}% of ${formatUsdMicros(aiBudget)} · ${formatNumber(aiTokens)} tokens in ${formatNumber(aiThisMonth._count)} runs · last month ${formatUsdMicros(aiLastMonth._sum.costMicros ?? 0)}`}
+          hint={`${usagePercent(aiSpent, aiBudget)}% of ${formatUsdMicros(aiBudget)} · ${formatNumber(aiTokens)} tokens in ${formatNumber(organization.aiUsage.runs)} runs · last month ${formatUsdMicros(organization.previousMonthAiCostMicros)}`}
         />
       </div>
 
@@ -289,13 +164,22 @@ export default async function OrganizationDetailPage({
         <div className="rounded-xl border bg-card p-4">
           <PlanForm
             organizationId={organization.id}
-            plan={stored}
+            plan={plan}
             quotaBytes={
               organization.storageQuotaBytes === null
                 ? null
                 : Number(organization.storageQuotaBytes)
             }
-            subscription={organization.subscription}
+            subscription={
+              subscription
+                ? {
+                    ...subscription,
+                    currentPeriodEnd: toDate(subscription.currentPeriodEnd),
+                    trialEndsAt: toDate(subscription.trialEndsAt),
+                    updatedAt: new Date(subscription.updatedAt),
+                  }
+                : null
+            }
           />
         </div>
       </section>
@@ -313,14 +197,14 @@ export default async function OrganizationDetailPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.length === 0 ? (
+              {organization.members.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
                     No members.
                   </TableCell>
                 </TableRow>
               ) : (
-                members.map((member) => (
+                organization.members.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
                       <Link
@@ -356,105 +240,62 @@ export default async function OrganizationDetailPage({
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Repositories</h2>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <Table>
-              <TableHeader>
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">MCP / OAuth clients</h2>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Client</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-end">Created</TableHead>
+                <TableHead className="text-end">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {organization.oauthClients.length === 0 ? (
                 <TableRow>
-                  <TableHead>Repository</TableHead>
-                  <TableHead className="text-end">Last sync</TableHead>
+                  <TableCell colSpan={4} className="text-muted-foreground">
+                    No OAuth client registered for this organization.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {repositories.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-muted-foreground">
-                      No connected repository.
+              ) : (
+                organization.oauthClients.map((client) => (
+                  <TableRow key={client.clientId}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {client.name ?? client.clientId}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {client.clientId}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={client.disabled ? "destructive" : "outline"}
+                      >
+                        {client.disabled ? "disabled" : "active"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-end text-muted-foreground">
+                      {client.createdAt ? formatDate(client.createdAt) : "—"}
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <OAuthClientToggle
+                        clientId={client.clientId}
+                        disabled={client.disabled}
+                        canManage={context.role === "platform_admin"}
+                      />
                     </TableCell>
                   </TableRow>
-                ) : (
-                  repositories.map((repository) => (
-                    <TableRow key={repository.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {repository.owner}/{repository.repo}
-                          </span>
-                          <span className="text-xs text-muted-foreground capitalize">
-                            {repository.provider}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-end text-muted-foreground">
-                        {repository.lastSyncedAt
-                          ? formatRelative(repository.lastSyncedAt)
-                          : "never"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">MCP / OAuth clients</h2>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-end">Created</TableHead>
-                  <TableHead className="text-end">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {oauthClients.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-muted-foreground">
-                      No OAuth client registered for this organization.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  oauthClients.map((client) => (
-                    <TableRow key={client.clientId}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{client.name}</span>
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {client.clientId}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={client.disabled ? "destructive" : "outline"}
-                        >
-                          {client.disabled ? "disabled" : "active"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-end text-muted-foreground">
-                        {formatDate(client.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-end">
-                        <OAuthClientToggle
-                          clientId={client.clientId}
-                          disabled={Boolean(client.disabled)}
-                          canManage={context.role === "platform_admin"}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-      </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="space-y-3">
@@ -469,14 +310,14 @@ export default async function OrganizationDetailPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLogs.length === 0 ? (
+                {organization.recentAudit.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-muted-foreground">
                       No audit entries.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  auditLogs.map((entry) => (
+                  organization.recentAudit.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="font-medium">
                         {entry.action}

@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-control-tower"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   Table,
@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/page-header"
 import { formatDateTime, formatRelative } from "@/lib/platform/format"
 import { readString, type SearchParams } from "@/lib/platform/params"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 
 export const metadata = { title: "Audit" }
 
@@ -66,6 +67,7 @@ export default async function AuditPage({
 }
 
 async function PlatformAuditTable() {
+  // Platform audit lives in this app's own database.
   const events = await prisma.platformAuditEvent.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -116,7 +118,9 @@ async function PlatformAuditTable() {
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{event.action}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {event.action}
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span>{event.targetType}</span>
@@ -147,26 +151,8 @@ async function PlatformAuditTable() {
 }
 
 async function OrganizationAuditTable() {
-  const entries = await prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      action: true,
-      entityType: true,
-      entityId: true,
-      actorId: true,
-      createdAt: true,
-      organization: { select: { id: true, name: true } },
-    },
-  })
-
-  const actorIds = [...new Set(entries.map((entry) => entry.actorId))]
-  const actors = await prisma.user.findMany({
-    where: { id: { in: actorIds } },
-    select: { id: true, name: true, email: true },
-  })
-  const actorsById = new Map(actors.map((actor) => [actor.id, actor]))
+  // Cross-organization audit rows come from Copilot's identity admin API.
+  const { items: entries } = await identityAdmin().listAudit({ limit: 100 })
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -188,49 +174,45 @@ async function OrganizationAuditTable() {
               </TableCell>
             </TableRow>
           ) : (
-            entries.map((entry) => {
-              const actor = actorsById.get(entry.actorId)
-
-              return (
-                <TableRow key={entry.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    <span title={formatDateTime(entry.createdAt)}>
-                      {formatRelative(entry.createdAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/organizations/${entry.organization.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {entry.organization.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    {actor ? (
-                      <div className="flex flex-col">
-                        <span>{actor.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {actor.email}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {entry.actorId}
+            entries.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  <span title={formatDateTime(entry.createdAt)}>
+                    {formatRelative(entry.createdAt)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Link
+                    href={`/organizations/${entry.organizationId}`}
+                    className="font-medium hover:underline"
+                  >
+                    {entry.organizationName}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  {entry.actorName ? (
+                    <div className="flex flex-col">
+                      <span>{entry.actorName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {entry.actorEmail ?? entry.actorId}
                       </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {entry.action}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {entry.entityType}
-                  </TableCell>
-                </TableRow>
-              )
-            })
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {entry.actorEmail ?? entry.actorId}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {entry.action}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {entry.entityType}
+                </TableCell>
+              </TableRow>
+            ))
           )}
         </TableBody>
       </Table>

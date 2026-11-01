@@ -5,27 +5,49 @@ import {
   SERVICE_SCOPES,
 } from "../internal/contracts"
 import {
+  AdminAuditPageSchema,
   AdminBanInputSchema,
   AdminHandoffInputSchema,
   AdminHandoffResultSchema,
+  AdminOAuthClientDisabledInputSchema,
+  AdminOAuthClientSchema,
+  AdminOpsSchema,
+  AdminOrganizationDetailSchema,
   AdminOrganizationPageSchema,
   AdminOrganizationSchema,
+  AdminOverviewSchema,
   AdminPlanInputSchema,
   AdminSessionRevokeResultSchema,
   AdminTrialInputSchema,
+  AdminUserDetailSchema,
   AdminUserPageSchema,
   AdminUserSchema,
+  type AdminAuditPage,
   type AdminBanInput,
   type AdminHandoffInput,
   type AdminHandoffResult,
+  type AdminOAuthClient,
+  type AdminOAuthClientDisabledInput,
+  type AdminOps,
   type AdminOrganization,
+  type AdminOrganizationDetail,
   type AdminOrganizationPage,
+  type AdminOverview,
   type AdminPlanInput,
   type AdminSessionRevokeResult,
   type AdminTrialInput,
   type AdminUser,
+  type AdminUserDetail,
   type AdminUserPage,
 } from "../internal/admin"
+
+/** Paging for the organization and user lists. `offset` backs page numbers. */
+export interface AdminListInput {
+  query?: string
+  cursor?: string | null
+  offset?: number
+  limit?: number
+}
 
 export interface IdentityAdminClientOptions {
   /** Customer app (Copilot) origin. */
@@ -102,20 +124,17 @@ export class IdentityAdminClient {
     return schema ? schema.parse(data) : data
   }
 
-  private query(input: {
-    query?: string
-    cursor?: string | null
-    limit?: number
-  }): string {
+  private query(input: AdminListInput): string {
     const search = new URLSearchParams()
     if (input.query) search.set("query", input.query)
     if (input.cursor) search.set("cursor", input.cursor)
+    if (input.offset) search.set("offset", String(input.offset))
     if (input.limit) search.set("limit", String(input.limit))
     return search.toString()
   }
 
   listOrganizations(
-    input: { query?: string; cursor?: string | null; limit?: number } = {}
+    input: AdminListInput = {}
   ): Promise<AdminOrganizationPage> {
     return this.request(
       `${INTERNAL_ROUTES.adminOrganizations}?${this.query(input)}`,
@@ -130,6 +149,17 @@ export class IdentityAdminClient {
       {},
       AdminOrganizationSchema
     ) as Promise<AdminOrganization>
+  }
+
+  /** Organization detail page: members, OAuth clients, audit, AI usage. */
+  getOrganizationDetail(
+    organizationId: string
+  ): Promise<AdminOrganizationDetail> {
+    return this.request(
+      INTERNAL_ROUTES.adminOrganizationDetail(organizationId),
+      {},
+      AdminOrganizationDetailSchema
+    ) as Promise<AdminOrganizationDetail>
   }
 
   updatePlan(
@@ -168,9 +198,7 @@ export class IdentityAdminClient {
     ) as Promise<AdminOrganization>
   }
 
-  listUsers(
-    input: { query?: string; cursor?: string | null; limit?: number } = {}
-  ): Promise<AdminUserPage> {
+  listUsers(input: AdminListInput = {}): Promise<AdminUserPage> {
     return this.request(
       `${INTERNAL_ROUTES.adminUsers}?${this.query(input)}`,
       {},
@@ -184,6 +212,15 @@ export class IdentityAdminClient {
       {},
       AdminUserSchema
     ) as Promise<AdminUser>
+  }
+
+  /** User detail page: memberships, sessions, linked accounts, OAuth clients. */
+  getUserDetail(userId: string): Promise<AdminUserDetail> {
+    return this.request(
+      INTERNAL_ROUTES.adminUserDetail(userId),
+      {},
+      AdminUserDetailSchema
+    ) as Promise<AdminUserDetail>
   }
 
   setBan(userId: string, input: AdminBanInput): Promise<AdminUser> {
@@ -214,5 +251,54 @@ export class IdentityAdminClient {
       },
       AdminHandoffResultSchema
     ) as Promise<AdminHandoffResult>
+  }
+
+  overview(): Promise<AdminOverview> {
+    return this.request(
+      INTERNAL_ROUTES.adminOverview,
+      {},
+      AdminOverviewSchema
+    ) as Promise<AdminOverview>
+  }
+
+  ops(): Promise<AdminOps> {
+    return this.request(
+      INTERNAL_ROUTES.adminOps,
+      {},
+      AdminOpsSchema
+    ) as Promise<AdminOps>
+  }
+
+  /** Latest customer audit rows across every organization. */
+  listAudit(input: { limit?: number } = {}): Promise<AdminAuditPage> {
+    const search = new URLSearchParams()
+    if (input.limit) search.set("limit", String(input.limit))
+    return this.request(
+      `${INTERNAL_ROUTES.adminAudit}?${search}`,
+      {},
+      AdminAuditPageSchema
+    ) as Promise<AdminAuditPage>
+  }
+
+  getOAuthClient(clientId: string): Promise<AdminOAuthClient | null> {
+    return this.request(
+      INTERNAL_ROUTES.adminOAuthClient(clientId),
+      {},
+      AdminOAuthClientSchema
+    ) as Promise<AdminOAuthClient>
+  }
+
+  setOAuthClientDisabled(
+    clientId: string,
+    input: AdminOAuthClientDisabledInput
+  ): Promise<AdminOAuthClient> {
+    return this.request(
+      INTERNAL_ROUTES.adminOAuthClient(clientId),
+      {
+        method: "POST",
+        body: JSON.stringify(AdminOAuthClientDisabledInputSchema.parse(input)),
+      },
+      AdminOAuthClientSchema
+    ) as Promise<AdminOAuthClient>
   }
 }

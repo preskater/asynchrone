@@ -1,4 +1,4 @@
-import type { OrgPlan } from "@workspace/db/plans"
+import type { OrgPlan } from "@workspace/core/plans"
 
 /** One audit row as the settings page and the export render it. */
 export interface AuditEntryView {

@@ -1,6 +1,6 @@
 /** Plan catalog and status mapping shared by the billing UI and services. */
 
-import { ORG_PLANS, parsePlan, type OrgPlan } from "@workspace/db/plans"
+import { ORG_PLANS, parsePlan, type OrgPlan } from "@workspace/core/plans"
 
 import type { BillingInterval, SubscriptionStatus } from "./types"
 
