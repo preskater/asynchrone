@@ -4,13 +4,15 @@ import type { PrismaClient } from "@workspace/db"
  * The slice of a Prisma client the messaging domain needs.
  *
  * The package never opens a connection: the owning app binds its own client.
- * Today that is `apps/copilot` and the shared monolith client; once `apps/messages`
- * exists it binds the `asynchrone_messages` client instead.
+ * `apps/messages` owns the screens since #162 but still binds the shared
+ * monolith client (the documented transitional binding) because of the
+ * identity reads below; `apps/copilot` keeps an in-process binding for the
+ * assistant, MCP and search until #190.
  *
  * `member` and `user` are identity tables the presence indicator and the DM
  * title still read directly. They move behind the identity internal API when
- * Messaging becomes its own app; until then the structural port keeps the
- * dependency explicit.
+ * the domain moves to `asynchrone_messages`; until then the structural port
+ * keeps the dependency explicit (#171/#190).
  */
 export type MessagingDb = Pick<
   PrismaClient,

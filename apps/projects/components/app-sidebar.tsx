@@ -38,9 +38,13 @@ import {
 export function ProjectSidebar({
   orgSlug,
   copilotUrl,
+  messagesUrl,
 }: {
   orgSlug: string
+  /** Origin of Copilot: the assistant, account screens and the remaining domains. */
   copilotUrl: string
+  /** Origin of the messages app (its own image and chart since #162). */
+  messagesUrl: string
 }) {
   const locale = useLocale()
   const t = useTranslations("Sidebar")
@@ -49,12 +53,29 @@ export function ProjectSidebar({
     `${copilotUrl}/${locale}/${orgSlug}${path}`
 
   const otherApps = [
-    { icon: <SparklesIcon />, title: t("assistant"), path: "" },
-    { icon: <MessageSquareIcon />, title: t("messages"), path: "/messages" },
-    { icon: <CalendarIcon />, title: t("calendars"), path: "/calendars" },
-    { icon: <FileIcon />, title: t("files"), path: "/files" },
-    { icon: <HandshakeIcon />, title: t("clients"), path: "/clients" },
-    { icon: <BriefcaseIcon />, title: t("employees"), path: "/employees" },
+    { icon: <SparklesIcon />, title: t("assistant"), url: workspacePath("") },
+    {
+      icon: <MessageSquareIcon />,
+      title: t("messages"),
+      // Messages is its own app since #162; link to its host.
+      url: `${messagesUrl}/${locale}/${orgSlug}/messages`,
+    },
+    {
+      icon: <CalendarIcon />,
+      title: t("calendars"),
+      url: workspacePath("/calendars"),
+    },
+    { icon: <FileIcon />, title: t("files"), url: workspacePath("/files") },
+    {
+      icon: <HandshakeIcon />,
+      title: t("clients"),
+      url: workspacePath("/clients"),
+    },
+    {
+      icon: <BriefcaseIcon />,
+      title: t("employees"),
+      url: workspacePath("/employees"),
+    },
   ]
 
   return (
@@ -110,9 +131,7 @@ export function ProjectSidebar({
             <SidebarMenu>
               {otherApps.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    render={<a href={workspacePath(item.path)} />}
-                  >
+                  <SidebarMenuButton render={<a href={item.url} />}>
                     {item.icon}
                     <span>{item.title}</span>
                   </SidebarMenuButton>

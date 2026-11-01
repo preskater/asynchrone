@@ -18,6 +18,10 @@ dependencies:
     version: 0.1.0
     repository: file://../asynchrone-space-projects
     condition: asynchrone-space-projects.enabled
+  - name: asynchrone-space-messages
+    version: 0.1.0
+    repository: file://../asynchrone-space-messages
+    condition: asynchrone-space-messages.enabled
   - name: asynchrone-space-control-tower
     version: 0.1.1
     repository: file://../asynchrone-space-control-tower

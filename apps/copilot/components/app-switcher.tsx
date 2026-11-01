@@ -19,13 +19,15 @@ import { Link, usePathname } from "@workspace/i18n/navigation"
 export function AppSwitcher({
   orgSlug,
   projectsUrl,
+  messagesUrl,
 }: {
   orgSlug: string
   projectsUrl: string
+  messagesUrl: string
 }) {
   const t = useTranslations("Sidebar")
   const pathname = usePathname()
-  const items = useNavMain(orgSlug, projectsUrl)
+  const items = useNavMain(orgSlug, projectsUrl, messagesUrl)
 
   const current =
     [...items]
@@ -53,7 +55,13 @@ export function AppSwitcher({
           {items.map((item) => (
             <DropdownMenuItem
               key={item.url}
-              render={<Link href={item.url} prefetch={false} />}
+              render={
+                item.external ? (
+                  <a href={item.url} />
+                ) : (
+                  <Link href={item.url} prefetch={false} />
+                )
+              }
             >
               {item.icon}
               <span>{item.title}</span>

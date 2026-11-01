@@ -8,8 +8,11 @@ dependencies:
 - name: asynchrone-space-projects
   repository: file://../asynchrone-space-projects
   version: 0.1.0
+- name: asynchrone-space-messages
+  repository: file://../asynchrone-space-messages
+  version: 0.1.0
 - name: asynchrone-space-control-tower
   repository: file://../asynchrone-space-control-tower
   version: 0.1.1
-digest: sha256:89b0e842837d9ed092a6aba22b17c8670ca486383882c676e99ae0ab332b71d2
-generated: "2026-11-01T18:05:58.78001+01:00"
+digest: sha256:a2c6f350d5747296ae10e9d805dab93f5c0f95f762ac137f402453dd69a028b5
+generated: "2026-11-01T21:05:49.908146+01:00"

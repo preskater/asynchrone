@@ -20,7 +20,6 @@ import type { NotificationsData } from "@/lib/notifications/types"
 const titleKeys = {
   "": "assistant",
   "/projects": "projects",
-  "/messages": "messages",
   "/calendars": "calendars",
   "/files": "files",
   "/employees": "employees",
@@ -45,6 +44,7 @@ function usePageTitle(orgSlug: string, pathname: string) {
 export function SiteHeader({
   orgSlug,
   projectsUrl,
+  messagesUrl,
   user,
   activeOrganizationId,
   notifications,
@@ -52,6 +52,8 @@ export function SiteHeader({
   orgSlug: string
   /** Origin of the projects app (its own image and chart since #160). */
   projectsUrl: string
+  /** Origin of the messages app (its own image and chart since #162). */
+  messagesUrl: string
   user: {
     name: string
     email: string
@@ -94,7 +96,11 @@ export function SiteHeader({
           orientation="vertical"
           className="mx-2 h-4 data-vertical:self-auto"
         />
-        <AppSwitcher orgSlug={orgSlug} projectsUrl={projectsUrl} />
+        <AppSwitcher
+          orgSlug={orgSlug}
+          projectsUrl={projectsUrl}
+          messagesUrl={messagesUrl}
+        />
         <Separator
           orientation="vertical"
           className="mx-2 hidden h-4 sm:block data-vertical:self-auto"
@@ -128,6 +134,7 @@ export function SiteHeader({
       <CommandMenu
         orgSlug={orgSlug}
         projectsUrl={projectsUrl}
+        messagesUrl={messagesUrl}
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
       />

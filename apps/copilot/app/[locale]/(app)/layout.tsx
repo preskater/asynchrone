@@ -11,7 +11,6 @@ import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { TrialBanner } from "@workspace/app-shell/trial-banner"
 import { AppSidebar } from "@/components/app-sidebar"
 import { FilesShellProvider } from "@/components/files-provider"
-import { MessagingShellProvider } from "@/components/messaging-provider"
 import { SiteHeader } from "@/components/site-header"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
@@ -23,7 +22,6 @@ import { CalendarsProvider } from "@/lib/calendars/store"
 import type { CalendarData } from "@workspace/calendars/types"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import type { FilesData } from "@workspace/files/types"
-import type { MessagingData } from "@workspace/messaging/types"
 import { notificationService } from "@/lib/notifications"
 import { mustEnrollTwoFactor } from "@/lib/organization/two-factor-policy"
 import { getOrganizationShell } from "@/lib/organization/shell"
@@ -36,13 +34,6 @@ import { appOrigin } from "@workspace/contracts/server"
 
 /** Domain screens hydrate their own data; the shell starts empty. */
 const EMPTY_CALENDAR_DATA: CalendarData = { calendars: [], events: [] }
-const EMPTY_MESSAGING_DATA: MessagingData = {
-  teams: [],
-  conversations: [],
-  messages: [],
-  presence: {},
-  typing: {},
-}
 const EMPTY_FILES_DATA: FilesData = {
   files: [],
   shares: {},
@@ -53,10 +44,10 @@ const EMPTY_FILES_DATA: FilesData = {
 /**
  * The Copilot workspace shell.
  *
- * The project screens, their actions and the project store moved to
- * `apps/projects` (#160): this shell renders no project data. The member
- * directory comes from the identity database Copilot owns and feeds the files,
- * messaging and calendar providers.
+ * The project screens moved to `apps/projects` (#160) and the messaging
+ * screens to `apps/messages` (#162): this shell renders neither. The member
+ * directory comes from the identity database Copilot owns and feeds the files
+ * and calendar providers.
  */
 export default async function AppLayout({
   children,
@@ -79,6 +70,7 @@ export default async function AppLayout({
   const ctx = await getRequestContextForOrganization(organization.id)
   const t = await getTranslations("Common")
   const projectsUrl = appOrigin("projects")
+  const messagesUrl = appOrigin("messages")
 
   const [notificationData, appearance, trial, shell, memberRows] =
     await Promise.all([
@@ -122,68 +114,63 @@ export default async function AppLayout({
       <EntitlementsProvider entitlements={entitlements}>
         <AppearanceProvider initialAppearance={appearance} userId={ctx.userId}>
           <RecentsProvider organizationId={organization.id}>
-            <MessagingShellProvider
-              initialData={EMPTY_MESSAGING_DATA}
+            <CalendarsProvider
+              initialData={EMPTY_CALENDAR_DATA}
               currentUserId={ctx.userId}
-              organizationId={organization.id}
               members={members}
             >
-              <CalendarsProvider
-                initialData={EMPTY_CALENDAR_DATA}
-                currentUserId={ctx.userId}
-                members={members}
-              >
-                <WorkspaceNavProvider>
-                  <FilesShellProvider
-                    initialData={EMPTY_FILES_DATA}
-                    currentUserId={ctx.userId}
-                    organizationId={organization.id}
-                    storageQuotaBytes={storageQuotaBytes}
-                    members={members}
-                  >
-                    <AssistantProvider organizationId={organization.id}>
-                      <WorkspaceShell
-                        skipLabel={t("skipToContent")}
-                        sidebar={
-                          <AppSidebar
-                            variant="inset"
-                            orgSlug={organization.slug}
-                            projectsUrl={projectsUrl}
-                          />
-                        }
-                        banners={
-                          <>
-                            {session.session.impersonatedBy ? (
-                              <ImpersonationBanner name={session.user.name} />
-                            ) : null}
-                            {deletionScheduledAt ? (
-                              <DeletionBanner
-                                scheduledAt={deletionScheduledAt}
-                                orgSlug={organization.slug}
-                              />
-                            ) : null}
-                            {trial?.state === "active" ? (
-                              <TrialBanner daysLeft={trial.daysLeft} />
-                            ) : null}
-                          </>
-                        }
-                        header={
-                          <SiteHeader
-                            orgSlug={organization.slug}
-                            projectsUrl={projectsUrl}
-                            user={session.user}
-                            activeOrganizationId={organization.id}
-                            notifications={notificationData}
-                          />
-                        }
-                      >
-                        {children}
-                      </WorkspaceShell>
-                    </AssistantProvider>
-                  </FilesShellProvider>
-                </WorkspaceNavProvider>
-              </CalendarsProvider>
-            </MessagingShellProvider>
+              <WorkspaceNavProvider>
+                <FilesShellProvider
+                  initialData={EMPTY_FILES_DATA}
+                  currentUserId={ctx.userId}
+                  organizationId={organization.id}
+                  storageQuotaBytes={storageQuotaBytes}
+                  members={members}
+                >
+                  <AssistantProvider organizationId={organization.id}>
+                    <WorkspaceShell
+                      skipLabel={t("skipToContent")}
+                      sidebar={
+                        <AppSidebar
+                          variant="inset"
+                          orgSlug={organization.slug}
+                          projectsUrl={projectsUrl}
+                          messagesUrl={messagesUrl}
+                        />
+                      }
+                      banners={
+                        <>
+                          {session.session.impersonatedBy ? (
+                            <ImpersonationBanner name={session.user.name} />
+                          ) : null}
+                          {deletionScheduledAt ? (
+                            <DeletionBanner
+                              scheduledAt={deletionScheduledAt}
+                              orgSlug={organization.slug}
+                            />
+                          ) : null}
+                          {trial?.state === "active" ? (
+                            <TrialBanner daysLeft={trial.daysLeft} />
+                          ) : null}
+                        </>
+                      }
+                      header={
+                        <SiteHeader
+                          orgSlug={organization.slug}
+                          projectsUrl={projectsUrl}
+                          messagesUrl={messagesUrl}
+                          user={session.user}
+                          activeOrganizationId={organization.id}
+                          notifications={notificationData}
+                        />
+                      }
+                    >
+                      {children}
+                    </WorkspaceShell>
+                  </AssistantProvider>
+                </FilesShellProvider>
+              </WorkspaceNavProvider>
+            </CalendarsProvider>
           </RecentsProvider>
         </AppearanceProvider>
       </EntitlementsProvider>

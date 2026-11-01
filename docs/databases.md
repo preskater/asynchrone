@@ -104,10 +104,10 @@ set explicitly with `IDENTITY_SHADOW_DATABASE_URL`, … They are used by
 `verify:migrations` and are created by `db:create`.
 
 The shared `OidcSession` model (an app's relying-party session, see
-[oidc-client.md](./oidc-client.md)) ships in the identity and projects
+[oidc-client.md](./oidc-client.md)) ships in the identity, projects and messages
 databases: every app needs one row per local sign-in. The other domain schemas
 add `OidcSession` to their model list and their migration history when their app
-is created (#161–#164).
+is created (#161, #163–#164).
 
 Each database currently has one `20261031120000_init` baseline. The Docker
 `migrate` stage runs the monolith migration and then the orchestrator. The Helm
@@ -131,4 +131,5 @@ migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
 - [x] Migration orchestration, baselines, shadow DBs and drift check (#184)
 - [x] Maintenance-window data split tooling and runbook (#185)
 - [x] Control-tower cutover: own database, platform audit and runbook (#209)
-- [ ] App wiring to the per-app clients (#186+)
+- [ ] App wiring to the per-app clients (#186+); projects (#160) and messages
+      (#162) bind the shared client until #190/#171

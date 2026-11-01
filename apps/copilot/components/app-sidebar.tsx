@@ -17,13 +17,10 @@ import {
 import { useLocale, useTranslations } from "next-intl"
 
 import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
-import { ConversationSidebar } from "@workspace/messaging/components/conversation-sidebar"
 import { FilesSidebar } from "@workspace/files/components/files-sidebar"
 import { NavMain, type NavApp } from "@workspace/app-shell/nav-main"
-import { useMessaging } from "@workspace/messaging/store"
 import { NavSecondary } from "@workspace/ui/components/nav-secondary"
 import { Link, usePathname } from "@workspace/i18n/navigation"
-import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import {
   Sidebar,
   SidebarContent,
@@ -34,7 +31,11 @@ import {
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
-export function useNavMain(orgSlug: string, projectsUrl: string): NavApp[] {
+export function useNavMain(
+  orgSlug: string,
+  projectsUrl: string,
+  messagesUrl: string
+): NavApp[] {
   const t = useTranslations("Sidebar")
   const locale = useLocale()
   return [
@@ -54,8 +55,10 @@ export function useNavMain(orgSlug: string, projectsUrl: string): NavApp[] {
     {
       key: "messages",
       title: t("messages"),
-      url: `/${orgSlug}/messages`,
+      // Messages is its own app since #162; link to its host.
+      url: `${messagesUrl}/${locale}/${orgSlug}/messages`,
       icon: <MessageSquareIcon />,
+      external: true,
     },
     {
       key: "calendars",
@@ -112,21 +115,17 @@ export function useNavSecondary(orgSlug: string) {
 export function AppSidebar({
   orgSlug,
   projectsUrl,
+  messagesUrl,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   orgSlug: string
   /** Origin of the projects app (its own image and chart since #160). */
   projectsUrl: string
+  /** Origin of the messages app (its own image and chart since #162). */
+  messagesUrl: string
 }) {
   const pathname = usePathname()
-  const { unreadTotal } = useMessaging()
-  const {
-    messagesActiveId,
-    selectConversation,
-    messagesSearchOpen,
-    setMessagesSearchOpen,
-  } = useWorkspaceNav()
-  const navMain = useNavMain(orgSlug, projectsUrl)
+  const navMain = useNavMain(orgSlug, projectsUrl, messagesUrl)
   const navSecondary = useNavSecondary(orgSlug)
 
   const prefix = `/${orgSlug}`
@@ -135,16 +134,7 @@ export function AppSidebar({
     : pathname
 
   const contextual =
-    relative === "/messages" || relative.startsWith("/messages/") ? (
-      <ConversationSidebar
-        navigation={{
-          activeId: messagesActiveId,
-          selectConversation,
-          searchOpen: messagesSearchOpen,
-          setSearchOpen: setMessagesSearchOpen,
-        }}
-      />
-    ) : relative === "/files" || relative.startsWith("/files/") ? (
+    relative === "/files" || relative.startsWith("/files/") ? (
       <FilesSidebar />
     ) : relative === "/calendars" || relative.startsWith("/calendars/") ? (
       <CalendarsSidebar />
@@ -175,7 +165,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} orgSlug={orgSlug} unreadTotal={unreadTotal} />
+        <NavMain items={navMain} orgSlug={orgSlug} messagesUrl={messagesUrl} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

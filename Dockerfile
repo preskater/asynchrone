@@ -7,8 +7,8 @@ ARG WORKDIR=/usr/src/asynchrone-space
 # ---
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
 ARG WORKDIR
-# Workspace app to build: `copilot` (customer app), `projects` (the first
-# domain app), `control-tower` or `landing` (the stateless public site).
+# Workspace app to build: `copilot` (customer app), `projects` and `messages`
+# (domain apps), `control-tower` or `landing` (the stateless public site).
 ARG APP=copilot
 WORKDIR ${WORKDIR}
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -50,6 +50,11 @@ ENV PROJECTS_APP_URL=http://localhost:3004
 ENV COPILOT_APP_URL=http://localhost:3000
 ENV PROJECTS_OAUTH_CLIENT_ID=build-placeholder-client-id
 ENV PROJECTS_OAUTH_CLIENT_SECRET=build-placeholder-client-secret
+# Required by the messages build: its own origin, Copilot as the OIDC issuer
+# and the provisioned client credentials (real values arrive at runtime).
+ENV MESSAGES_APP_URL=http://localhost:3007
+ENV MESSAGES_OAUTH_CLIENT_ID=build-placeholder-client-id
+ENV MESSAGES_OAUTH_CLIENT_SECRET=build-placeholder-client-secret
 # Public Copilot origin inlined into the landing's browser bundle. Empty keeps
 # the production default (https://copilot.asynchrone.space).
 ARG NEXT_PUBLIC_WORKSPACE_URL=""

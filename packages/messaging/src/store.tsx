@@ -173,11 +173,14 @@ export function MessagingProvider({
           (message) => message.conversationId !== conversationId
         )
         // Keep pages loaded through "load earlier" plus pending optimistic
-        // messages; replace the newest page with the server copy.
+        // messages; replace the newest page with the server copy. Optimistic
+        // rows have a `m_` id and are appended below, so `older` must exclude
+        // them (an empty first page makes every row older than `Infinity`).
         const older = prev.filter(
           (message) =>
             message.conversationId === conversationId &&
             !fetchedIds.has(message.id) &&
+            !message.id.startsWith("m_") &&
             new Date(message.createdAt).getTime() < oldestFetched
         )
         const optimistic = prev.filter(

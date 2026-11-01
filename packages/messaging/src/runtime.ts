@@ -19,9 +19,9 @@ export interface MessagingRuntime {
 /**
  * Bind the messaging domain to one app's database and large-object store.
  *
- * Copilot calls this once from `apps/copilot/lib/messaging.ts`. When Messages
- * becomes `apps/messages` it calls the same factory with its own pool and
- * database.
+ * `apps/messages` calls this once from its `lib/messaging.ts`; Copilot keeps
+ * its own binding (`apps/copilot/lib/messaging.ts`) for the assistant, MCP and
+ * search until #190.
  */
 export function createMessagingRuntime(
   options: MessagingRuntimeOptions

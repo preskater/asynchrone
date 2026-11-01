@@ -106,6 +106,22 @@ model MessageAttachment {
   @@map("messageAttachment")
 }
 
+model OidcSession {
+  id                   String   @id
+  userId               String
+  organizationId       String
+  sid                  String
+  accessToken          String
+  refreshToken         String?
+  accessTokenExpiresAt DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([sid])
+  @@index([userId])
+  @@map("oidcSession")
+}
+
 model AuditLog {
   id             String       @id @default(cuid())
   organizationId String

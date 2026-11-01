@@ -37,10 +37,10 @@ See also:
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
-`apps/landing`, `apps/copilot`, `apps/projects` and `apps/control-tower` exist
-today. Copilot still hosts the calendars, files, messages, clients and employees
-routes until #161–#164 move them; the portal stays inside Copilot (there is no
-`apps/portal`).
+`apps/landing`, `apps/copilot`, `apps/projects`, `apps/messages` and
+`apps/control-tower` exist today. Copilot still hosts the calendars, files,
+clients and employees routes until #161 and #163–#164 move them; the portal
+stays inside Copilot (there is no `apps/portal`).
 
 ## Landing
 
@@ -328,30 +328,30 @@ routes still run in `apps/copilot` (Copilot) and bind the package through
 
 ## Messages
 
-Target: `apps/messages` / `@workspace/messaging`. The package landed in #156;
-the routes still run in `apps/copilot` (Copilot) and bind the package through
-`apps/copilot/lib/messaging.ts`, `apps/copilot/components/messaging-provider.tsx` and
-`apps/copilot/components/messaging-workspace.tsx`.
+Target: `apps/messages` / `@workspace/messaging`. The package landed in #156 and
+the app in #162 (`messages.copilot.asynchrone.space`). Until #190/#171 the app
+binds the shared database client (the documented transitional binding) and
+Copilot keeps an in-process binding for the assistant, MCP and search.
 
 | Surface                                        | Location                                                                                                        | Notes                                                                                                                                |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Page                                           | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/page.tsx`                                                       | renders `apps/copilot/components/messaging-workspace.tsx`, which binds the package's `MessagingWorkspace`                                |
-| Loading                                        | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/loading.tsx`                                                    | route-level skeleton                                                                                                                 |
-| Not found                                      | `apps/copilot/app/[locale]/(app)/[orgSlug]/messages/not-found.tsx`                                                  | route-level empty state                                                                                                              |
-| `GET /api/messages/attachments/[attachmentId]` | `apps/copilot/app/api/messages/attachments/[attachmentId]/route.ts`                                                 | streams one attachment after an organization-scoped lookup (`messagingService.openAttachment`)                                       |
-| Server actions                                 | `apps/copilot/actions/messaging.ts`                                                                                 | channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin                                                 |
-| Sidebar                                        | `apps/copilot/components/app-sidebar.tsx`                                                                           | renders `ConversationSidebar` with the workspace navigation while on `/[orgSlug]/messages`                                           |
+| Page                                           | `apps/messages/app/[locale]/[orgSlug]/messages/page.tsx`                                                       | renders `apps/messages/components/messaging-workspace.tsx`, which binds the package's `MessagingWorkspace`                                |
+| Loading                                        | `apps/messages/app/[locale]/[orgSlug]/messages/loading.tsx`                                                    | route-level skeleton                                                                                                                 |
+| `GET /api/messages/attachments/[attachmentId]` | `apps/messages/app/api/messages/attachments/[attachmentId]/route.ts`                                                 | streams one attachment after an organization-scoped lookup (`messagingService.openAttachment`)                                       |
+| `POST/PUT/DELETE /api/files/uploads*`          | `apps/messages/app/api/files/uploads/**`                                                                             | transient-only chunked upload sessions for attachments (`@workspace/files`)                                                          |
+| Server actions                                 | `apps/messages/actions/messaging.ts`                                                                                 | channels, DMs, messages, threads, reactions, read state, typing, presence, mute, pin                                                 |
+| Sidebar                                        | `apps/messages/components/app-sidebar.tsx`                                                                           | renders `ConversationSidebar`; the app switcher links the other hosts                                                                 |
 | MCP tools                                      | `apps/copilot/lib/mcp/tools/messaging.ts`                                                                           | `list_conversations`, `list_messages`, `send_message`, `create_channel`                                                              |
 | Assistant tools                                | `apps/copilot/lib/assistant/tools.ts`                                                                               | `list_conversations`, `send_message` over the same read/write service                                                                |
 | Package read API                               | `packages/messaging/src/service.ts`                                                                             | `list`, `listConversations`, `listMessages`, `messagesFor`, `listThreadReplies`, `listTeams`                                         |
 | Package write API                              | `packages/messaging/src/service.ts`                                                                             | `sendMessage`, `editMessage`, `deleteMessage`, `toggleReaction`, `addThreadReply`, `markRead`, DM/channel, mute/pin, `touchPresence` |
 | Attachments                                    | `packages/messaging/src/service.ts`, `../files/src/upload-client.ts` (`uploadAttachment`)                       | metadata in `messageAttachment`; bytes are PostgreSQL large objects through `@workspace/storage`                                     |
-| Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/copilot/lib/large-object.ts`; the package never opens a pool                                                         |
-| Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `AuditLog` |                                                                                                                                      |
-| Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; bound in `apps/copilot/lib/messaging.ts`                                       |
+| Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/messages/lib/large-object.ts`; the package never opens a pool                                                        |
+| Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `OidcSession`, `AuditLog` | the app-local OIDC session ships in `@workspace/db-messages`; the app still binds the shared client until #190/#171                     |
+| Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; Copilot keeps the binding for its export/deletion sagas                       |
 | Audit actions                                  | none today                                                                                                      |                                                                                                                                      |
 | Internal endpoints                             | search / export / delete as above; attachments are served by the messages app                                   |                                                                                                                                      |
-| Tests                                          | `packages/messaging/src/service.unit.test.ts`                                                                   | membership, unread state, threads, attachment upload/download, cross-org authorization                                               |
+| Tests                                          | `packages/messaging/src/service.unit.test.ts`, `apps/messages/e2e/messages.spec.ts`                             | membership, unread state, threads, attachment upload/download, cross-org authorization, sign-in/org switch/redirect                   |
 
 ## Clients
 
@@ -667,8 +667,10 @@ parentheses; keep the checklist honest rather than pre-checking it.
 
 ### Messages (#156, #162)
 
-- [ ] Messages page/actions, attachment endpoint and MCP tools.
-- [ ] Conversations/messages/reactions/attachments in `asynchrone_messages`.
+- [x] Messages app at `messages.copilot.asynchrone.space` with its own image, chart, OIDC session and Playwright suite (`#162`).
+- [x] Conversations, threads, reactions and attachments moved; Copilot 308-redirects the old paths and keeps the assistant/MCP binding.
+- [x] Attachment upload/download keeps the files chunked-session and large-object semantics.
+- [ ] Conversations/messages/reactions/attachments in `asynchrone_messages`; the app binds the shared client until #190/#171.
 - [ ] Portal discussion reads use an internal messages call.
 - [ ] Search, export and deletion endpoints are wired.
 
