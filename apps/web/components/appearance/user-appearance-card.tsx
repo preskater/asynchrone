@@ -27,7 +27,7 @@ import {
   FieldLabel,
 } from "@workspace/ui/components/field"
 
-import { useAppearance } from "@/components/appearance/appearance-provider"
+import { useAppearance } from "@workspace/app-shell/appearance"
 
 const MODES = [
   { id: "light", icon: SunIcon },

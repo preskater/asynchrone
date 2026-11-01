@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { CirclePlusIcon, MailIcon } from "lucide-react"
+import { MailIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { ProjectFormDialog } from "@/components/project/project-dialog"
 import { Link, usePathname, useRouter } from "@workspace/i18n/navigation"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -20,9 +19,7 @@ import {
   SidebarMenuSubItem,
 } from "@workspace/ui/components/sidebar"
 
-import { useMessaging } from "@/lib/messaging/store"
-import { useOrgSlug } from "@/lib/organization/use-org-slug"
-import { useRecents, type AppKey } from "@/lib/recents/store"
+import { useRecents, type AppKey } from "./recents"
 
 export interface NavApp {
   key?: AppKey
@@ -33,13 +30,22 @@ export interface NavApp {
   match?: string[]
 }
 
-export function NavMain({ items }: { items: NavApp[] }) {
+export function NavMain({
+  items,
+  orgSlug,
+  quickCreate,
+  unreadTotal = 0,
+}: {
+  items: NavApp[]
+  orgSlug: string
+  /** Domain-specific create action slot. */
+  quickCreate?: React.ReactNode
+  unreadTotal?: number
+}) {
   const t = useTranslations("Sidebar")
   const pathname = usePathname()
   const router = useRouter()
-  const orgSlug = useOrgSlug()
   const { recents, setActive } = useRecents()
-  const { unreadTotal } = useMessaging()
 
   function openRecent(app: NavApp, id: string) {
     if (!app.key) return
@@ -53,17 +59,7 @@ export function NavMain({ items }: { items: NavApp[] }) {
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-2">
-            <ProjectFormDialog
-              trigger={
-                <SidebarMenuButton
-                  tooltip={t("quickCreate")}
-                  className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-                >
-                  <CirclePlusIcon />
-                  <span>{t("quickCreate")}</span>
-                </SidebarMenuButton>
-              }
-            />
+            {quickCreate}
             <Button
               size="icon"
               className="size-8 group-data-[collapsible=icon]:opacity-0"

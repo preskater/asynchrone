@@ -18,7 +18,7 @@ import { MessageSquareIcon } from "lucide-react"
 
 import { useEnumLabel } from "@workspace/i18n/labels"
 import { useMessaging } from "@/lib/messaging/store"
-import { useRecents } from "@/lib/recents/store"
+import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 
 export function MessagingWorkspace() {

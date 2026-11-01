@@ -31,7 +31,7 @@ import {
 } from "@workspace/ui/components/empty"
 
 import { useFiles } from "@/lib/files/store"
-import { useRecents } from "@/lib/recents/store"
+import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import { useEnumLabel } from "@workspace/i18n/labels"
 import type { FileLocation, FileNode } from "@/lib/files/types"

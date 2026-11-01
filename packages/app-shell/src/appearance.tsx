@@ -9,11 +9,11 @@ import {
   customThemeVariables,
   EFFECT_ATTRIBUTES,
   type OrganizationAppearance,
-} from "@/lib/appearance/types"
+} from "./appearance-types"
 import {
   appearanceBootScript,
   userAppearanceStorageKey,
-} from "@/lib/appearance/boot"
+} from "./appearance-boot"
 
 export interface UserAppearancePreferences {
   highContrast: boolean

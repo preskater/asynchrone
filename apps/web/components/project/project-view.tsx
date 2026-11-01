@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 
 import { useProjectStore } from "@/lib/projects/store"
 import { useOrgSlug } from "@/lib/organization/use-org-slug"
-import { useRecents } from "@/lib/recents/store"
+import { useRecents } from "@workspace/app-shell/recents"
 import type { Project } from "@/lib/projects/types"
 
 export function ProjectView({ project }: { project: Project }) {

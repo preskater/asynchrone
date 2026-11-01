@@ -40,6 +40,7 @@
     "@openai/agents": "^0.21.0",
     "@sentry/nextjs": "^11.10.0",
     "@shadcn/helpers": "^0.3.0",
+    "@workspace/app-shell": "*",
     "@workspace/audit": "*",
     "@workspace/auth": "*",
     "@workspace/contracts": "*",

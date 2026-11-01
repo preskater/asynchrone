@@ -1,7 +1,7 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { AppearanceProvider } from "@/components/appearance/appearance-provider"
+import { AppearanceProvider } from "@workspace/app-shell/appearance"
 import { PortalHeader } from "@/components/portal/portal-header"
 
 import { auth } from "@/lib/auth"

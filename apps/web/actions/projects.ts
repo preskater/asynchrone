@@ -25,6 +25,12 @@ export const listProjectsAction = withAction(async () => {
   return projectService.list(ctx)
 })
 
+/** Projects, members, labels and templates for the workspace shell. */
+export const listProjectShellAction = withAction(async () => {
+  const ctx = await getRequestContext()
+  return projectService.listShell(ctx)
+})
+
 /** Tasks and the latest activity feed for the projects/calendar features. */
 export const loadProjectWorkspaceAction = withAction(async () => {
   const ctx = await getRequestContext()

@@ -21,7 +21,7 @@ import {
 } from "@/lib/calendars/date-utils"
 import { useCalendars } from "@/lib/calendars/store"
 import { useProjectStore } from "@/lib/projects/store"
-import { useRecents } from "@/lib/recents/store"
+import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import type { CalendarEvent, CalendarView } from "@/lib/calendars/types"
 

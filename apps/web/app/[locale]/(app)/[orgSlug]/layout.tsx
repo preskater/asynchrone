@@ -1,9 +1,11 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { resolveWorkspace } from "@workspace/app-shell/resolve-workspace"
 import { OrganizationSync } from "@/components/organization/organization-sync"
 
 import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 import { isPortalMember } from "@/lib/portal/context"
 
 export default async function OrganizationLayout({
@@ -15,39 +17,25 @@ export default async function OrganizationLayout({
 }>) {
   const { orgSlug } = await params
 
-  const session = await auth.api.getSession({ headers: await headers() })
-
-  if (!session) {
-    redirect("/sign-in")
-  }
-
-  const organizations = await auth.api.listOrganizations({
-    headers: await headers(),
+  const workspace = await resolveWorkspace({
+    orgSlug,
+    getSession: async () => auth.api.getSession({ headers: await headers() }),
+    listOrganizations: async () =>
+      auth.api.listOrganizations({ headers: await headers() }),
+    isPortalMember,
+    endExpiredImpersonation: async (sessionId) => {
+      await prisma.session.delete({ where: { id: sessionId } }).catch(() => {})
+    },
   })
 
-  if (organizations.length === 0) {
-    redirect("/onboarding")
-  }
-
-  const organization = organizations.find((org) => org.slug === orgSlug)
-
-  if (!organization) {
-    redirect(`/${organizations[0]?.slug}`)
-  }
-
-  // Client-portal members only ever see their portal.
-  if (await isPortalMember(organization.id, session.user.id)) {
-    redirect("/portal")
-  }
-
-  const needsSync = session.session.activeOrganizationId !== organization.id
+  if (workspace.kind === "redirect") redirect(workspace.to)
 
   return (
     <>
-      {needsSync ? (
+      {workspace.needsSync ? (
         <OrganizationSync
-          needsSync={needsSync}
-          organizationId={organization.id}
+          needsSync={workspace.needsSync}
+          organizationId={workspace.organization.id}
         />
       ) : null}
       {children}
