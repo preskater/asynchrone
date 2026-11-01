@@ -65,8 +65,16 @@ test("a user cannot read another organization's client", async ({
   // B's own organization URL plus A's client id: the lookup is scoped to B's
   // organization and must answer "not found" — never render the name.
   await openClient(pageB, accountB.organizationSlug, clientId)
-  await expect(pageB.getByText("Page not found").first()).toBeVisible()
-  await expect(pageB.getByText("Owner A private company")).not.toBeVisible()
+  // The detail page calls `notFound()` after the organization-scoped lookup
+  // fails; `[orgSlug]/not-found.tsx` renders the localized empty state inside
+  // the shell and never the other organization's company.
+  await expect(pageB.getByText("Page not found", { exact: true })).toBeVisible()
+  await expect(
+    pageB.getByText("We couldn't find the page you were looking for.", {
+      exact: false,
+    })
+  ).toBeVisible()
+  await expect(pageB.getByText("Owner A private company")).toHaveCount(0)
 
   await contextA.close()
   await contextB.close()

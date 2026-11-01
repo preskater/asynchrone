@@ -6,7 +6,7 @@ import { isAppError } from "@workspace/core/errors"
 
 import { clientsService } from "@/lib/clients"
 import { getPortalAccess } from "@/lib/portal-access"
-import { getRequestContext } from "@/lib/request-context"
+import { getPageContext } from "@/lib/request-context"
 
 export default async function ClientDetailPage({
   params,
@@ -14,7 +14,7 @@ export default async function ClientDetailPage({
   params: Promise<{ orgSlug: string; clientId: string }>
 }) {
   const { orgSlug, clientId } = await params
-  const ctx = await getRequestContext()
+  const ctx = await getPageContext()
 
   let data
   try {

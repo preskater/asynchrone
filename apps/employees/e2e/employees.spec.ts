@@ -23,7 +23,7 @@ test("signs in through Copilot and loads the workspace on its own host", async (
   await openEmployees(page, account.organizationSlug)
 
   await expect(
-    page.getByRole("heading", { name: "Employees", level: 2 })
+    page.getByRole("heading", { name: "Time & attendance", level: 2 })
   ).toBeVisible()
   await expect(page.getByRole("tab", { name: "Today" })).toBeVisible()
 
@@ -57,7 +57,7 @@ test("switches organization on the employees host", async ({ page }) => {
     { timeout: 60_000 }
   )
   await expect(
-    page.getByRole("heading", { name: "Employees", level: 2 })
+    page.getByRole("heading", { name: "Time & attendance", level: 2 })
   ).toBeVisible()
 })
 

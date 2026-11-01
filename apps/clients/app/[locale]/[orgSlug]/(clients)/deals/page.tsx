@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { DealsWorkspace } from "@workspace/clients/components/deals-workspace"
 
 import { clientsService } from "@/lib/clients"
-import { getRequestContext } from "@/lib/request-context"
+import { getPageContext } from "@/lib/request-context"
 
 export default async function DealsPage({
   params,
@@ -11,7 +11,7 @@ export default async function DealsPage({
   params: Promise<{ orgSlug: string }>
 }) {
   const { orgSlug } = await params
-  const ctx = await getRequestContext()
+  const ctx = await getPageContext()
 
   const [data, t] = await Promise.all([
     clientsService.getOverview(ctx),

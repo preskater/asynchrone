@@ -93,10 +93,9 @@ test("a portal client sees its shared project and uploads and downloads document
     expect(download.ok()).toBeTruthy()
     expect(await download.text()).toBe(content)
 
-    // A client never reaches an internal workspace route. `/projects` and
-    // `/clients` now redirect to their own hosts before the portal guard, so
-    // use a domain that still lives in Copilot to exercise the guard itself.
-    await client.page.goto(`/${slug}/messages`)
+    // A client never reaches an internal workspace route, so the portal guard
+    // wins over a screen Copilot still owns.
+    await client.page.goto(`/${slug}/settings`)
     await expect(client.page).toHaveURL(/\/portal$/)
     await expect(
       client.page.getByRole("link", { name: sharedProject })

@@ -5,7 +5,7 @@ import { ContactDetail } from "@workspace/clients/components/contact-detail"
 import { isAppError } from "@workspace/core/errors"
 
 import { clientsService } from "@/lib/clients"
-import { getRequestContext } from "@/lib/request-context"
+import { getPageContext } from "@/lib/request-context"
 
 export default async function ContactDetailPage({
   params,
@@ -13,7 +13,7 @@ export default async function ContactDetailPage({
   params: Promise<{ orgSlug: string; contactId: string }>
 }) {
   const { orgSlug, contactId } = await params
-  const ctx = await getRequestContext()
+  const ctx = await getPageContext()
 
   let data
   try {

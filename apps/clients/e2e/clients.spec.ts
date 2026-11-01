@@ -108,10 +108,17 @@ test("the new-company form opens on the clients host", async ({ page }) => {
   const account = await signUp(page)
   await openClients(page, account.organizationSlug)
 
-  await page.getByRole("button", { name: "New company" }).click()
+  // Retry the open: a click that lands before hydration is a no-op.
   const dialog = page.getByRole("dialog")
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByLabel("Name", { exact: true })).toBeVisible()
-  await dialog.getByRole("button", { name: "Cancel" }).click()
-  await expect(dialog).not.toBeVisible()
+  await expect(async () => {
+    await page.getByRole("button", { name: "New company" }).click()
+    await expect(dialog).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 15_000 })
+
+  const name = dialog.getByLabel("Name", { exact: true })
+  await expect(name).toBeVisible()
+  // The submit stays disabled until the company has a name.
+  await expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled()
+  await name.fill("Form check")
+  await expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled()
 })

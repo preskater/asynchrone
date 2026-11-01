@@ -1,5 +1,6 @@
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 import type { ZodType } from "zod"
 import type { $ZodErrorMap } from "zod/v4/core"
 
@@ -19,11 +20,35 @@ import { prisma } from "@/lib/prisma"
  * to choose a tenant. The organization therefore comes from the OIDC session
  * (which the `[orgSlug]` layout keeps in sync with the URL), and the role comes
  * from the membership row — never from the request body.
+ *
+ * A missing session throws: an action must fail loudly rather than redirect
+ * mid-mutation. Screens use `getPageContext()` instead.
  */
 export async function getRequestContext(): Promise<RequestContext> {
   const session = await readSessionRecord()
   if (!session) throw new UnauthorizedError()
 
+  return toRequestContext(session)
+}
+
+/**
+ * The actor context for a server-rendered screen.
+ *
+ * Layouts and pages render in parallel, so a page can start before the
+ * `[orgSlug]` layout's `require*Workspace()` redirect resolves. Without a
+ * session the page must send the browser to the sign-in handoff instead of
+ * throwing, which would surface a 500 during the same request.
+ */
+export async function getPageContext(): Promise<RequestContext> {
+  const session = await readSessionRecord()
+  if (!session) redirect(`/${await getLocale()}/sign-in`)
+
+  return toRequestContext(session)
+}
+
+async function toRequestContext(
+  session: NonNullable<Awaited<ReturnType<typeof readSessionRecord>>>
+): Promise<RequestContext> {
   const [copilotSession, user, member] = await Promise.all([
     prisma.session.findUnique({
       where: { id: session.sid },

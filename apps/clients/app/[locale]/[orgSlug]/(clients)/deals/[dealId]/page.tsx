@@ -5,7 +5,7 @@ import { DealDetail } from "@workspace/clients/components/deal-detail"
 import { isAppError } from "@workspace/core/errors"
 
 import { clientsService } from "@/lib/clients"
-import { getRequestContext } from "@/lib/request-context"
+import { getPageContext } from "@/lib/request-context"
 
 export default async function DealDetailPage({
   params,
@@ -13,7 +13,7 @@ export default async function DealDetailPage({
   params: Promise<{ orgSlug: string; dealId: string }>
 }) {
   const { orgSlug, dealId } = await params
-  const ctx = await getRequestContext()
+  const ctx = await getPageContext()
 
   let data
   try {

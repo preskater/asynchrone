@@ -73,7 +73,7 @@ async function joinAsMember(
 
   await openEmployees(memberPage, (await organizations(memberPage))[0]!.slug)
   await expect(
-    memberPage.getByRole("heading", { name: "Employees", level: 2 })
+    memberPage.getByRole("heading", { name: "Time & attendance", level: 2 })
   ).toBeVisible()
 
   // The member gets the tracking tabs but never payroll or the salary data.
@@ -129,6 +129,6 @@ test("the access token stays bound to one organization", async ({ page }) => {
     { timeout: 60_000 }
   )
   await expect(
-    page.getByRole("heading", { name: "Employees", level: 2 })
+    page.getByRole("heading", { name: "Time & attendance", level: 2 })
   ).toBeVisible()
 })

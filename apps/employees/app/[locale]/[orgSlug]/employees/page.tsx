@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { EmployeesWorkspace } from "@workspace/employees/components/employees-workspace"
 
 import { employeesService } from "@/lib/employees"
-import { getRequestContext } from "@/lib/request-context"
+import { getPageContext } from "@/lib/request-context"
 
 /**
  * The time & attendance workspace.
@@ -13,7 +13,7 @@ import { getRequestContext } from "@/lib/request-context"
  * payload are built from the same `resolveEmployeeAccess` decision.
  */
 export default async function EmployeePage() {
-  const ctx = await getRequestContext()
+  const ctx = await getPageContext()
   const [data, t] = await Promise.all([
     employeesService.getOverview(ctx),
     getTranslations("AppPages"),
