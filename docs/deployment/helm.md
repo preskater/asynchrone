@@ -1,13 +1,13 @@
 # Deploying Asynchrone Space with Helm
 
-Asynchrone Space runs as five Next.js apps today: the stateless public landing
-site, Copilot (the customer app and identity/OAuth server), the projects and
-messages domain apps and the control tower. Copilot and the control tower are
-backed by their own PostgreSQL databases (eight are reserved, one per app;
-Copilot owns identity). Until #190/#171 the projects and messages apps connect
-to the same database as Copilot. This guide
-installs all of them from the umbrella chart in `charts/asynchrone-space`. Secrets, network policy, backups,
-restore order and the connection budget are covered in
+Asynchrone Space runs as seven Next.js apps today: the stateless public landing
+site, Copilot (the customer app and identity/OAuth server), the projects,
+calendars, files and messages domain apps and the control tower. Copilot and the
+control tower are backed by their own PostgreSQL databases (eight are reserved,
+one per app; Copilot owns identity). Until #190/#171 the domain apps connect to
+the same database as Copilot. This guide installs all of them from the umbrella
+chart in `charts/asynchrone-space`. Secrets, network policy, backups, restore
+order and the connection budget are covered in
 [Database operations](database-operations.md).
 
 ```
@@ -16,6 +16,8 @@ charts/
   asynchrone-space-landing/           # public site, ingress (asynchrone.space + www redirect)
   asynchrone-space-copilot/           # Copilot: ingress, CronJobs
   asynchrone-space-projects/          # domain app: ingress, host-only OIDC session
+  asynchrone-space-calendars/         # domain app: calendars + meetings, host-only OIDC session
+  asynchrone-space-files/             # domain app: files + uploads-sweep CronJob
   asynchrone-space-messages/          # domain app: ingress, host-only OIDC session
   asynchrone-space-control-tower/     # internal platform app, ingress
 ```
@@ -47,13 +49,15 @@ charts/
 
 ## Images
 
-`.github/workflows/docker.yml` publishes six images for every push to `main`
+`.github/workflows/docker.yml` publishes eight images for every push to `main`
 and every `v*` tag:
 
 | Image                                                      | Built from                             | Purpose                                       |
 | ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
 | `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` stage, `APP=copilot`          | Copilot (`copilot.asynchrone.space`)          |
 | `ghcr.io/preskater/asynchrone-space-projects`              | `runner` stage, `APP=projects`         | Projects (`projects.copilot.asynchrone.space`)|
+| `ghcr.io/preskater/asynchrone-space-calendars`             | `runner` stage, `APP=calendars`        | Calendars and meetings (`calendars.copilot.asynchrone.space`) |
+| `ghcr.io/preskater/asynchrone-space-files`                 | `runner` stage, `APP=files`            | Files (`files.copilot.asynchrone.space`)      |
 | `ghcr.io/preskater/asynchrone-space-messages`              | `runner` stage, `APP=messages`         | Messages (`messages.copilot.asynchrone.space`)|
 | `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` stage, `APP=control-tower`    | Control tower                                 |
 | `ghcr.io/preskater/asynchrone-space-landing`               | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
@@ -90,6 +94,27 @@ package still reads identity tables). Generate the client credentials with
 `npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth`;
 its registered redirect URI is
 `https://projects.copilot.asynchrone.space/api/auth/callback`.
+
+The calendars and files apps need their own secrets too; the files secret also
+carries `CRON_SECRET` because it owns the `uploads-sweep` CronJob:
+
+```bash
+kubectl -n asynchrone-space create secret generic asynchrone-space-calendars-secrets \
+  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+  --from-literal=CALENDARS_OAUTH_CLIENT_ID="$(grep ^CALENDARS_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
+  --from-literal=CALENDARS_OAUTH_CLIENT_SECRET="$(grep ^CALENDARS_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
+
+kubectl -n asynchrone-space create secret generic asynchrone-space-files-secrets \
+  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+  --from-literal=CRON_SECRET='<random-token>' \
+  --from-literal=FILES_OAUTH_CLIENT_ID="$(grep ^FILES_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
+  --from-literal=FILES_OAUTH_CLIENT_SECRET="$(grep ^FILES_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
+```
+
+Their registered redirect URIs are
+`https://calendars.copilot.asynchrone.space/api/auth/callback` and
+`https://files.copilot.asynchrone.space/api/auth/callback`. `DATABASE_URL` is the
+same database Copilot uses until #190, for the same reason as projects.
 
 The messages app has its own secret the same way:
 
@@ -215,8 +240,10 @@ CI fails when a vendored archive no longer matches its subchart sources
 Use `-f my-values.yaml` for production overrides instead of long `--set`
 lists. The defaults target `asynchrone.space` (landing, with
 `www.asynchrone.space` redirected to the apex by the ingress annotation),
-`copilot.asynchrone.space` (Copilot) and
-`control-tower.asynchrone.space`, with the `nginx` ingress class.
+`copilot.asynchrone.space` (Copilot), `projects.copilot.asynchrone.space`,
+`calendars.copilot.asynchrone.space`, `files.copilot.asynchrone.space`,
+`messages.copilot.asynchrone.space` and `control-tower.asynchrone.space`, with
+the `nginx` ingress class.
 
 Only the landing host is indexable: it serves `robots.txt` and a localized
 `sitemap.xml`. Copilot answers `robots.txt` with `Disallow: /` and sends
@@ -231,24 +258,28 @@ same). Old apex workspace URLs (`/sign-in`, `/portal`, `/settings`,
 | -------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
 | Deployment     | `asynchrone-space-landing`                                                           | 2 replicas by default               |
 | Deployment     | `asynchrone-space-copilot`                                                               | 2 replicas by default               |
+| Deployment     | `asynchrone-space-projects`                                                              | 2 replicas by default               |
+| Deployment     | `asynchrone-space-calendars`                                                             | 2 replicas by default               |
+| Deployment     | `asynchrone-space-files`                                                                 | 2 replicas by default               |
+| Deployment     | `asynchrone-space-messages`                                                              | 2 replicas by default               |
 | Deployment     | `asynchrone-space-control-tower`                                                     | 2 replicas by default               |
-| Service        | `asynchrone-space-landing`, `asynchrone-space-copilot`, `asynchrone-space-control-tower` | ClusterIP, port 80 → container 3000 |
-| Ingress        | `asynchrone-space-landing`, `asynchrone-space-copilot`, `asynchrone-space-control-tower` | One host each                       |
-| ConfigMap      | `asynchrone-space-copilot`, `asynchrone-space-control-tower`                             | Non-secret runtime config           |
-| CronJob        | `asynchrone-space-copilot-uploads-sweep`                                                 | `0 3 * * *`                         |
+| Service        | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,control-tower}`     | ClusterIP, port 80 → container 3000 |
+| Ingress        | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,control-tower}`     | One host each                       |
+| ConfigMap      | `asynchrone-space-{copilot,projects,calendars,files,messages,control-tower}`             | Non-secret runtime config           |
+| CronJob        | `asynchrone-space-files-uploads-sweep`                                                   | `0 3 * * *` (moved here in #161)    |
 | CronJob        | `asynchrone-space-copilot-repository-sync`                                               | `0 * * * *`                         |
 | CronJob        | `asynchrone-space-copilot-trial-expiry`                                                  | `0 6 * * *`                         |
 | CronJob        | `asynchrone-space-copilot-organization-deletion`                                         | `30 3 * * *`                        |
 | CronJob        | `asynchrone-space-copilot-audit-retention`                                               | `45 3 * * *`                        |
 | CronJob        | `asynchrone-space-copilot-data-exports`                                                  | `*/15 * * * *`                      |
 | Job (hook)     | `asynchrone-space-migrate`                                                           | Pre-install and pre-upgrade         |
-| ServiceAccount | `asynchrone-space-copilot`, `asynchrone-space-control-tower`, `asynchrone-space-migrate` | Token automount disabled            |
-| PDB            | `asynchrone-space-copilot`, `asynchrone-space-control-tower`                             | `minAvailable: 1`                   |
+| ServiceAccount | `asynchrone-space-{copilot,projects,calendars,files,control-tower}`, `asynchrone-space-migrate` | Token automount disabled |
+| PDB            | `asynchrone-space-{copilot,projects,calendars,files,control-tower}`                      | `minAvailable: 1`                   |
 
 ## Configuration
 
-Values live under `asynchrone-space-copilot` and `asynchrone-space-control-tower` in
-`charts/asynchrone-space/values.yaml`. The most useful overrides:
+Values live under `asynchrone-space-{copilot,projects,calendars,files,control-tower}`
+in `charts/asynchrone-space/values.yaml`. The most useful overrides:
 
 | Value                                          | Default                          | Purpose                                |
 | ---------------------------------------------- | -------------------------------- | -------------------------------------- |
@@ -262,7 +293,8 @@ Values live under `asynchrone-space-copilot` and `asynchrone-space-control-tower
 | `*.ingress.tls`                                | `[]`                             | TLS secret(s) for the hosts            |
 | `*.config`                                     | see values                       | Non-secret environment variables       |
 | `*.networkPolicy.enabled`                      | `false`                          | Enable least-privilege ingress/egress  |
-| `asynchrone-space-copilot.cronjobs.*.enabled`      | `true`                           | Toggle each scheduled job              |
+| `asynchrone-space-copilot.cronjobs.*.enabled`      | `true`                           | Toggle each identity scheduled job     |
+| `asynchrone-space-files.cronjobs.uploadsSweep`     | `true`, `0 3 * * *`              | Upload-sweep job (files app)           |
 | `migrate.enabled`                              | `true`                           | Toggle the migration hook              |
 
 `BETTER_AUTH_URL`, `MCP_RESOURCE_URL`, `PLATFORM_APP_URL`,
@@ -297,8 +329,9 @@ or by creating the TLS Secrets yourself. Repeat for
 
 ### Uploads and proxy limits
 
-The chart sets nginx proxy read/send timeouts to 600 seconds and a body size of
-8 MiB. Uploads are chunked, so a single request stays small, but downloads
+The files subchart sets nginx proxy read/send timeouts to 600 seconds and a body
+size of 8 MiB (Copilot keeps the same limits for its portal and message
+attachments). Uploads are chunked, so a single request stays small, but downloads
 stream a PostgreSQL large object and can take a while. Increase the timeouts if
 your files are very large, and keep the ingress body limit above the 3 MiB
 upload chunk.

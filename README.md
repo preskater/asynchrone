@@ -37,6 +37,8 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
 | `apps/projects`              | Projects: the first domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
+| `apps/calendars`             | Calendars and meetings (`calendars.copilot.asynchrone.space`): calendar screens, meeting inbox and settings. |
+| `apps/files`                 | Files (`files.copilot.asynchrone.space`): file tree, chunked upload/download APIs and the uploads-sweep cron. |
 | `apps/messages`              | Messages: the messaging domain app (`messages.copilot.asynchrone.space`), host-only OIDC session. |
 | `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
@@ -96,32 +98,36 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
 > migrations, serves the public landing site on port **3002**, the Copilot app
-> on port **3003**, the projects app on port **3004**, the messages app on port
-> **3007** and the control tower on port **3001**. Each container loads its app's
-> `.env` (then overrides `DATABASE_URL` and the public URLs), so local dev and
-> Docker share the same secrets. The image is parameterised with
-> `--build-arg APP=copilot|projects|messages|control-tower|landing`.
+> on port **3003**, the projects app on port **3004**, the calendars app on port
+> **3005**, the files app on port **3006**, the messages app on port **3007** and
+> the control tower on port **3001**. Each container loads its app's `.env` (then
+> overrides `DATABASE_URL` and the public URLs), so local dev and Docker share
+> the same secrets. The image is parameterised with
+> `--build-arg APP=copilot|projects|calendars|files|messages|control-tower|landing`.
 
 ### Domain apps
 
-`apps/projects` is the first domain app: it serves
-http://localhost:3004/`{locale}/{orgSlug}/projects` and signs in through Copilot
-(host-only session, no credential form). It needs its own environment file and
-the provisioned OAuth client credentials:
+`apps/projects` (port **3004**), `apps/calendars` (port **3005**),
+`apps/files` (port **3006**) and `apps/messages` (port **3007**) are the domain
+apps: each serves
+`http://localhost:<port>/{locale}/{orgSlug}/<domain>` and signs in through
+Copilot (host-only session, no credential form). Each needs its own environment
+file and the provisioned OAuth client credentials:
 
 ```bash
 cp apps/projects/.env.example apps/projects/.env
-# then copy the PROJECTS_OAUTH_CLIENT_ID/SECRET pair written by:
+cp apps/calendars/.env.example apps/calendars/.env
+cp apps/files/.env.example apps/files/.env
+cp apps/messages/.env.example apps/messages/.env
+# then copy the PROJECTS_*/CALENDARS_*/FILES_*/MESSAGES_* pairs written by:
 npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
 ```
 
-`apps/messages` follows the same template (#162) on
-http://localhost:3007/`{locale}/{orgSlug}/messages`; it has its own
-`apps/messages/.env` (see
-[`apps/messages/.env.example`](./apps/messages/.env.example)) and
-`MESSAGES_OAUTH_CLIENT_ID/SECRET` pair. Start Copilot and the domain apps
-together (`npm run dev` starts all of them). The remaining apps copy the
-template in [`docs/domain-app-template.md`](./docs/domain-app-template.md).
+Start Copilot and the domain apps together (`npm run dev` starts all of them).
+The remaining apps copy the template in
+[`docs/domain-app-template.md`](./docs/domain-app-template.md). Copilot
+308-redirects the old `/{locale}/{orgSlug}/projects|calendars|files|messages`
+paths to the owning host, so bookmarks and notification links keep working.
 
 ### Control tower
 
@@ -189,11 +195,9 @@ nofollow` and disallow `/` in `robots.txt`.
 ## Environment variables
 
 Copilot variables live in `apps/copilot/.env` (see
-[`apps/copilot/.env.example`](./apps/copilot/.env.example)); the projects app reads
-`apps/projects/.env` (see
-[`apps/projects/.env.example`](./apps/projects/.env.example)); the messages app
-reads `apps/messages/.env` (see
-[`apps/messages/.env.example`](./apps/messages/.env.example)); the control tower
+[`apps/copilot/.env.example`](./apps/copilot/.env.example)); the domain apps read
+their own file — `apps/projects/.env`, `apps/calendars/.env`, `apps/files/.env`
+and `apps/messages/.env` (see the matching `.env.example`); the control tower
 reads `apps/control-tower/.env` (see
 [`apps/control-tower/.env.example`](./apps/control-tower/.env.example)); the
 stateless landing reads only `apps/landing/.env` (see
@@ -210,7 +214,7 @@ stateless landing reads only `apps/landing/.env` (see
 | `OPENAI_API_URL`     | No       | Custom OpenAI-compatible base URL.                                                                                                                                             |
 | `ASSISTANT_MODEL`    | No       | Model used by the assistant (default `gpt-4o-mini`).                                                                                                                           |
 | `MCP_RESOURCE_URL`   | No       | Public identifier of the OAuth2-protected `/mcp` endpoint (defaults to `${BETTER_AUTH_URL}/mcp`).                                                                              |
-| `CRON_SECRET`        | No       | Bearer token guarding the scheduled routes (`/api/files/uploads/sweep` and `/api/cron/repository-sync`); put it in the Kubernetes Secret so the chart's CronJobs authenticate. |
+| `CRON_SECRET`        | No       | Bearer token guarding the scheduled routes (`/api/files/uploads/sweep` in `apps/files`, `/api/cron/repository-sync` in `apps/copilot`); put it in the Kubernetes Secrets so the charts' CronJobs authenticate. |
 
 ## Available scripts
 
@@ -229,7 +233,9 @@ workspaces.
 
 Uploaded files are stored as **PostgreSQL large objects** (`pg_largeobject`) in the
 same database as their metadata. There is no external object storage (the
-former Vercel Blob integration has been removed).
+former Vercel Blob integration has been removed). The upload/download APIs and
+the `uploads-sweep` cron live in `apps/files` since #161
+(`apps/files/lib/large-object.ts`).
 
 - **Bytes → large objects.** `lib/large-object.ts` streams bytes into a large
   object and streams them back out. Responses use `Readable.toWeb(...)`; nothing

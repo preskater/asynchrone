@@ -2,7 +2,7 @@ apiVersion: v2
 name: asynchrone-space
 description: Umbrella chart for the Asynchrone Space landing, Copilot, domain apps and control tower
 type: application
-version: 0.1.4
+version: 0.1.5
 appVersion: "0.0.1"
 
 dependencies:
@@ -11,7 +11,7 @@ dependencies:
     repository: file://../asynchrone-space-landing
     condition: asynchrone-space-landing.enabled
   - name: asynchrone-space-copilot
-    version: 0.1.1
+    version: 0.1.2
     repository: file://../asynchrone-space-copilot
     condition: asynchrone-space-copilot.enabled
   - name: asynchrone-space-projects
@@ -22,6 +22,14 @@ dependencies:
     version: 0.1.0
     repository: file://../asynchrone-space-messages
     condition: asynchrone-space-messages.enabled
+  - name: asynchrone-space-calendars
+    version: 0.1.0
+    repository: file://../asynchrone-space-calendars
+    condition: asynchrone-space-calendars.enabled
+  - name: asynchrone-space-files
+    version: 0.1.0
+    repository: file://../asynchrone-space-files
+    condition: asynchrone-space-files.enabled
   - name: asynchrone-space-control-tower
     version: 0.1.1
     repository: file://../asynchrone-space-control-tower

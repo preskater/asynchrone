@@ -31,20 +31,27 @@ import {
 /**
  * The projects app's sidebar.
  *
- * Only Projects belongs to this app; every other workspace section links to
- * Copilot (or the app that will own it after #161–#164) with an absolute URL,
- * so the split is visible and no cross-app route is faked here.
+ * Only Projects belongs to this app; every other workspace section links to the
+ * app that owns it (`apps/messages` since #162, `apps/calendars` and
+ * `apps/files` since #161, Copilot for the rest) with an absolute URL, so the
+ * split is visible and no cross-app route is faked here.
  */
 export function ProjectSidebar({
   orgSlug,
   copilotUrl,
   messagesUrl,
+  calendarsUrl,
+  filesUrl,
 }: {
   orgSlug: string
   /** Origin of Copilot: the assistant, account screens and the remaining domains. */
   copilotUrl: string
   /** Origin of the messages app (its own image and chart since #162). */
   messagesUrl: string
+  /** Origin of the calendars app (its own image and chart since #161). */
+  calendarsUrl: string
+  /** Origin of the files app (its own image and chart since #161). */
+  filesUrl: string
 }) {
   const locale = useLocale()
   const t = useTranslations("Sidebar")
@@ -63,9 +70,15 @@ export function ProjectSidebar({
     {
       icon: <CalendarIcon />,
       title: t("calendars"),
-      url: workspacePath("/calendars"),
+      // Calendars and meetings moved to their own app in #161.
+      url: `${calendarsUrl}/${locale}/${orgSlug}/calendars`,
     },
-    { icon: <FileIcon />, title: t("files"), url: workspacePath("/files") },
+    {
+      icon: <FileIcon />,
+      title: t("files"),
+      // Files moved to their own app in #161.
+      url: `${filesUrl}/${locale}/${orgSlug}/files`,
+    },
     {
       icon: <HandshakeIcon />,
       title: t("clients"),

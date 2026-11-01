@@ -9,19 +9,19 @@ orchestration is #184.
 
 | Database                   | Package                       | Owner                                                                                                                    |
 | -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `asynchrone_identity`      | `@workspace/db-identity`      | Copilot: users, sessions, organizations, members, OAuth, billing, notifications, assistant, portal, rate limits, exports, the projects app's OIDC sessions until #190 |
-| `asynchrone_projects`      | `@workspace/db-projects`      | Projects, tasks, templates, comments, activity, repository sync                                                          |
-| `asynchrone_calendars`     | `@workspace/db-calendars`     | Calendars, events, meeting requests/settings                                                                             |
-| `asynchrone_files`         | `@workspace/db-files`         | File nodes, versions, shares, upload sessions, large objects                                                             |
-| `asynchrone_messages`      | `@workspace/db-messages`      | Conversations, messages, reactions, attachment metadata                                                                  |
+| `asynchrone_identity`      | `@workspace/db-identity`      | Copilot: users, sessions, organizations, members, OAuth, billing, notifications, assistant, portal, rate limits, exports, the projects/calendars/files OIDC sessions until #190 |
+| `asynchrone_projects`      | `@workspace/db-projects`      | Projects, tasks, templates, comments, activity, repository sync, its own `oidcSession`                                   |
+| `asynchrone_calendars`     | `@workspace/db-calendars`     | Calendars, events, meeting requests/settings, its own `oidcSession`                                                      |
+| `asynchrone_files`         | `@workspace/db-files`         | File nodes, versions, shares, upload sessions, its own `oidcSession`; large objects live in the database that holds the metadata |
+| `asynchrone_messages`      | `@workspace/db-messages`      | Conversations, messages, reactions, attachment metadata, its own `oidcSession`                                            |
 | `asynchrone_clients`       | `@workspace/db-clients`       | Clients, contacts, pipelines, deals, activities, documents                                                               |
 | `asynchrone_employees`     | `@workspace/db-employees`     | Employees profiles, attendance, leave, settings, salary, internal activities                                             |
 | `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff copy (see [control-tower-database.md](./control-tower-database.md))            |
 
 `@workspace/db-core` owns the shared pool factory and `DATABASE_POOL_MAX`
 validation. `@workspace/db` remains the monolith database until #185, and the
-projects app binds it until #190 (its domain package still reads identity
-tables).
+projects, calendars, files and messages apps bind it until #190/#171 (their
+domain packages still read identity tables and other apps' rows).
 
 Every package declares its own `DATABASE_URL` env:
 
@@ -104,14 +104,18 @@ set explicitly with `IDENTITY_SHADOW_DATABASE_URL`, … They are used by
 `verify:migrations` and are created by `db:create`.
 
 The shared `OidcSession` model (an app's relying-party session, see
-[oidc-client.md](./oidc-client.md)) ships in the identity, projects and messages
-databases: every app needs one row per local sign-in. The other domain schemas
-add `OidcSession` to their model list and their migration history when their app
-is created (#161, #163–#164).
+[oidc-client.md](./oidc-client.md)) ships in the identity, projects, calendars,
+files and messages databases: every app needs one row per local sign-in.
+`apps/calendars` and `apps/files` got the table in
+`20261101130000_add_oidc_session` (#161), `apps/messages` in
+`20261101130000_add_oidc_session` (#162). The remaining domain schemas (clients,
+employees) add `OidcSession` to their model list and their migration history
+when their app is created (#163–#164).
 
-Each database currently has one `20261031120000_init` baseline. The Docker
-`migrate` stage runs the monolith migration and then the orchestrator. The Helm
-migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
+Each database has a `20261031120000_init` baseline; projects, calendars, files
+and messages add an `add_oidc_session` migration. The Docker `migrate` stage runs
+the monolith migration and then the orchestrator. The Helm migrate Job reads
+every `*_DATABASE_URL` from the existing migrate secret.
 
 ## Boundaries
 
@@ -131,5 +135,5 @@ migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
 - [x] Migration orchestration, baselines, shadow DBs and drift check (#184)
 - [x] Maintenance-window data split tooling and runbook (#185)
 - [x] Control-tower cutover: own database, platform audit and runbook (#209)
-- [ ] App wiring to the per-app clients (#186+); projects (#160) and messages
-      (#162) bind the shared client until #190/#171
+- [ ] App wiring to the per-app clients (#186+); projects (#160), calendars and
+      files (#161) and messages (#162) bind the shared client until #190/#171

@@ -37,6 +37,12 @@ jobs:
       MESSAGES_APP_URL: http://localhost:3007
       MESSAGES_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
       MESSAGES_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      CALENDARS_APP_URL: http://localhost:3005
+      CALENDARS_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      CALENDARS_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      FILES_APP_URL: http://localhost:3006
+      FILES_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      FILES_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
 
     steps:
       - name: Checkout
@@ -81,6 +87,8 @@ jobs:
         run: |
           npm run test:unit --workspace=copilot
           npm run test:unit --workspace=projects
+          npm run test:unit --workspace=calendars
+          npm run test:unit --workspace=files
           npm run test:unit --workspace=messages
 
   # Cross-domain contracts: package exports, member directory, notifications,
@@ -413,3 +421,157 @@ jobs:
 
       - name: Messages e2e
         run: npm run test:e2e --workspace=messages
+
+  # The calendars app (#161): like projects, it signs in through Copilot, so the
+  # suite runs both apps and provisions its OAuth client itself.
+  e2e-calendars:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: asynchrone
+          POSTGRES_PASSWORD: asynchrone
+          POSTGRES_DB: asynchrone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asynchrone"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_identity?schema=public
+      PROJECTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_projects?schema=public
+      CALENDARS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_calendars?schema=public
+      FILES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_files?schema=public
+      MESSAGES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_messages?schema=public
+      CLIENTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_clients?schema=public
+      EMPLOYEES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_employees?schema=public
+      CONTROL_TOWER_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_control_tower?schema=public
+      BETTER_AUTH_SECRET: ci-calendars-e2e-secret-placeholder-value
+      # Both apps run from the suite's webServer config; these keep the
+      # bootstrap and the server-side validation in agreement.
+      BETTER_AUTH_URL: http://localhost:3010
+      COPILOT_APP_URL: http://localhost:3010
+      CALENDARS_APP_URL: http://localhost:3005
+      CALENDARS_OAUTH_CLIENT_ID: asynchrone-calendars
+      CALENDARS_OAUTH_CLIENT_SECRET: e2e-calendars-oauth-client-secret
+      CONTROL_TOWER_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create per-app databases
+        run: npm run db:create
+
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+
+      - name: Apply monolith migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/db
+
+      - name: Apply per-app migrations
+        run: npm run migrate:deploy
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/calendars
+
+      - name: Calendars e2e
+        run: npm run test:e2e --workspace=calendars
+
+  # The files app (#161): sign-in, organization switch and a real upload and
+  # download through its own API.
+  e2e-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: asynchrone
+          POSTGRES_PASSWORD: asynchrone
+          POSTGRES_DB: asynchrone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asynchrone"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_identity?schema=public
+      PROJECTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_projects?schema=public
+      CALENDARS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_calendars?schema=public
+      FILES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_files?schema=public
+      MESSAGES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_messages?schema=public
+      CLIENTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_clients?schema=public
+      EMPLOYEES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_employees?schema=public
+      CONTROL_TOWER_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_control_tower?schema=public
+      BETTER_AUTH_SECRET: ci-files-e2e-secret-placeholder-value
+      # Both apps run from the suite's webServer config; these keep the
+      # bootstrap and the server-side validation in agreement.
+      BETTER_AUTH_URL: http://localhost:3010
+      COPILOT_APP_URL: http://localhost:3010
+      FILES_APP_URL: http://localhost:3006
+      FILES_OAUTH_CLIENT_ID: asynchrone-files
+      FILES_OAUTH_CLIENT_SECRET: e2e-files-oauth-client-secret
+      CONTROL_TOWER_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create per-app databases
+        run: npm run db:create
+
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+
+      - name: Apply monolith migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/db
+
+      - name: Apply per-app migrations
+        run: npm run migrate:deploy
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/files
+
+      - name: Files e2e
+        run: npm run test:e2e --workspace=files

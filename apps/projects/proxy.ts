@@ -10,14 +10,11 @@ const LOCALES = new Set<string>(routing.locales)
 /**
  * Sections this app does not own. Project screens link to Copilot for account
  * settings, clients and the portal, and old deep links may still point at the
- * projects host; both land on Copilot instead of a 404.
+ * projects host; both land on the owning app instead of a 404.
  */
 const COPILOT_SECTIONS = new Set([
   "settings",
   "clients",
-  "messages",
-  "files",
-  "calendars",
   "employees",
   "search",
   "help",
@@ -30,6 +27,13 @@ const COPILOT_SECTIONS = new Set([
   "select-organization",
 ])
 
+/** Domain apps that own their own host (#161, #162). */
+const DOMAIN_SECTIONS: Record<string, "messages" | "calendars" | "files"> = {
+  messages: "messages",
+  calendars: "calendars",
+  files: "files",
+}
+
 /**
  * The projects app owns `/{locale}/{orgSlug}/projects`. Everything else in the
  * workspace shape belongs to another app, so the proxy hands it to Copilot
@@ -41,11 +45,20 @@ export default function proxy(request: NextRequest) {
   const [maybeLocale, , section] = segments
   const hasLocale = Boolean(maybeLocale && LOCALES.has(maybeLocale))
 
-  if (hasLocale && section && COPILOT_SECTIONS.has(section)) {
-    return NextResponse.redirect(
-      new URL(`${pathname}${search}`, appOrigin("copilot")),
-      308
-    )
+  if (hasLocale && section) {
+    const domain = DOMAIN_SECTIONS[section]
+    if (domain) {
+      return NextResponse.redirect(
+        new URL(`${pathname}${search}`, appOrigin(domain)),
+        308
+      )
+    }
+    if (COPILOT_SECTIONS.has(section)) {
+      return NextResponse.redirect(
+        new URL(`${pathname}${search}`, appOrigin("copilot")),
+        308
+      )
+    }
   }
 
   return intl(request)

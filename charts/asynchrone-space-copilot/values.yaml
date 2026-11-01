@@ -186,10 +186,6 @@ cronjobs:
   backoffLimit: 2
   activeDeadlineSeconds: 600
   ttlSecondsAfterFinished: 300
-  uploadsSweep:
-    enabled: true
-    schedule: "0 3 * * *"
-    path: /api/files/uploads/sweep
   repositorySync:
     enabled: true
     schedule: "0 * * * *"

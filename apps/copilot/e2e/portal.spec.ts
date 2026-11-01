@@ -147,12 +147,14 @@ test("a portal client sees its shared project and uploads and downloads document
       client.page.getByRole("link", { name: sharedProject })
     ).toBeVisible()
 
-    // ... nor the internal file API, which requires a workspace context.
+    // ... nor the internal file API. Since #161 the upload API lives on the
+    // files host, so Copilot answers 404 and the files host rejects the
+    // request without a workspace session.
     const internalUpload = await client.page.request.post(
       `/api/files/uploads?name=intruder.txt&expectedSize=1`,
       { data: {} }
     )
-    expect(internalUpload.status()).toBe(403)
+    expect([403, 404]).toContain(internalUpload.status())
   } finally {
     await client.dispose()
   }

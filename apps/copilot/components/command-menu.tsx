@@ -2,7 +2,11 @@
 
 import { useTranslations } from "next-intl"
 
-import { useNavMain, useNavSecondary } from "@/components/app-sidebar"
+import {
+  useNavMain,
+  useNavSecondary,
+  type DomainAppUrls,
+} from "@/components/app-sidebar"
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,22 +20,19 @@ import { useRouter } from "@workspace/i18n/navigation"
 
 export function CommandMenu({
   orgSlug,
-  projectsUrl,
-  messagesUrl,
+  domainApps,
   open,
   onOpenChange,
 }: {
   orgSlug: string
-  /** Origin of the projects app (its own image and chart since #160). */
-  projectsUrl: string
-  /** Origin of the messages app (its own image and chart since #162). */
-  messagesUrl: string
+  /** Origins of the domain apps that own their own host (#160–#162). */
+  domainApps: DomainAppUrls
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("Sidebar")
   const router = useRouter()
-  const apps = useNavMain(orgSlug, projectsUrl, messagesUrl)
+  const apps = useNavMain(orgSlug, domainApps)
   const secondary = useNavSecondary(orgSlug)
 
   function go(url: string, external?: boolean) {

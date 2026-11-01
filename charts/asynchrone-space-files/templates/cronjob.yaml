@@ -1,0 +1,69 @@
+{{- $job := .Values.cronjobs.uploadsSweep -}}
+{{- $secretName := .Values.cronjobs.secretName | default .Values.secret.existingSecret -}}
+{{- if $job.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "asynchrone-space-files.fullname" . }}-uploads-sweep
+  labels:
+    {{- include "asynchrone-space-files.labels" . | nindent 4 }}
+spec:
+  # Unfinished chunked uploads are unlinked daily. The same schedule the
+  # Copilot chart used before #161 moved the job to the files app.
+  schedule: {{ $job.schedule | quote }}
+  concurrencyPolicy: {{ .Values.cronjobs.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronjobs.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjobs.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.cronjobs.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.cronjobs.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ .Values.cronjobs.ttlSecondsAfterFinished }}
+      template:
+        metadata:
+          labels:
+            {{- include "asynchrone-space-files.selectorLabels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          {{- with (include "asynchrone-space-files.imagePullSecrets" .) }}
+          imagePullSecrets:
+            {{- . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: curl
+              image: {{ .Values.cronjobs.image }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  curl -fsS --retry 2 --retry-connrefused --max-time {{ .Values.cronjobs.timeoutSeconds }} \
+                    -H "Authorization: Bearer ${CRON_SECRET}" "${TARGET_URL}"
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ required "asynchrone-space-files.cronjobs.secretName (or secret.existingSecret) is required" $secretName }}
+                      key: CRON_SECRET
+                - name: TARGET_URL
+                  value: "http://{{ include "asynchrone-space-files.fullname" . }}:{{ .Values.service.port }}{{ $job.path }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 100
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}

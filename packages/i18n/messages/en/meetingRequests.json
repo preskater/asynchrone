@@ -97,5 +97,7 @@
   "settingsSaved": "Meeting settings saved.",
   "save": "Save",
   "saving": "Saving…",
-  "readOnly": "Only owners and admins can change these settings."
+  "readOnly": "Only owners and admins can change these settings.",
+  "backToSettings": "Back to workspace settings",
+  "openSettings": "Open meeting settings"
 }

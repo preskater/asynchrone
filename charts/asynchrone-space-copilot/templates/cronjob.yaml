@@ -1,4 +1,4 @@
-{{- $jobs := list (dict "name" "uploads-sweep" "config" .Values.cronjobs.uploadsSweep) (dict "name" "repository-sync" "config" .Values.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" .Values.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" .Values.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" .Values.cronjobs.auditRetention) (dict "name" "data-exports" "config" .Values.cronjobs.dataExports) -}}
+{{- $jobs := list (dict "name" "repository-sync" "config" .Values.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" .Values.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" .Values.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" .Values.cronjobs.auditRetention) (dict "name" "data-exports" "config" .Values.cronjobs.dataExports) -}}
 {{- $secretName := .Values.cronjobs.secretName | default .Values.secret.existingSecret -}}
 {{- range $job := $jobs }}
 {{- if $job.config.enabled }}

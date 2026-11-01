@@ -88,6 +88,8 @@ services:
       - BETTER_AUTH_URL=http://localhost:3003
       - COPILOT_APP_URL=http://localhost:3003
       - PROJECTS_APP_URL=http://localhost:3004
+      - CALENDARS_APP_URL=http://localhost:3005
+      - FILES_APP_URL=http://localhost:3006
       - MESSAGES_APP_URL=http://localhost:3007
       - MCP_RESOURCE_URL=http://localhost:3003/mcp
       - CONTROL_TOWER_URL=http://localhost:3001
@@ -147,6 +149,60 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
       - MESSAGES_APP_URL=http://localhost:3007
+      - COPILOT_APP_URL=http://localhost:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # The files domain app (#161): its own image and chart. It owns the chunked
+  # upload API, the download endpoint and the `uploads-sweep` CronJob.
+  files:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: files
+    ports:
+      - "3006:3000"
+    # Own env file: the provisioned FILES_OAUTH_CLIENT_* credentials, the
+    # audit/trusted header settings and CRON_SECRET for the upload sweep.
+    env_file:
+      - path: apps/files/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - FILES_APP_URL=http://localhost:3006
+      - COPILOT_APP_URL=http://localhost:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # The calendars domain app (#161): calendar screens plus the meeting inbox and
+  # meeting settings.
+  calendars:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: calendars
+    ports:
+      - "3005:3000"
+    env_file:
+      - path: apps/calendars/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - CALENDARS_APP_URL=http://localhost:3005
       - COPILOT_APP_URL=http://localhost:3003
     depends_on:
       postgres:
