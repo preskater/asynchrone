@@ -109,6 +109,7 @@ export async function deleteAccount(userId: string, confirmEmail: string) {
     await tx.oauthRefreshToken.deleteMany({ where: { userId } })
     await tx.oauthConsent.deleteMany({ where: { userId } })
     await tx.notification.deleteMany({ where: { userId } })
+    await tx.assistantConversation.deleteMany({ where: { userId } })
     await tx.taskComment.updateMany({
       where: { authorId: userId },
       data: { authorName: null },

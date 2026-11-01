@@ -29,6 +29,7 @@ model User {
   invitations   Invitation[]
   twoFactor     TwoFactor[]
   customerTwoFactor CustomerTwoFactor[]
+  assistantConversations AssistantConversation[]
 
   oauthClients       OauthClient[]
   oauthRefreshTokens OauthRefreshToken[]
@@ -130,6 +131,7 @@ model Organization {
   subscription Subscription?
   invoices     Invoice[]
   aiUsageEvents AiUsageEvent[]
+  assistantConversations AssistantConversation[]
 
   @@unique([slug])
   @@map("organization")
@@ -568,6 +570,37 @@ model AiUsageEvent {
   @@index([organizationId, createdAt])
   @@index([createdAt])
   @@map("ai_usage_event")
+}
+
+model AssistantConversation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Private to one user: another member of the same organization cannot read
+  /// or extend it.
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Derived from the first user message; #166 owns renaming.
+  title          String       @default("")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  messages       AssistantMessage[]
+
+  @@index([organizationId, userId, updatedAt])
+  @@map("assistantConversation")
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// "user" | "assistant"
+  role           String
+  parts          Json
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("assistantMessage")
 }
 
 model RateLimit {

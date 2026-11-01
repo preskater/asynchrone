@@ -27,6 +27,7 @@ clients, migrates and runs the suite.
 | Search              | Copilot keeps the fan-out but reads in-process domains through their packages; an in-process adapter never answers for another organization and never exposes a conversation to an uninvited member. |
 | Export/deletion     | Owners only, one export in flight, grace period, tenant isolation, saga readiness and authorized internal handlers.                                                                                  |
 | MCP/assistant tools | Every tool runs through a package adapter, never `fetch`/app routes/service clients, and cross-organization ids are rejected at the tool boundary.                                                   |
+| Assistant history   | Accepted user turns and completed assistant parts are stored, the reload rebuilds the same model input, and another organization or another member cannot read or extend a conversation.            |
 | Issue #40           | The cross-org subtask toggle, forged context, reaction and calendar-attendee attacks are replayed against the packages and the database is inspected afterwards.                                     |
 
 ## Adding a domain

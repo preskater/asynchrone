@@ -32,7 +32,8 @@ export function AssistantWorkspace() {
     (error as { code?: string } | null)?.code === "quota_exceeded"
 
   const isBusy = status === "submitted" || status === "streaming"
-  const isEmpty = messages.length === 0
+  const isLoading = status === "loading"
+  const isEmpty = messages.length === 0 && !isLoading
   // One polite status instead of announcing every streamed token.
   const announcement = isBusy
     ? t("thinking")
@@ -42,7 +43,7 @@ export function AssistantWorkspace() {
 
   function submit(text: string) {
     const value = text.trim()
-    if (!value || isBusy || !aiEnabled) return
+    if (!value || isBusy || isLoading || !aiEnabled) return
     void sendMessage({ text: value })
     setInput("")
   }
@@ -140,7 +141,7 @@ export function AssistantWorkspace() {
             onChange={(event) => setInput(event.target.value)}
             placeholder={t("placeholder")}
             aria-label={t("ask")}
-            disabled={!aiEnabled}
+            disabled={!aiEnabled || isLoading}
             autoFocus
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -148,7 +149,7 @@ export function AssistantWorkspace() {
             type="submit"
             size="icon-sm"
             aria-label={t("send")}
-            disabled={!input.trim() || isBusy || !aiEnabled}
+            disabled={!input.trim() || isBusy || isLoading || !aiEnabled}
           >
             <ArrowUpIcon />
           </Button>

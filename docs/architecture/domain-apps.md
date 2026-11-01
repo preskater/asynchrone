@@ -113,6 +113,10 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
   domain's Prisma client (#190). That wiring lands with the domain apps in
   milestone #1; the foundation already ships the contracts, tokens and
   failure-mode tests.
+- Assistant conversations are private to one user in one organization. Copilot
+  stores them in the identity database (`AssistantConversation`,
+  `AssistantMessage`) and rebuilds the model history on the server; see
+  [Copilot assistant](../assistant.md).
 - Cross-domain services are port-parameterized packages (#152): storage,
   notifications, integrations, AI, appearance, billing and audit. The owning
   app binds the pool, database client, provider or notifier in a thin adapter
@@ -191,5 +195,6 @@ also catches imports in files that are not currently reachable from a route.
       `copilot.asynchrone.space` (#175)
 - [x] App template and the projects pilot at
       `projects.copilot.asynchrone.space` (#160)
+- [x] Assistant conversations persisted with server-owned history (#165)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)
 - [ ] Calendars, files, messages, clients and employees apps (#161–#164)
