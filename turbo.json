@@ -4,7 +4,7 @@
   "tasks": {
     "generate": {
       "cache": true,
-      "inputs": ["prisma/schema.prisma", "prisma.config.ts"],
+      "inputs": ["prisma/schema.prisma", "prisma.config.ts", "package.json"],
       "outputs": ["lib/generated/**"],
       "env": ["DATABASE_URL"]
     },
