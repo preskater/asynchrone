@@ -10,7 +10,7 @@ import {
   linkProjectSchema,
   moveDealSchema,
   unlinkProjectSchema,
-} from "@/lib/clients/schemas"
+} from "@workspace/clients/schemas"
 
 import type { McpTool } from "./projects"
 

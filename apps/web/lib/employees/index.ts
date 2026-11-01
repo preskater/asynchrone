@@ -1,60 +1,24 @@
+import { EmployeesRepository } from "@workspace/employees/repository"
+import { EmployeesService } from "@workspace/employees/service"
+
+import { recordAuditMany, withActorIdentity } from "@/lib/audit/record"
 import { prisma } from "@/lib/prisma"
 
-import { EmployeesRepository } from "./repository"
-import { EmployeesService } from "./service"
+/**
+ * App adapter for the employees domain.
+ *
+ * `@workspace/employees` owns the repository, service, schemas, types and UI.
+ * The app binds the database client and the audit writer here; the package
+ * never imports `apps/web`.
+ */
+export const employeesRepository = new EmployeesRepository(
+  prisma,
+  async (entries) => {
+    await recordAuditMany(await withActorIdentity(entries, prisma), prisma)
+    return { count: entries.length }
+  }
+)
 
-export const employeesRepository = new EmployeesRepository(prisma)
 export const employeesService = new EmployeesService(employeesRepository)
 
 export { EmployeesRepository, EmployeesService }
-export { resolveEmployeeAccess } from "./access"
-export { buildAlerts } from "./alerts"
-export {
-  computeCapacityMonth,
-  computeCapacityRows,
-  computeCapacityTotals,
-  computeCapacityWeeks,
-} from "./capacity"
-export { formatCsvNumber, toCsv } from "./csv"
-export {
-  frenchHolidays,
-  holidaysInRange,
-  isWorkingDayKey,
-  type HolidayKey,
-} from "./holidays"
-export * from "./schemas"
-export {
-  addDaysToKey,
-  addMonthsToKey,
-  addWeeksToKey,
-  countBusinessDays,
-  eachDateKey,
-  formatDateKey,
-  isDateKey,
-  isMonthKey,
-  isWeekendKey,
-  localDateFromKey,
-  localDateKey,
-  monthDateRange,
-  monthKeyOf,
-  parseDateKey,
-  round2,
-  startOfWeekKey,
-  toDateKey,
-} from "./date-utils"
-export {
-  coversDate,
-  dailyHours,
-  entryIndex,
-  entryOn,
-  formatHours,
-  halfDayHours,
-  halfKey,
-  halfKeysBetween,
-  leaveStatusOnDate,
-  sum,
-  weekStartsFrom,
-  workingDaysInRange,
-  workingHalvesInRange,
-} from "./utils"
-export * from "./types"

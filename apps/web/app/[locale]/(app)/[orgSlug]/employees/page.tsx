@@ -2,12 +2,25 @@ import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 
-import { EmployeesWorkspace } from "@/components/employees/employees-workspace"
+import { EmployeesWorkspace } from "@workspace/employees/components/employees-workspace"
+
+import * as employeeActions from "@/actions/employees"
 
 import { auth } from "@/lib/auth"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import { employeesService } from "@/lib/employees"
 import { prisma } from "@/lib/prisma"
+import {
+  EmployeeActionsProvider,
+  type EmployeeActions,
+} from "@workspace/employees/components/actions"
+
+/**
+ * Server actions stay in the app until `apps/employees` exists (#163); the
+ * package receives them as a port so no client component imports
+ * `@/actions/*`.
+ */
+const EMPLOYEE_ACTIONS: EmployeeActions = { ...employeeActions }
 
 export default async function EmployeePage({
   params,
@@ -41,9 +54,13 @@ export default async function EmployeePage({
     <div className="flex flex-1 flex-col gap-4 px-4 py-4 md:py-6 lg:px-6">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">{t("employeesTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("employeesDescription")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("employeesDescription")}
+        </p>
       </div>
-      <EmployeesWorkspace data={data} />
+      <EmployeeActionsProvider actions={EMPLOYEE_ACTIONS}>
+        <EmployeesWorkspace data={data} />
+      </EmployeeActionsProvider>
     </div>
   )
 }

@@ -1,8 +1,6 @@
 "use server"
 
 import { withAction } from "@workspace/core/action"
-import { getRequestContext } from "@/lib/core/auth-context"
-import { parseLocalized } from "@/lib/core/validation-server"
 import {
   activitySchema,
   adjustBalanceSchema,
@@ -12,7 +10,6 @@ import {
   decideLeaveSchema,
   exportSchema,
   fetchRangeSchema,
-  employeesService,
   monthKeySchema,
   projectEmployeeSchema,
   setAllowanceSchema,
@@ -21,7 +18,10 @@ import {
   updateProfileSchema,
   updateSalarySchema,
   updateSettingsSchema,
-} from "@/lib/employees"
+} from "@workspace/employees/schemas"
+import { getRequestContext } from "@/lib/core/auth-context"
+import { parseLocalized } from "@/lib/core/validation-server"
+import { employeesService } from "@/lib/employees"
 import { revalidateOrgPath } from "@/lib/organization/paths"
 
 export const fetchAttendanceAction = withAction(
@@ -111,13 +111,15 @@ export const adjustBalanceAction = withAction(async (input: unknown) => {
   return adjustment
 })
 
-export const updateEmployeeSettingsAction = withAction(async (input: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(updateSettingsSchema, input)
-  const settings = await employeesService.updateSettings(ctx, parsed)
-  await revalidateOrgPath(ctx.organizationId, "/employees")
-  return settings
-})
+export const updateEmployeeSettingsAction = withAction(
+  async (input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(updateSettingsSchema, input)
+    const settings = await employeesService.updateSettings(ctx, parsed)
+    await revalidateOrgPath(ctx.organizationId, "/employees")
+    return settings
+  }
+)
 
 export const updateProfileAction = withAction(async (input: unknown) => {
   const ctx = await getRequestContext()
@@ -151,13 +153,15 @@ export const saveActivityAction = withAction(async (input: unknown) => {
   return activity
 })
 
-export const updateProjectEmployeeAction = withAction(async (input: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(projectEmployeeSchema, input)
-  const project = await employeesService.updateProjectEmployee(ctx, parsed)
-  await revalidateOrgPath(ctx.organizationId, "/employees")
-  return project
-})
+export const updateProjectEmployeeAction = withAction(
+  async (input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(projectEmployeeSchema, input)
+    const project = await employeesService.updateProjectEmployee(ctx, parsed)
+    await revalidateOrgPath(ctx.organizationId, "/employees")
+    return project
+  }
+)
 
 export const exportCsvAction = withAction(async (input: unknown) => {
   const ctx = await getRequestContext()

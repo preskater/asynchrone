@@ -1,14 +1,11 @@
 "use server"
 
 import { withAction } from "@workspace/core/action"
-import { getRequestContext } from "@/lib/core/auth-context"
-import { parseLocalized } from "@/lib/core/validation-server"
 import {
   activityInputSchema,
   clientInputSchema,
   closeDealSchema,
   contactInputSchema,
-  clientsService,
   dealInputSchema,
   deleteFieldDefinitionSchema,
   exportSchema,
@@ -26,7 +23,10 @@ import {
   unlinkDocumentSchema,
   unlinkProjectSchema,
   updateDocumentVisibilitySchema,
-} from "@/lib/clients"
+} from "@workspace/clients/schemas"
+import { getRequestContext } from "@/lib/core/auth-context"
+import { parseLocalized } from "@/lib/core/validation-server"
+import { clientsService } from "@/lib/clients"
 import { revalidateOrgPath } from "@/lib/organization/paths"
 
 /** Activity can surface on the list pages of every record type. */
@@ -40,12 +40,10 @@ async function revalidateClient(organizationId: string) {
 
 // --- Keyset-paginated list endpoints -----------------------------------------
 
-export const listClientsAction = withAction(
-  async (cursor?: string | null) => {
-    const ctx = await getRequestContext()
-    return clientsService.listClientsPage(ctx, { cursor })
-  }
-)
+export const listClientsAction = withAction(async (cursor?: string | null) => {
+  const ctx = await getRequestContext()
+  return clientsService.listClientsPage(ctx, { cursor })
+})
 
 export const listClientContactsAction = withAction(
   async (cursor?: string | null) => {
@@ -230,13 +228,15 @@ export const saveFieldDefinitionAction = withAction(async (input: unknown) => {
   return field
 })
 
-export const deleteFieldDefinitionAction = withAction(async (input: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(deleteFieldDefinitionSchema, input)
-  const result = await clientsService.deleteFieldDefinition(ctx, parsed.id)
-  await revalidateClient(ctx.organizationId)
-  return result
-})
+export const deleteFieldDefinitionAction = withAction(
+  async (input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(deleteFieldDefinitionSchema, input)
+    const result = await clientsService.deleteFieldDefinition(ctx, parsed.id)
+    await revalidateClient(ctx.organizationId)
+    return result
+  }
+)
 
 // --- Activities -----------------------------------------------------------------
 
