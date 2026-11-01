@@ -8,8 +8,9 @@
 
 ## Verify before finishing
 
-- There is no automated test suite and no `test` script — do not add one speculatively.
+- There is no single root `test` script — use the targeted commands below and do not add a speculative broad suite.
 - Run, in order: `npm run lint && npm run typecheck && npm run build` (matches CI), plus `npm run test:unit --workspace=copilot` and `npm run test:unit --workspace=@workspace/contracts` (vitest; `*.unit.test.ts` next to the code). `npm run test:e2e --workspace=copilot` runs Playwright against a migrated database (CI does this in the `e2e` job).
+- Cross-domain contracts (needs a migrated PostgreSQL; no browser): `npm run test:contracts`. The suite lives in `apps/copilot/scripts/contracts` and pins package exports, the member directory, notifications, recents, search, export/deletion and the MCP/assistant tool surface; it also replays the issue #40 cross-org/impersonation attacks. CI runs it in the `contracts` job. See `docs/contract-tests.md`.
 - Workspace boundaries: `npm run check:boundaries` fails on a package→app import, an app→app import, an undeclared `@workspace/*` dependency, a relative import that escapes its workspace, or a cross-`@workspace/db-*` import. CI runs it after lint.
 - Per-app migrations: `npm run db:create && npm run migrate:deploy && npm run verify:migrations` (needs a live PostgreSQL). The migrate image runs the monolith migration first, then the ordered per-app orchestrator.
 - Database split (maintenance window; needs source and target databases): `npm run split:databases -- --dry-run`, then `--all`. Large-object OIDs are preserved. See `docs/database-split.md`.

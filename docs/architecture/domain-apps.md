@@ -111,9 +111,15 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
 ```bash
 npm run check:boundaries
 npm run test:unit --workspace=@workspace/contracts
+npm run test:contracts   # needs a migrated PostgreSQL, no browser
 npm run typecheck
 npm run lint
 ```
+
+`npm run test:contracts` pins the cross-domain contracts (member directory,
+notifications, recents, search, export/deletion and the assistant/MCP tools)
+and replays the issue #40 authorization attacks against the package
+entrypoints. See [contract tests](../contract-tests.md).
 
 The boundary checker is intentionally independent of TypeScript resolution: it
 also catches imports in files that are not currently reachable from a route.
@@ -145,6 +151,7 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Calendars and meetings domain packages (#154)
 - [x] Projects domain package: repository, service, schemas, types, UI and repository sync (#153)
 - [x] Landing app extracted to `apps/landing` (#176)
+- [x] Cross-domain contract tests (#159)
 - [x] Customer app renamed to `apps/copilot`; it owns identity and serves
       `copilot.asynchrone.space` (#175)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

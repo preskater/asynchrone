@@ -69,6 +69,60 @@ jobs:
       - name: Unit tests
         run: npm run test:unit --workspace=copilot
 
+  # Cross-domain contracts: package exports, member directory, notifications,
+  # per-organization recents, search, export/deletion sagas and the
+  # MCP/assistant tool surface. Needs a migrated database, never a browser.
+  contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: asynchrone
+          POSTGRES_PASSWORD: asynchrone
+          POSTGRES_DB: asynchrone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asynchrone"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      BETTER_AUTH_SECRET: ci-contracts-placeholder-secret-value
+      BETTER_AUTH_URL: http://localhost:3000
+      CONTROL_TOWER_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+
+      - name: Apply monolith migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/db
+
+      - name: Cross-domain contracts
+        run: npm run test:contracts --workspace=copilot
+
   # The landing must build with no database, no auth secret and no workspace
   # package, so it gets its own job with an empty environment.
   landing:
