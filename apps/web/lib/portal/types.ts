@@ -2,7 +2,7 @@ import type {
   PortalPolicy,
   TaskPriority,
   TaskStatus,
-} from "@/lib/projects/types"
+} from "@workspace/projects/types"
 
 /** One project of the client's company, with its task progress. */
 export interface PortalProjectSummary {

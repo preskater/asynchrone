@@ -10,7 +10,7 @@ import {
   repositoryIntegrationService,
   setUserRepositoryTokenSchema,
 } from "@/lib/integrations"
-import { REPOSITORY_PROVIDERS } from "@/lib/integrations/types"
+import { REPOSITORY_PROVIDERS } from "@workspace/projects/integrations/types"
 import { revalidateOrgPath } from "@/lib/organization/paths"
 
 const providerSchema = z.enum(REPOSITORY_PROVIDERS)

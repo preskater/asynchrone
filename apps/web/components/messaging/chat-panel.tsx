@@ -10,7 +10,7 @@ import { MeetingDialog } from "@/components/meetings/meeting-dialog"
 
 import { useMessaging } from "@/lib/messaging/store"
 import type { Conversation } from "@/lib/messaging/types"
-import type { Member } from "@/lib/projects/types"
+import type { Member } from "@workspace/projects/types"
 
 export function ChatPanel({
   conversation,

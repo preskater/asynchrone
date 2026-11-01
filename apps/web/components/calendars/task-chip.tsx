@@ -4,7 +4,7 @@ import { CheckSquareIcon } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { Task } from "@/lib/projects/types"
+import type { Task } from "@workspace/projects/types"
 
 export function TaskChip({
   task,

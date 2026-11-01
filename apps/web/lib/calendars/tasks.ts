@@ -1,5 +1,5 @@
 import { isSameDay } from "@workspace/calendars/date-utils"
-import type { Task } from "@/lib/projects/types"
+import type { Task } from "@workspace/projects/types"
 
 /**
  * The date a task should appear on in the calendar. Tasks are shown on their

@@ -20,7 +20,7 @@ import {
   addDays,
 } from "@workspace/calendars/date-utils"
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import type { CalendarEvent, CalendarView } from "@workspace/calendars/types"

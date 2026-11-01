@@ -57,6 +57,7 @@
     "@workspace/next-config": "*",
     "@workspace/notifications": "*",
     "@workspace/organization": "*",
+    "@workspace/projects": "*",
     "@workspace/sagas": "*",
     "@workspace/search": "*",
     "@workspace/service-auth": "*",

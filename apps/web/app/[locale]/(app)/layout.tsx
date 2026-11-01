@@ -19,6 +19,39 @@ import { getOrganizationAppearance } from "@/lib/appearance/service"
 import { AssistantProvider } from "@workspace/ai/use-assistant"
 import { CalendarsProvider } from "@/lib/calendars/store"
 import type { CalendarData } from "@workspace/calendars/types"
+import {
+  addCommentAction,
+  addLabelAction,
+  addMemberAction,
+  createProjectAction,
+  createTaskAction,
+  createTaskTemplateAction,
+  deleteProjectAction,
+  deleteTaskAction,
+  listProjectShellAction,
+  loadProjectWorkspaceAction,
+  moveTaskAction,
+  removeLabelAction,
+  removeMemberAction,
+  removeTaskTemplateAction,
+  toggleSubtaskAction,
+  updateMemberRoleAction,
+  updateProjectAction,
+  updateProjectClientSettingsAction,
+  updateTaskAction,
+  updateTaskTemplateAction,
+} from "@/actions/projects"
+import {
+  connectRepositoryAction,
+  disconnectRepositoryAction,
+  getRepositoryConnectionAction,
+  listUserRepositoryTokensAction,
+  syncRepositoryAction,
+} from "@/actions/integrations"
+import {
+  listProjectMessagesAction,
+  postProjectMessageAction,
+} from "@/actions/project-messages"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import { FilesProvider } from "@/lib/files/store"
 import type { FilesData } from "@/lib/files/types"
@@ -28,11 +61,49 @@ import { notificationService } from "@/lib/notifications"
 import { mustEnrollTwoFactor } from "@/lib/organization/two-factor-policy"
 import { getOrganizationShell } from "@/lib/organization/shell"
 import { getTrialStatus } from "@/lib/organization/trial-service"
+import { roleRank } from "@workspace/organization/roles"
 import { EntitlementsProvider } from "@/lib/organization/use-entitlements"
 import { isPortalMember } from "@/lib/portal/context"
-import { ProjectStoreProvider } from "@/lib/projects/store"
-import type { ProjectData } from "@/lib/projects/types"
+import {
+  ProjectStoreProvider,
+  type ProjectActions,
+} from "@workspace/projects/store"
+import type { ProjectData } from "@workspace/projects/types"
 import { WorkspaceNavProvider } from "@/lib/workspace-nav/store"
+
+/**
+ * Server actions stay in the app until `apps/projects` exists (#160); the
+ * package receives them as a port so no component imports `@/actions/*`.
+ */
+const PROJECT_ACTIONS: ProjectActions = {
+  listShell: listProjectShellAction,
+  loadWorkspace: loadProjectWorkspaceAction,
+  createProject: createProjectAction,
+  updateProject: updateProjectAction,
+  deleteProject: deleteProjectAction,
+  updateClientSettings: updateProjectClientSettingsAction,
+  createTask: createTaskAction,
+  updateTask: updateTaskAction,
+  moveTask: moveTaskAction,
+  deleteTask: deleteTaskAction,
+  toggleSubtask: toggleSubtaskAction,
+  addComment: addCommentAction,
+  addMember: addMemberAction,
+  updateMemberRole: updateMemberRoleAction,
+  removeMember: removeMemberAction,
+  addLabel: addLabelAction,
+  removeLabel: removeLabelAction,
+  createTemplate: createTaskTemplateAction,
+  updateTemplate: updateTaskTemplateAction,
+  removeTemplate: removeTaskTemplateAction,
+  listMessages: listProjectMessagesAction,
+  postMessage: postProjectMessageAction,
+  getRepositoryConnection: getRepositoryConnectionAction,
+  connectRepository: connectRepositoryAction,
+  disconnectRepository: disconnectRepositoryAction,
+  syncRepository: syncRepositoryAction,
+  listUserRepositoryTokens: listUserRepositoryTokensAction,
+}
 
 /** Domain screens hydrate their own data; the shell starts empty. */
 const EMPTY_PROJECT_DATA: ProjectData = {
@@ -107,6 +178,8 @@ export default async function AppLayout({
             <ProjectStoreProvider
               initialData={EMPTY_PROJECT_DATA}
               currentUserId={ctx.userId}
+              actions={PROJECT_ACTIONS}
+              canManageMembers={roleRank(ctx.role) >= 3}
             >
               <MessagingProvider
                 initialData={EMPTY_MESSAGING_DATA}

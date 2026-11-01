@@ -25,8 +25,8 @@ import {
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { uploadFile } from "@/lib/files/upload-client"
-import type { Member } from "@/lib/projects/types"
-import { useProjectStore } from "@/lib/projects/store"
+import type { Member } from "@workspace/projects/types"
+import { useProjectStore } from "@workspace/projects/store"
 
 import { kindFromName } from "./file-utils"
 import type {

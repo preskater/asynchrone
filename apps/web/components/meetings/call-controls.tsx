@@ -14,7 +14,7 @@ import {
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ import {
 } from "@workspace/ui/components/tooltip"
 
 import { formatTime } from "@/lib/messaging/format"
-import type { Member } from "@/lib/projects/types"
+import type { Member } from "@workspace/projects/types"
 
 export function CallControls({
   kind,

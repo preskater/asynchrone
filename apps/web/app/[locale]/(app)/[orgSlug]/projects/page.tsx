@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server"
 
-import { ProjectFormDialog } from "@/components/project/project-dialog"
-import { ProjectsGrid } from "@/components/project/projects-grid"
+import { ProjectFormDialog } from "@workspace/projects/components/project/project-dialog"
+import { ProjectsGrid } from "@workspace/projects/components/project/projects-grid"
 import { Button } from "@workspace/ui/components/button"
 
 export default async function ProjectsPage() {

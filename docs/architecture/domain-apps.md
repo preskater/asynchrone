@@ -142,5 +142,6 @@ also catches imports in files that are not currently reachable from a route.
 - [x] App shell and lazy domain hydration (#151)
 - [x] Cross-domain services: storage, notifications, integrations, AI, appearance, billing and audit (#152)
 - [x] Calendars and meetings domain packages (#154)
+- [x] Projects domain package: repository, service, schemas, types, UI and repository sync (#153)
 - [x] Landing app extracted to `apps/landing` (#176)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

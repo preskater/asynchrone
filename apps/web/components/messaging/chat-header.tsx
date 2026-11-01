@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { PresenceDot } from "@/components/messaging/presence-dot"
 import { AvatarGroup } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
@@ -28,7 +28,11 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { Separator } from "@workspace/ui/components/separator"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 
 import { useMessaging } from "@/lib/messaging/store"
 import type { Conversation } from "@/lib/messaging/types"
@@ -63,7 +67,9 @@ export function ChatHeader({
         ) : (
           <div className="relative size-8 shrink-0">
             <MemberAvatar member={partner} />
-            <PresenceDot presence={partnerId ? presence[partnerId] : undefined} />
+            <PresenceDot
+              presence={partnerId ? presence[partnerId] : undefined}
+            />
           </div>
         )}
         <div className="flex min-w-0 flex-col">
@@ -111,7 +117,9 @@ export function ChatHeader({
                 ))}
               </AvatarGroup>
             </TooltipTrigger>
-            <TooltipContent>{t("membersCount", { count: members.length })}</TooltipContent>
+            <TooltipContent>
+              {t("membersCount", { count: members.length })}
+            </TooltipContent>
           </Tooltip>
         ) : null}
 

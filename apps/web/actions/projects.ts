@@ -18,7 +18,7 @@ import {
   updateProjectSchema,
   updateTaskSchema,
   updateTaskTemplateSchema,
-} from "@/lib/projects/schemas"
+} from "@workspace/projects/schemas"
 
 export const listProjectsAction = withAction(async () => {
   const ctx = await getRequestContext()
@@ -76,7 +76,10 @@ export const deleteProjectAction = withAction(async (id: string) => {
 export const updateProjectClientSettingsAction = withAction(
   async (input: unknown) => {
     const ctx = await getRequestContext()
-    const parsed = await parseLocalized(updateProjectClientSettingsSchema, input)
+    const parsed = await parseLocalized(
+      updateProjectClientSettingsSchema,
+      input
+    )
     const project = await projectService.updateClientSettings(ctx, parsed)
     await revalidateOrgPath(ctx.organizationId, `/projects/${parsed.projectId}`)
     return project
@@ -92,21 +95,25 @@ export const createTaskAction = withAction(async (input: unknown) => {
   return task
 })
 
-export const updateTaskAction = withAction(async (id: string, input: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(updateTaskSchema, input)
-  const task = await projectService.updateTask(ctx, id, parsed)
-  await revalidateOrgPath(ctx.organizationId, `/projects/${task.projectId}`)
-  return task
-})
+export const updateTaskAction = withAction(
+  async (id: string, input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(updateTaskSchema, input)
+    const task = await projectService.updateTask(ctx, id, parsed)
+    await revalidateOrgPath(ctx.organizationId, `/projects/${task.projectId}`)
+    return task
+  }
+)
 
-export const moveTaskAction = withAction(async (id: string, status: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(moveTaskSchema, status)
-  const task = await projectService.moveTask(ctx, id, parsed)
-  await revalidateOrgPath(ctx.organizationId, `/projects/${task.projectId}`)
-  return task
-})
+export const moveTaskAction = withAction(
+  async (id: string, status: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(moveTaskSchema, status)
+    const task = await projectService.moveTask(ctx, id, parsed)
+    await revalidateOrgPath(ctx.organizationId, `/projects/${task.projectId}`)
+    return task
+  }
+)
 
 export const deleteTaskAction = withAction(async (id: string) => {
   const ctx = await getRequestContext()
@@ -205,7 +212,10 @@ export const updateTaskTemplateAction = withAction(
     const ctx = await getRequestContext()
     const parsed = await parseLocalized(updateTaskTemplateSchema, input)
     const template = await projectService.updateTemplate(ctx, id, parsed)
-    await revalidateOrgPath(ctx.organizationId, `/projects/${template.projectId}`)
+    await revalidateOrgPath(
+      ctx.organizationId,
+      `/projects/${template.projectId}`
+    )
     return template
   }
 )

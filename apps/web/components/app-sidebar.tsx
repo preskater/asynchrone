@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { ProjectFormDialog } from "@/components/project/project-dialog"
+import { ProjectFormDialog } from "@workspace/projects/components/project/project-dialog"
 import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
 import { ConversationSidebar } from "@/components/messaging/conversation-sidebar"
 import { FilesSidebar } from "@/components/files/files-sidebar"

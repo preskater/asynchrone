@@ -15,7 +15,7 @@ import {
   cancelMeetingRequestAction,
   createMeetingRequestAction,
 } from "@/actions/meetings"
-import { DatePicker } from "@/components/task/date-picker"
+import { DatePicker } from "@workspace/projects/components/task/date-picker"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {

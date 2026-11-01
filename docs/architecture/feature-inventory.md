@@ -181,10 +181,13 @@ adapter; every other app goes through the internal contract.
 
 Target: `apps/projects` / `@workspace/projects`.
 
+Extracted in #153. The domain package owns the repository, service, schemas,
+types, project/task UI and the GitHub/GitLab repository sync. Server actions,
+pages and app wiring stay in Copilot until #160 moves them with the app.
+
 | Surface            | Inventory                                                                                                                                                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pages              | `/[orgSlug]` workspace home data, `/[orgSlug]/projects`, `/[orgSlug]/projects/[projectId]`                                                                                                                                                                          |
-| Server actions     | `actions/projects.ts`, `actions/project-messages.ts` (projects, tasks, members, labels, templates, comments, project discussion thread)                                                                                                                             |
+| Server actions     | `actions/projects.ts`, `actions/project-messages.ts`, `actions/integrations.ts` (projects, tasks, members, labels, templates, comments, project discussion thread, repository connections)                                                                          |
 | API                | `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync`, `/api/health`                                                                                                                                                                    |
 | MCP tools          | `list_projects`, `get_project`, `list_tasks`, `create_project`, `create_task`, `update_task`, `move_task`                                                                                                                                                           |
 | Prisma models      | `Project`, `ProjectMember`, `Label`, `ProjectLabel`, `Task`, `TaskIdentifierCounter`, `TaskTemplate`, `TaskLabel`, `Subtask`, `TaskComment`, `ProjectActivity`, `ProjectMessage`, `RepositoryConnection`, `UserRepositoryToken`, `AuditLog`                         |
@@ -192,8 +195,50 @@ Target: `apps/projects` / `@workspace/projects`.
 | Audit entities     | `project`, `task`, `label`, `taskTemplate`                                                                                                                                                                                                                          |
 | Internal endpoints | `GET /internal/v1/search`, `GET /organizations/:id/export`, `DELETE /organizations/:id`, `DELETE /users/:id` (shared handlers in `@workspace/search` / `@workspace/sagas`; not wired yet)                                                                           |
 
-Repository integration (GitHub/GitLab) is currently part of Projects and also
-writes project activity. `GITHUB_*` / `GITLAB_*` OAuth env vars are read by the
+### Package layout (#153)
+
+| Module                                     | Exports                                                                                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/projects/src/types.ts`           | Project, task, template, label, comment, activity and member types plus enum values                                                                           |
+| `packages/projects/src/schemas.ts`         | Zod inputs for projects, tasks, templates, labels, members, comments and portal policies                                                                       |
+| `packages/projects/src/repository.ts`      | `ProjectRepository` over the structural `ProjectDb` port                                                                                                       |
+| `packages/projects/src/service.ts`         | `ProjectService`; audit, notification and repository-sync ports are injected                                                                                   |
+| `packages/projects/src/task-comments.ts`   | `listTaskComments` / `createTaskComment` over the injected db + notifier                                                                                       |
+| `packages/projects/src/thread.ts`          | `listProjectMessages` / `createProjectMessage` over the injected db + notifier                                                                                 |
+| `packages/projects/src/task-key.ts`        | Shared identifier prefix/allocation used by the service and repository sync                                                                                    |
+| `packages/projects/src/integrations/*`     | `RepositoryConnectionRepository`, `RepositoryIntegrationService`, `RepositoryWebhookHandler`, sync helpers, schemas and types                                  |
+| `packages/projects/src/ui/store.tsx`       | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`                                            |
+| `packages/projects/src/ui/actions.tsx`     | `ProjectActions` contract + `useProjectActions()`                                                                                                              |
+| `packages/projects/src/components/*`       | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)                                           |
+| `apps/web/lib/projects/index.ts`           | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                                                   |
+| `apps/web/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                                                  |
+| `apps/web/lib/integrations/index.ts`       | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                                                          |
+
+App-only imports are forbidden in the package (`npm run check:boundaries`).
+`member`, `user` and `account` remain in the `ProjectDb` port because the
+project member list and personal repository tokens still read identity tables;
+they move behind the identity internal API in #190.
+
+### Routes
+
+| Route                                                          | Kind         | Inventory                                                                                              |
+| -------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| `/[locale]/(app)/[orgSlug]/projects`                           | Page         | `projects/page.tsx`; grid + create dialog from `@workspace/projects/components/project`                |
+| `/[locale]/(app)/[orgSlug]/projects/loading`                   | Loading      | `projects/loading.tsx`                                                                                  |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]`               | Page         | `projects/[projectId]/page.tsx`; guards with `projectService.get`, renders `ProjectWorkspace`           |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]/loading`       | Loading      | `projects/[projectId]/loading.tsx`                                                                      |
+| `/[locale]/(app)/[orgSlug]/projects/[projectId]/not-found`     | Not found    | `projects/[projectId]/not-found.tsx`                                                                    |
+| `/[locale]/portal/projects/[projectId]`                        | Portal page  | `portal/projects/[projectId]/page.tsx`; reads `portalService` (projects thread/comments)               |
+| `/[locale]/portal/projects/[projectId]/tasks/[taskId]`         | Portal page  | `portal/.../tasks/[taskId]/page.tsx`; reads `portalService` + task comments                             |
+| `/[locale]/(app)/layout`                                       | Layout       | Builds `PROJECT_ACTIONS` from the app's server actions and passes them + `canManageMembers` to the store |
+| `POST /api/webhooks/repositories/[connectionId]`               | API          | `repositoryWebhookHandler` from the package adapter                                                     |
+| `GET /api/cron/repository-sync`                                | Cron         | `repositoryIntegrationService.syncAllConnections()` from the package adapter                            |
+| `/api/health`                                                  | API          | App health check (not project domain)                                                                   |
+| MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …)   | MCP tools    | `apps/web/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
+| Assistant tools                                                 | In-process   | `apps/web/lib/assistant/tools.ts` → `projectService` adapter                                            |
+
+Repository integration (GitHub/GitLab) is part of Projects and also writes
+project activity. `GITHUB_*` / `GITLAB_*` OAuth env vars are read by the
 Copilot shell during the transition.
 
 ## Calendars
@@ -394,7 +439,7 @@ Never bake secrets into an image.
 | Suite                     | Location                                                                                                                                     |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
-| Unit — Projects           | domain has no standalone unit file yet; covered by `e2e` and scripts                                                                         |
+| Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest              |
 | Unit — Files              | `apps/web/lib/files/duplicate.unit.test.ts`                                                                                                  |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts` |
@@ -431,6 +476,9 @@ parentheses; keep the checklist honest rather than pre-checking it.
 
 ### Projects (#153, #160)
 
+- [x] Repository, service, schemas, types, project/task UI and repository sync
+      live in `@workspace/projects`; app adapters bind db, auth, audit,
+      notifications and env (#153).
 - [ ] Pages, actions, MCP tools, repository webhooks and `repository-sync` cron.
 - [ ] `Project`/`Task`/`ProjectMessage`/repository models live in
       `asynchrone_projects`.

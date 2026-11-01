@@ -8,7 +8,7 @@ import {
   createTaskSchema,
   moveTaskSchema,
   updateTaskSchema,
-} from "@/lib/projects/schemas"
+} from "@workspace/projects/schemas"
 
 export interface McpTool {
   name: string
@@ -35,8 +35,7 @@ export const projectTools: McpTool[] = [
     description: "Fetch a single project by its id.",
     inputSchema: { projectId: z.string().describe("The project id") },
     readOnly: true,
-    run: (ctx, input) =>
-      projectService.get(ctx, String(input.projectId)),
+    run: (ctx, input) => projectService.get(ctx, String(input.projectId)),
   },
   {
     name: "list_tasks",
@@ -44,8 +43,7 @@ export const projectTools: McpTool[] = [
     description: "List the tasks that belong to a project.",
     inputSchema: { projectId: z.string().describe("The project id") },
     readOnly: true,
-    run: (ctx, input) =>
-      projectService.listTasks(ctx, String(input.projectId)),
+    run: (ctx, input) => projectService.listTasks(ctx, String(input.projectId)),
   },
   {
     name: "create_project",

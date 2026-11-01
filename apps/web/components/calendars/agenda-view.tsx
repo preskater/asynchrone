@@ -13,7 +13,7 @@ import {
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
 import { tasksOnDay } from "@/lib/calendars/tasks"
 import { TaskChip } from "@/components/calendars/task-chip"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -33,7 +33,7 @@ import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 function EventRow({

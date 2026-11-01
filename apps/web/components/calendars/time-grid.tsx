@@ -18,7 +18,7 @@ import { tasksOnDay } from "@/lib/calendars/tasks"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 const HOURS = Array.from(

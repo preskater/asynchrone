@@ -20,7 +20,7 @@ import {
 } from "@workspace/ui/components/tooltip"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
