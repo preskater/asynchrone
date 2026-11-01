@@ -48,6 +48,10 @@ ENV PLATFORM_APP_URL=http://localhost:3000
 # the production default (https://copilot.asynchrone.space).
 ARG NEXT_PUBLIC_WORKSPACE_URL=""
 ENV NEXT_PUBLIC_WORKSPACE_URL=${NEXT_PUBLIC_WORKSPACE_URL}
+# Public marketing origin used by the landing's canonical URLs, robots.txt and
+# sitemap. Empty keeps the production default (https://asynchrone.space).
+ARG NEXT_PUBLIC_SITE_URL=""
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 # Public Sentry DSN, inlined into the browser bundle (empty disables Sentry).
 # The server reads SENTRY_DSN again at runtime from the deployment secret.
 ARG SENTRY_DSN=""

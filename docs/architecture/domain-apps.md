@@ -44,6 +44,10 @@ baked into an image or committed.
    endpoint; no cross-database joins and no shared Prisma client.
 6. The landing has no database and no session. The control tower has its own
    platform auth and reads customer identity through the Copilot admin API.
+7. Only the landing is indexable. Copilot and the control tower send
+   `X-Robots-Tag: noindex, nofollow` and disallow crawlers in `robots.txt`.
+   Legacy apex workspace paths redirect to Copilot from `apps/landing/proxy.ts`;
+   marketing paths are never shadowed.
 
 `npm run check:boundaries` enforces rules 1–4 in CI. The checker scans source
 files, including dynamic imports and client components, so a string import is
@@ -151,6 +155,8 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Calendars and meetings domain packages (#154)
 - [x] Projects domain package: repository, service, schemas, types, UI and repository sync (#153)
 - [x] Landing app extracted to `apps/landing` (#176)
+- [x] Landing finalized as marketing only: legacy apex redirects, stateless
+      guard, indexable landing and noindex workspace hosts (#167)
 - [x] Cross-domain contract tests (#159)
 - [x] Customer app renamed to `apps/copilot`; it owns identity and serves
       `copilot.asynchrone.space` (#175)

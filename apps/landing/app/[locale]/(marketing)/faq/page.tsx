@@ -6,12 +6,15 @@ import { FaqSection } from "@/components/landing/faq-section"
 import { Link } from "@workspace/i18n/navigation"
 import { Button } from "@workspace/ui/components/button"
 
+import { marketingMetadata } from "@/lib/seo"
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.faq")
-  return {
+  return marketingMetadata({
+    path: "/faq",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 export default async function FaqPage() {

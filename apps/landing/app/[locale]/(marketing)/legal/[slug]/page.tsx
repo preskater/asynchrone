@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server"
 
 import { LegalPage } from "@/components/landing/legal-page"
 import { isLegalSlug, legalSlugs } from "@/lib/landing/legal"
+import { marketingMetadata } from "@/lib/seo"
 
 export function generateStaticParams() {
   return legalSlugs.map((slug) => ({ slug }))
@@ -19,7 +20,11 @@ export async function generateMetadata({
   const { slug } = await params
   if (!isLegalSlug(slug)) return {}
   const t = await getTranslations(`Legal.${slug}`)
-  return { title: t("title"), description: t("description") }
+  return marketingMetadata({
+    path: `/legal/${slug}`,
+    title: t("title"),
+    description: t("description"),
+  })
 }
 
 export default async function LegalDocumentPage({

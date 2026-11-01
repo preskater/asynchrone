@@ -183,6 +183,13 @@ lists. The defaults target `asynchrone.space` (landing, with
 `copilot.asynchrone.space` (Copilot) and
 `control-tower.asynchrone.space`, with the `nginx` ingress class.
 
+Only the landing host is indexable: it serves `robots.txt` and a localized
+`sitemap.xml`. Copilot answers `robots.txt` with `Disallow: /` and sends
+`X-Robots-Tag: noindex, nofollow` on every response (the control tower does the
+same). Old apex workspace URLs (`/sign-in`, `/portal`, `/settings`,
+`/<orgSlug>/search`, …) are redirected to Copilot inside the landing app with a
+308 that preserves the locale and query string; no ingress rule is needed.
+
 ## What gets created
 
 | Resource       | Name                                                                                 | Notes                               |

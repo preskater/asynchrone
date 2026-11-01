@@ -7,12 +7,15 @@ import { ProductShowcase } from "@/components/landing/product-showcase"
 import { LogoCloud } from "@/components/landing/logo-cloud"
 import { FinalCta } from "@/components/landing/final-cta"
 
+import { marketingMetadata } from "@/lib/seo"
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.features")
-  return {
+  return marketingMetadata({
+    path: "/features",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 export default async function FeaturesPage() {

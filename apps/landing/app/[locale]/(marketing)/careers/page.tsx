@@ -10,13 +10,15 @@ import { Card, CardContent } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 
 import { jobs } from "@/lib/landing/content"
+import { marketingMetadata } from "@/lib/seo"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.careers")
-  return {
+  return marketingMetadata({
+    path: "/careers",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 export default async function CareersPage() {

@@ -14,13 +14,15 @@ import {
 
 import { contactChannels } from "@/lib/landing/content"
 import { legalPdfPath } from "@/lib/landing/legal"
+import { marketingMetadata } from "@/lib/seo"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Marketing.contact")
-  return {
+  return marketingMetadata({
+    path: "/contact",
     title: t("metadataTitle"),
     description: t("metadataDescription"),
-  }
+  })
 }
 
 const channelKeys = [
