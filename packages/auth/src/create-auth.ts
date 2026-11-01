@@ -115,6 +115,11 @@ export interface AuthOptions<
   github?: { clientId: string; clientSecret: string; scope: string[] }
   gitlab?: { clientId: string; clientSecret: string; scope: string[] }
   twoFactorIssuer?: string
+  /**
+   * Override Better Auth's built-in endpoint rate limit. Leave undefined in
+   * production; the e2e suite turns it off because it creates many accounts.
+   */
+  rateLimitEnabled?: boolean
 }
 
 /**
@@ -226,6 +231,7 @@ export function createAuth<TRoles extends Record<string, any>>(
     // Shared across replicas through the `rateLimit` table. Better Auth only
     // enables it in production; dev keeps working without counters.
     rateLimit: {
+      enabled: options.rateLimitEnabled,
       storage: "database",
       customRules: {
         "/sign-in/*": { window: 5 * 60, max: 10 },

@@ -29,6 +29,11 @@ export default defineConfig({
         timeout: isCi ? 600_000 : 180_000,
         // `.env` pins BETTER_AUTH_URL to :3000; point it at the port we serve
         // on so the Origin header from `fixtures.ts` passes the CSRF check.
-        env: { BETTER_AUTH_URL: E2E_BASE_URL },
+        // The suite creates many accounts from one IP, so its server disables
+        // Better Auth's built-in endpoint rate limit.
+        env: {
+          BETTER_AUTH_URL: E2E_BASE_URL,
+          E2E_AUTH_RATE_LIMIT_DISABLED: "1",
+        },
       },
 })
