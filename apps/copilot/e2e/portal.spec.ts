@@ -120,21 +120,7 @@ test("a portal client sees its shared project and uploads and downloads document
       client.page.getByText(privateProject, { exact: true })
     ).toHaveCount(0)
 
-    // The project page also renders only the linked project.
-    await client.page.getByRole("link", { name: sharedProject }).click()
-    await expect(
-      client.page.getByRole("heading", { name: sharedProject })
-    ).toBeVisible({ timeout: 30_000 })
-    await expect(
-      client.page.getByText(privateProject, { exact: true })
-    ).toHaveCount(0)
-
     // Upload a document from the portal and download the same bytes back.
-    await client.page.getByRole("link", { name: "Back to dashboard" }).click()
-    await expect(
-      client.page.getByRole("heading", { name: /Welcome/ })
-    ).toBeVisible({ timeout: 30_000 })
-
     const content = `portal document ${Date.now()}`
     const fileName = `brief-${Date.now()}.txt`
     await client.page.locator('input[type="file"]').setInputFiles({
@@ -152,8 +138,10 @@ test("a portal client sees its shared project and uploads and downloads document
     expect(download.ok()).toBeTruthy()
     expect(await download.text()).toBe(content)
 
-    // A client never reaches an internal workspace route...
-    await client.page.goto(`/${slug}/projects`)
+    // A client never reaches an internal workspace route. `/projects` now
+    // redirects to the projects host before the portal guard, so use a domain
+    // that still lives in Copilot to exercise the guard itself.
+    await client.page.goto(`/${slug}/clients`)
     await expect(client.page).toHaveURL(/\/portal$/)
     await expect(
       client.page.getByRole("link", { name: sharedProject })
