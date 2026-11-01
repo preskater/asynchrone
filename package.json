@@ -20,7 +20,7 @@
     "split:databases": "node scripts/split-databases.mjs"
   },
   "devDependencies": {
-    "@rolldown/binding-wasm32-wasi": "^1.2.15",
+    "@rolldown/binding-wasm32-wasi": "^1.2.16",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "pg-copy-streams": "^7.0.0",
