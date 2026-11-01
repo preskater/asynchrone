@@ -19,6 +19,9 @@ vi.mock("@openai/agents", () => ({ run: mocks.run }))
 vi.mock("@/lib/core/auth-context", () => ({
   getRequestContext: mocks.getRequestContext,
 }))
+vi.mock("@/lib/assistant/context", () => ({
+  assistantRequestContext: mocks.getRequestContext,
+}))
 vi.mock("@/lib/core/rate-limit", () => ({ rateLimit: mocks.rateLimit }))
 vi.mock("@/lib/organization/entitlements", () => ({
   upgradeRequired: mocks.upgradeRequired,

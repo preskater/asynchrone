@@ -1802,7 +1802,7 @@ model AssistantConversation {
   /// or extend it.
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// Derived from the first user message; #166 owns renaming.
+  /// Derived from the first user message; empty until the first turn.
   title          String       @default("")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

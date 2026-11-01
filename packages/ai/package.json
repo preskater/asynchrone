@@ -29,6 +29,7 @@
     ".": "./src/index.ts",
     "./agent": "./src/agent.ts",
     "./chat": "./src/chat.ts",
+    "./conversations": "./src/conversations.ts",
     "./model": "./src/model.ts",
     "./pricing": "./src/pricing.ts",
     "./provider": "./src/provider.ts",
