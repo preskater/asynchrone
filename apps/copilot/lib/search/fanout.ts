@@ -1,8 +1,13 @@
 import type { SearchClient, SearchResult } from "@workspace/contracts"
 
+/**
+ * A search participant. Remote domain apps use `SearchClient` (HTTP); while a
+ * domain still lives in Copilot, the same contract is satisfied in process by
+ * a package-backed adapter (see `./in-process`).
+ */
 export interface SearchRemote {
   app: string
-  client: SearchClient
+  client: Pick<SearchClient, "search">
 }
 
 export interface SearchFanoutResult {

@@ -1,14 +1,17 @@
 import { APPS, CUSTOMER_APP_KEYS, SearchClient } from "@workspace/contracts"
 import { ServiceTokenClient } from "@workspace/service-auth"
 
-export interface SearchRemote {
-  app: string
-  client: SearchClient
-}
+import type { SearchRemote } from "./fanout"
+
+export type { SearchRemote }
 
 /**
- * Domain apps reachable for global search. Only apps with a configured origin
- * participate; Copilot has no domain database of its own to search here.
+ * Domain apps reachable for global search over HTTP. Only apps with a
+ * configured origin participate; Copilot has no domain database of its own to
+ * search here.
+ *
+ * Domains that still run in process are searched by `./in-process` instead, so
+ * the app never calls one of its own HTTP routes for search.
  */
 export function searchRemotes(): SearchRemote[] {
   const issuer = process.env.COPILOT_APP_URL ?? process.env.BETTER_AUTH_URL
