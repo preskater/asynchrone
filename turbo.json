@@ -3,8 +3,8 @@
   "ui": "tui",
   "tasks": {
     "generate": {
-      "cache": true,
-      "inputs": ["prisma/schema.prisma", "prisma.config.ts"],
+      "cache": false,
+      "inputs": ["prisma/schema.prisma", "prisma.config.ts", "package.json"],
       "outputs": ["lib/generated/**"],
       "env": ["DATABASE_URL"]
     },
@@ -94,6 +94,17 @@
     },
     "typecheck": {
       "dependsOn": ["^typecheck", "generate"]
+    },
+    "test:contracts": {
+      "dependsOn": ["^generate"],
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "DATABASE_POOL_MAX",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CONTROL_TOWER_URL"
+      ]
     },
     "dev": {
       "dependsOn": ["^generate"],

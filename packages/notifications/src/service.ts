@@ -38,7 +38,11 @@ export interface NotificationRepositoryPort {
     userId: string,
     limit: number
   ): Promise<NotificationRow[]>
-  countUnread(userId: string): Promise<number>
+  /**
+   * Unread rows are counted per organization: the badge must not include
+   * another workspace's notifications for the same user.
+   */
+  countUnread(organizationId: string, userId: string): Promise<number>
   create(data: {
     organizationId: string
     userId: string
@@ -46,8 +50,12 @@ export interface NotificationRepositoryPort {
     type: string
     data?: unknown
   }): PromiseLike<unknown>
-  markRead(userId: string, id: string): PromiseLike<unknown>
-  markAllRead(userId: string): PromiseLike<unknown>
+  markRead(
+    organizationId: string,
+    userId: string,
+    id: string
+  ): PromiseLike<unknown>
+  markAllRead(organizationId: string, userId: string): PromiseLike<unknown>
 }
 
 export class NotificationService {
@@ -69,7 +77,7 @@ export class NotificationService {
   async list(ctx: RequestContext, limit = 20): Promise<NotificationsData> {
     const [rows, unreadCount] = await Promise.all([
       this.repo.list(ctx.organizationId, ctx.userId, limit),
-      this.repo.countUnread(ctx.userId),
+      this.repo.countUnread(ctx.organizationId, ctx.userId),
     ])
     return { items: rows.map((row) => this.map(row)), unreadCount }
   }
@@ -78,12 +86,14 @@ export class NotificationService {
     ctx: RequestContext,
     id: string
   ): Promise<{ unreadCount: number }> {
-    await this.repo.markRead(ctx.userId, id)
-    return { unreadCount: await this.repo.countUnread(ctx.userId) }
+    await this.repo.markRead(ctx.organizationId, ctx.userId, id)
+    return {
+      unreadCount: await this.repo.countUnread(ctx.organizationId, ctx.userId),
+    }
   }
 
   async markAllRead(ctx: RequestContext): Promise<{ unreadCount: number }> {
-    await this.repo.markAllRead(ctx.userId)
+    await this.repo.markAllRead(ctx.organizationId, ctx.userId)
     return { unreadCount: 0 }
   }
 

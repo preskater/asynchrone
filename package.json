@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
+    "test:contracts": "turbo test:contracts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "split:prisma": "node scripts/split-prisma-schema.mjs",
     "verify:prisma-schemas": "node scripts/verify-prisma-schemas.mjs",

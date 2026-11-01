@@ -2,36 +2,33 @@
 
 import * as React from "react"
 
-export type AppKey = "projects" | "messages" | "calendars" | "files"
+import {
+  EMPTY_RECENTS as EMPTY,
+  RECENTS_MAX_STORED,
+  normalizeRecents as normalize,
+  recentsStorageKey,
+  type AppKey,
+  type RecentEntry,
+  type RecentsState,
+} from "./recents-storage"
 
-export interface RecentEntry {
-  id: string
-  label: string
-  hint?: string
-  at: number
-  data?: Record<string, unknown>
-}
+export {
+  RECENTS_MAX_STORED,
+  normalizeRecents,
+  recentsStorageKey,
+  type AppKey,
+  type RecentEntry,
+  type RecentsState,
+} from "./recents-storage"
 
-type RecentsState = Record<AppKey, RecentEntry[]>
-
-const STORAGE_PREFIX = "asynchrone-space.recents.v2"
-const MAX_STORED = 5
-
-const EMPTY: RecentsState = {
-  projects: [],
-  messages: [],
-  calendars: [],
-  files: [],
-}
+const MAX_STORED = RECENTS_MAX_STORED
 
 interface PersistedState {
   recents?: Partial<RecentsState>
   active?: Partial<Record<AppKey, string>>
 }
 
-function storageKey(organizationId?: string) {
-  return organizationId ? `${STORAGE_PREFIX}.${organizationId}` : STORAGE_PREFIX
-}
+const storageKey = recentsStorageKey
 
 function readStored(key: string): PersistedState {
   try {
@@ -40,15 +37,6 @@ function readStored(key: string): PersistedState {
     return JSON.parse(raw) as PersistedState
   } catch {
     return {}
-  }
-}
-
-function normalize(recents?: Partial<RecentsState>): RecentsState {
-  return {
-    projects: recents?.projects ?? [],
-    messages: recents?.messages ?? [],
-    calendars: recents?.calendars ?? [],
-    files: recents?.files ?? [],
   }
 }
 
