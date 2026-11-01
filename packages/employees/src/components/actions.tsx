@@ -7,7 +7,7 @@ import type { ActionResult } from "@workspace/core/action"
 /**
  * The server actions of the owning app, injected into the UI.
  *
- * Server actions stay in `apps/web` (and move with `apps/employees` later), so
+ * Server actions stay in `apps/copilot` (and move with `apps/employees` later), so
  * the package components cannot import them. The app passes this object to
  * `EmployeeActionsProvider`; every component reaches it through
  * `useEmployeeActions()`.

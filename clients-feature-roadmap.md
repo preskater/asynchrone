@@ -29,7 +29,7 @@ the Clients core.
 
 The Clients core is live; the data model is documented in
 [ADR-0012](docs/adr/0012-extend-clients-into-crm-core.md) and the code lives in
-`apps/web/lib/crm/`, `apps/web/actions/crm.ts` and `apps/web/components/crm/`.
+`apps/copilot/lib/crm/`, `apps/copilot/actions/crm.ts` and `apps/copilot/components/crm/`.
 
 - **Users & access**: email/password authentication, organizations, roles
   (owner/admin/member/viewer), record owners, audit trail.

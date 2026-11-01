@@ -7,9 +7,9 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Scripts run outside Next, so nothing has loaded the env. Prefer the shared
- * repo env (`apps/web/.env`), then a control-tower-local `.env`.
+ * repo env (`apps/copilot/.env`), then a control-tower-local `.env`.
  */
 loadEnv({
-  path: [path.resolve(here, "../../../apps/web/.env"), path.resolve(here, "../.env")],
+  path: [path.resolve(here, "../../../apps/copilot/.env"), path.resolve(here, "../.env")],
   quiet: true,
 })

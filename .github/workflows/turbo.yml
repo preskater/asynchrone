@@ -58,7 +58,7 @@ jobs:
         run: npm run check:boundaries
 
       - name: Validate OAuth client manifest
-        run: npm run oauth:clients --workspace=web
+        run: npm run oauth:clients --workspace=copilot
 
       - name: Validate per-app Prisma schemas
         run: npm run verify:prisma-schemas
@@ -67,7 +67,7 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        run: npm run test:unit --workspace=web
+        run: npm run test:unit --workspace=copilot
 
   # The landing must build with no database, no auth secret and no workspace
   # package, so it gets its own job with an empty environment.
@@ -186,7 +186,7 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-        working-directory: apps/web
+        working-directory: apps/copilot
 
       - name: E2E + accessibility
-        run: npm run test:e2e --workspace=web
+        run: npm run test:e2e --workspace=copilot

@@ -7,7 +7,7 @@ import { defineConfig } from "prisma/config"
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 loadEnv({
-  path: [path.resolve(here, "../../apps/web/.env"), path.resolve(here, ".env")],
+  path: [path.resolve(here, "../../apps/copilot/.env"), path.resolve(here, ".env")],
   quiet: true,
 })
 

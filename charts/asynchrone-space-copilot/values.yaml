@@ -1,0 +1,217 @@
+# Default values for the Copilot Asynchrone Space app (the workspace shell,
+# identity owner and OAuth 2.1/OIDC authorization server served at
+# copilot.asynchrone.space; the public site lives in
+# charts/asynchrone-space-landing).
+#
+# The umbrella chart (charts/asynchrone-space) overrides these values for a full
+# production release. Every value here is safe to override with `--set` or a
+# values file.
+
+# Propagated by the umbrella chart. `global.imageTag` lets one tag pin every
+# Asynchrone Space image in the release.
+global:
+  imageTag: ""
+  imagePullSecrets: []
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/preskater/asynchrone-space-copilot
+  # Falls back to global.imageTag. One of the two must be set.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+containerPort: 3000
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+  hosts:
+    - host: copilot.asynchrone.space
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: copilot-asynchrone-space-tls
+    #   hosts:
+    #     - copilot.asynchrone.space
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: ""
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Requests/limits deliberately empty: set them per cluster. The app holds one
+# database connection per in-flight file transfer, so memory scales with the
+# size of concurrent uploads/downloads.
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    # Checks the database as well as the server.
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+terminationGracePeriodSeconds: 30
+
+# Non-secret runtime configuration. Rendered into a ConfigMap and consumed
+# with envFrom. Empty values are omitted so the app's own defaults apply.
+config:
+  BETTER_AUTH_URL: http://localhost:3003
+  NEXT_PUBLIC_APP_URL: http://localhost:3003
+  CONTROL_TOWER_URL: http://localhost:3001
+  DATABASE_POOL_MAX: "10"
+  MCP_RESOURCE_URL: https://copilot.asynchrone.space/mcp
+  OPENAI_API_URL: ""
+  ASSISTANT_MODEL: gpt-4o-mini
+  EMAIL_FROM: ""
+  REQUIRE_EMAIL_VERIFICATION: "false"
+  GITHUB_CLIENT_ID: ""
+  GITLAB_CLIENT_ID: ""
+  TURNSTILE_SITE_KEY: ""
+  SIGNUP_INVITE_ONLY: "false"
+  SIGNUP_BLOCKED_EMAIL_DOMAINS: ""
+  # Headers a proxy overwrites; required for per-IP auth rate limits to mean
+  # anything. Never expose the pods without the ingress.
+  TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  # Billing: prices fall back to the inline Team price when the Price IDs are
+  # empty. Pair with STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET in the Secret.
+  STRIPE_PRICE_TEAM_MONTHLY: ""
+  STRIPE_PRICE_TEAM_YEARLY: ""
+  STRIPE_AUTOMATIC_TAX: ""
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ""
+
+# Existing Secret containing DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET and
+# any optional API keys (OPENAI_API_KEY, RESEND_API_KEY, GITHUB_CLIENT_SECRET,
+# GITLAB_CLIENT_SECRET, TURNSTILE_SECRET_KEY, STRIPE_SECRET_KEY,
+# STRIPE_WEBHOOK_SECRET). The chart never creates or
+# stores secrets.
+secret:
+  existingSecret: asynchrone-space-copilot-secrets
+
+# Least-privilege network policy. Disabled by default so an existing cluster
+# keeps working; enable it after reviewing the ingress controller and database
+# namespaces for your installation.
+networkPolicy:
+  enabled: false
+  # Who may reach the HTTP port. Defaults to the common ingress-nginx namespace.
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  # Restrict the database destination to its namespace or ipBlock.
+  databaseFrom: []
+  databasePort: 5432
+
+extraEnv: []
+extraEnvFrom: []
+extraVolumes: []
+extraVolumeMounts: []
+
+# The Next.js server writes its incremental/image cache here at runtime. Keep
+# it on an emptyDir because the container root filesystem is read-only.
+cache:
+  mountPath: /usr/src/asynchrone-space/apps/copilot/.next/cache
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Replace the Vercel crons. Each job calls the Copilot Service over HTTP with the
+# CRON_SECRET bearer token.
+cronjobs:
+  image: curlimages/curl:8.16.0
+  # Defaults to secret.existingSecret when empty.
+  secretName: ""
+  timeoutSeconds: 60
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 300
+  uploadsSweep:
+    enabled: true
+    schedule: "0 3 * * *"
+    path: /api/files/uploads/sweep
+  repositorySync:
+    enabled: true
+    schedule: "0 * * * *"
+    path: /api/cron/repository-sync
+  trialExpiry:
+    enabled: true
+    schedule: "0 6 * * *"
+    path: /api/cron/trial-expiry
+  organizationDeletion:
+    enabled: true
+    schedule: "30 3 * * *"
+    path: /api/cron/organization-deletion
+  # Prunes audit rows past each organization's plan retention window. Never
+  # touches the control tower's PlatformAuditEvent table.
+  auditRetention:
+    enabled: true
+    schedule: "45 3 * * *"
+    path: /api/cron/audit-retention
+  dataExports:
+    enabled: true
+    schedule: "*/15 * * * *"
+    path: /api/cron/data-exports
+
+tests:
+  image: busybox:1.37.0

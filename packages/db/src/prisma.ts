@@ -39,7 +39,7 @@ function makePool() {
 
 /**
  * A single shared pool used by both Prisma and the large-object helpers in
- * `apps/web/lib/large-object.ts`. Prisma must never dispose of it, otherwise
+ * `apps/copilot/lib/large-object.ts`. Prisma must never dispose of it, otherwise
  * the large-object code would be left holding a dead pool. Keep this singleton
  * on `globalThis` so hot reloads and warm serverless invocations reuse it.
  */

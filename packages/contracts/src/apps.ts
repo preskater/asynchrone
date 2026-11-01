@@ -92,7 +92,7 @@ export const APPS: Record<AppKey, AppDefinition> = {
     key: "copilot",
     hostEnv: "COPILOT_APP_URL",
     devUrl: "http://localhost:3003",
-    database: { name: "asynchrone_identity", env: "COPILOT_DATABASE_URL" },
+    database: { name: "asynchrone_identity", env: "IDENTITY_DATABASE_URL" },
     internalAudience: audience("copilot"),
     oauth: oauth("copilot"),
     titleKey: "workspace",

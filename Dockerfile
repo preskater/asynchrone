@@ -7,9 +7,9 @@ ARG WORKDIR=/usr/src/asynchrone-space
 # ---
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
 ARG WORKDIR
-# Workspace app to build: `web` (customer app), `control-tower` or `landing`
+# Workspace app to build: `copilot` (customer app), `control-tower` or `landing`
 # (the stateless public site).
-ARG APP=web
+ARG APP=copilot
 WORKDIR ${WORKDIR}
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -18,7 +18,7 @@ FROM base AS prepare
 COPY . .
 RUN npx turbo prune ${APP} --docker
 
-# The migrate image needs every database workspace, not just the web app.
+# The migrate image needs every database workspace, not just the Copilot app.
 FROM base AS prepare-migrate
 ARG WORKDIR
 COPY . .
@@ -62,7 +62,7 @@ ENV SENTRY_DSN=${SENTRY_DSN}
 RUN npx turbo build
 
 # ---
-# Applies pending Prisma migrations, then exits. Runs before `web` starts.
+# Applies pending Prisma migrations, then exits. Runs before `copilot` starts.
 # Reuses the pruned dependency install + source from `prepare`. The schema and
 # migrations live in `packages/db` (shared with the control tower).
 FROM base AS migrate
@@ -77,7 +77,7 @@ CMD ["sh", "-c", "cd packages/db && npx prisma migrate deploy && cd ../.. && nod
 # ---
 FROM node:${NODE_VERSION}-alpine AS runner
 ARG WORKDIR
-ARG APP=web
+ARG APP=copilot
 ENV APP=${APP}
 WORKDIR ${WORKDIR}
 ENV NODE_ENV=production

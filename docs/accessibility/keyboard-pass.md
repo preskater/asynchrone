@@ -1,6 +1,6 @@
 # Keyboard-only pass of the core flows
 
-Manual WCAG 2.2 AA check for issue #41. The automated axe spec (`apps/web/e2e/a11y.spec.ts`) covers what can be detected from the DOM. This pass covers what it cannot: whether each core flow can be completed with the keyboard alone, in English and in French.
+Manual WCAG 2.2 AA check for issue #41. The automated axe spec (`apps/copilot/e2e/a11y.spec.ts`) covers what can be detected from the DOM. This pass covers what it cannot: whether each core flow can be completed with the keyboard alone, in English and in French.
 
 - Tester:
 - Date:
@@ -84,7 +84,7 @@ Record results as `OK`, `KO` (blocking) or `~` (works, with friction). Describe 
 
 These were found while preparing this pass and are not fixed on this branch:
 
-- `apps/web/components/task/date-picker.tsx` has no `id`, so its label points to nothing and custom date fields on tasks cannot be linked to their error.
+- `apps/copilot/components/task/date-picker.tsx` has no `id`, so its label points to nothing and custom date fields on tasks cannot be linked to their error.
 - Input borders (`--input`) are about 1.2:1 against the background in light themes and 1.5:1 in dark themes. WCAG 1.4.11 asks for 3:1 when the border is the only boundary of the field.
 - In the default light theme the focus ring (`--ring`) is 2.6:1 for the solid border and 1.5:1 for the halo, below 3:1.
 - Primary button text is 4.24:1 in the Ocean light theme and 4.43:1 in the Candy light theme, just below 4.5:1.

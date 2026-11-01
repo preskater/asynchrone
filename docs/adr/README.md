@@ -58,3 +58,4 @@ collection.
 | [0032](0032-give-each-app-its-own-database.md)                             | accepted | Give each workspace app its own PostgreSQL database                       |
 | [0033](0033-keep-audit-export-and-deletion-consistent-across-databases.md) | accepted | Keep audit, export and deletion consistent across databases               |
 | [0034](0034-cut-the-control-tower-over-to-its-own-database.md)              | accepted | Cut the control tower over to its own database                            |
+| [0035](0035-rename-web-app-to-copilot.md)                                  | accepted | Rename `apps/web` to `apps/copilot` and its deployment artefacts          |

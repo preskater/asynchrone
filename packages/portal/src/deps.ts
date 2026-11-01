@@ -16,7 +16,7 @@ import type { PortalContext } from "./types"
 /**
  * Ports the owning app binds in its adapter.
  *
- * The package never imports `apps/web/lib/*`: the database, large-object
+ * The package never imports `apps/copilot/lib/*`: the database, large-object
  * store, files service, project thread, meetings read model, Better Auth
  * invitations, audit writer and notification inbox are injected so the portal
  * can run inside Copilot today and keep its routes there after the split

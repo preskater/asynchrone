@@ -44,7 +44,7 @@ export interface FilesRuntime {
  * Bind the files domain to one app's database, large-object store, audit
  * writer, quota reader, plan check and rate limiter.
  *
- * Copilot calls this once from `apps/web/lib/files.ts`. When Files becomes
+ * Copilot calls this once from `apps/copilot/lib/files.ts`. When Files becomes
  * `apps/files` it calls the same factory with its own pool and database.
  */
 export function createFilesRuntime(options: FilesRuntimeOptions): FilesRuntime {

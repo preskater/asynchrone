@@ -1,0 +1,30 @@
+Asynchrone Space Copilot installed.
+
+Environment:
+  BETTER_AUTH_URL: {{ .Values.config.BETTER_AUTH_URL | default "not set" }}
+  CONTROL_TOWER_URL: {{ .Values.config.CONTROL_TOWER_URL | default "not set" }}
+
+Required Secret: {{ .Values.secret.existingSecret }}
+  It must contain DATABASE_URL, BETTER_AUTH_SECRET and CRON_SECRET (plus any
+  optional provider keys: OPENAI_API_KEY, RESEND_API_KEY, GITHUB_CLIENT_SECRET,
+  GITLAB_CLIENT_SECRET, TURNSTILE_SECRET_KEY, STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET). Missing required keys make the pods fail at boot.
+
+The CronJobs use CRON_SECRET from {{ .Values.cronjobs.secretName | default .Values.secret.existingSecret }}:
+{{- range $job := list (dict "name" "uploads-sweep" "config" .Values.cronjobs.uploadsSweep) (dict "name" "repository-sync" "config" .Values.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" .Values.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" .Values.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" .Values.cronjobs.auditRetention) (dict "name" "data-exports" "config" .Values.cronjobs.dataExports) }}
+{{- if $job.config.enabled }}
+  - {{ $job.name }} ({{ $job.config.schedule }}) -> {{ $job.config.path }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Service (cluster-internal): {{ include "asynchrone-space-copilot.fullname" . }}:{{ .Values.service.port }}
+{{- end }}
+
+Run the connection test with:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

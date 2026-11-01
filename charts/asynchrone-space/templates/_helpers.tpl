@@ -99,9 +99,9 @@ Service account used by the migration Job.
 Secret that holds DATABASE_URL for migrations.
 */}}
 {{- define "asynchrone-space.migrate.secretName" -}}
-{{- $webSecret := "" -}}
-{{- $web := index .Values "asynchrone-space-web" | default dict -}}
-{{- $webSecretConfig := index $web "secret" | default dict -}}
-{{- $webSecret = index $webSecretConfig "existingSecret" | default "" -}}
-{{- default $webSecret .Values.migrate.existingSecret -}}
+{{- $copilotSecret := "" -}}
+{{- $copilot := index .Values "asynchrone-space-copilot" | default dict -}}
+{{- $copilotSecretConfig := index $copilot "secret" | default dict -}}
+{{- $copilotSecret = index $copilotSecretConfig "existingSecret" | default "" -}}
+{{- default $copilotSecret .Values.migrate.existingSecret -}}
 {{- end }}

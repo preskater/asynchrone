@@ -7,7 +7,7 @@ import type { TaskExternalLink } from "./integrations/types"
 /**
  * Ports the owning app binds in its adapter.
  *
- * The package never imports `apps/web/lib/*`: audit rows, notifications and
+ * The package never imports `apps/copilot/lib/*`: audit rows, notifications and
  * repository calls are injected so Projects can run inside Copilot today and
  * inside `apps/projects` later without changing the service.
  */

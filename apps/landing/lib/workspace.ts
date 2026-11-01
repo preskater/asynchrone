@@ -20,6 +20,32 @@ export const signUpHref = `${workspaceUrl}/sign-up`
 export const openWorkspaceHref = workspaceUrl
 
 /**
+ * Paths that lived on the apex before the Copilot split (#175). They stay here
+ * only as redirects: the landing owns `asynchrone.space`, but old bookmarks and
+ * links must not 404. Keep this list to Copilot-only surfaces — marketing pages
+ * and content must never be swallowed by it.
+ */
+const LEGACY_COPILOT_PATHS = new Set([
+  "sign-in",
+  "sign-up",
+  "forgot-password",
+  "reset-password",
+  "verify-email",
+  "two-factor",
+  "consent",
+  "onboarding",
+  "select-organization",
+  "accept-invitation",
+  "portal",
+])
+
+/** True when a path (without its locale prefix) belonged to Copilot. */
+export function isLegacyCopilotPath(pathname: string): boolean {
+  const firstSegment = pathname.split("/").filter(Boolean)[0]
+  return firstSegment ? LEGACY_COPILOT_PATHS.has(firstSegment) : false
+}
+
+/**
  * Checkout needs a session and a workspace. Carry the `subscribe` intent
  * through sign-up and onboarding, then start the payment from settings.
  */

@@ -3,7 +3,7 @@ import type { NotifyArgs } from "@workspace/notifications"
 /**
  * Ports the owning app binds in its adapter.
  *
- * The package never imports `apps/web/lib/*`: audit rows and inbox
+ * The package never imports `apps/copilot/lib/*`: audit rows and inbox
  * notifications are injected so Clients can run inside Copilot today and
  * inside `apps/clients` later without changing the service.
  */

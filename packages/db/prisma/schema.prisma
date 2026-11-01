@@ -1770,7 +1770,7 @@ model AiUsageEvent {
 }
 
 /// Shared rate-limit counters. Better Auth owns the `ip|path` rows for its
-/// auth endpoints; `apps/web/lib/core/rate-limit.ts` owns the `app:` rows.
+/// auth endpoints; `apps/copilot/lib/core/rate-limit.ts` owns the `app:` rows.
 /// Kept in Postgres so every replica sees one counter (issue #90).
 model RateLimit {
   id          String @id @default(cuid())

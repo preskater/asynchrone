@@ -7,7 +7,7 @@ Environment:
 
 Required Secret: {{ .Values.secret.existingSecret }}
   It must contain DATABASE_URL and CONTROL_TOWER_BETTER_AUTH_SECRET. The secret
-  must be at least 32 characters and different from the web app's
+  must be at least 32 characters and different from the Copilot app's
   BETTER_AUTH_SECRET.
 
 Every platform account must enroll TOTP at /setup-2fa. Grant a platform role

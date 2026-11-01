@@ -4,7 +4,7 @@ import type { PrismaClient } from "@workspace/db"
  * The slice of a Prisma client the messaging domain needs.
  *
  * The package never opens a connection: the owning app binds its own client.
- * Today that is `apps/web` and the shared monolith client; once `apps/messages`
+ * Today that is `apps/copilot` and the shared monolith client; once `apps/messages`
  * exists it binds the `asynchrone_messages` client instead.
  *
  * `member` and `user` are identity tables the presence indicator and the DM

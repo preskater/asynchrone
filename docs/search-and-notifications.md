@@ -32,7 +32,7 @@ using `createSearchHandler` from `@workspace/search`. The app searches only its
 own database and applies its own role, visibility, portal and organization
 rules. `SearchClient` is the typed caller.
 
-Copilot fans out with `searchAcrossApps` (`apps/web/lib/search/fanout.ts`):
+Copilot fans out with `searchAcrossApps` (`apps/copilot/lib/search/fanout.ts`):
 
 - per-app timeout (2 s by default);
 - merge and deduplicate by app/type/id;
@@ -59,4 +59,4 @@ explicitly-scoped Copilot table; it is not part of this milestone.
 - Search: one app can fail without failing the request.
 - Contracts and failure modes are covered by
   `packages/search`, `packages/contracts` and
-  `apps/web/lib/search/fanout.unit.test.ts`.
+  `apps/copilot/lib/search/fanout.unit.test.ts`.

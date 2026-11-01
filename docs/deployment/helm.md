@@ -1,8 +1,8 @@
 # Deploying Asynchrone Space with Helm
 
 Asynchrone Space runs as three Next.js apps: the stateless public landing site,
-the customer app (Copilot until #175) and the control tower, the latter two
-backed by eight PostgreSQL databases (one per app; the customer app owns
+Copilot (the customer app and identity/OAuth server) and the control tower, the
+latter two backed by eight PostgreSQL databases (one per app; Copilot owns
 identity). This guide installs all of them from the umbrella chart in
 `charts/asynchrone-space`. Secrets, network policy, backups,
 restore order and the connection budget are covered in
@@ -12,7 +12,7 @@ restore order and the connection budget are covered in
 charts/
   asynchrone-space/                   # umbrella: dependencies, migration hook, values
   asynchrone-space-landing/           # public site, ingress (asynchrone.space + www redirect)
-  asynchrone-space-web/               # customer app, ingress, CronJobs
+  asynchrone-space-copilot/           # Copilot: ingress, CronJobs
   asynchrone-space-control-tower/     # internal platform app, ingress
 ```
 
@@ -46,12 +46,12 @@ charts/
 `.github/workflows/docker.yml` publishes four images for every push to `main`
 and every `v*` tag:
 
-| Image                                              | Built from                             | Purpose                                       |
-| -------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
-| `ghcr.io/preskater/asynchrone-space`               | `runner` stage, `APP=web`              | Customer app (`copilot.asynchrone.space`)     |
-| `ghcr.io/preskater/asynchrone-space-control-tower` | `runner` stage, `APP=control-tower`    | Control tower                                 |
-| `ghcr.io/preskater/asynchrone-space-landing`       | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
-| `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
+| Image                                                      | Built from                             | Purpose                                       |
+| ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` stage, `APP=copilot`          | Copilot (`copilot.asynchrone.space`)          |
+| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` stage, `APP=control-tower`    | Control tower                                 |
+| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
+| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
 
 The workflow tags images with the branch, the release tag and `sha-<shortsha>`.
 Use the immutable `sha-` tag:
@@ -73,7 +73,7 @@ key is missing.
 ```bash
 kubectl create namespace asynchrone-space
 
-kubectl -n asynchrone-space create secret generic asynchrone-space-web-secrets \
+kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secrets \
   --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
   --from-literal=IDENTITY_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_identity?schema=public' \
   --from-literal=PROJECTS_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_projects?schema=public' \
@@ -96,7 +96,7 @@ copied customer secret cannot point platform sign-in at the identity database.
 Run the data cutover described in [../control-tower-database.md](../control-tower-database.md)
 before rolling the new image out.
 
-Add optional keys to `asynchrone-space-web-secrets` as needed:
+Add optional keys to `asynchrone-space-copilot-secrets` as needed:
 
 | Key                     | Used by                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------- |
@@ -110,12 +110,12 @@ Add optional keys to `asynchrone-space-web-secrets` as needed:
 | `SENTRY_DSN`            | Server-side error tracking and request timings ([Observability](#observability)) |
 
 `TURNSTILE_SECRET_KEY` must be set together with
-`asynchrone-space-web.config.TURNSTILE_SITE_KEY`, and `STRIPE_WEBHOOK_SECRET`
+`asynchrone-space-copilot.config.TURNSTILE_SITE_KEY`, and `STRIPE_WEBHOOK_SECRET`
 requires `STRIPE_SECRET_KEY`; the app refuses to boot on a half-configured
 pair.
 
 Plan and trial limits need no extra configuration. Billing falls back to the
-inline Team price when `asynchrone-space-web.config.STRIPE_PRICE_TEAM_MONTHLY` /
+inline Team price when `asynchrone-space-copilot.config.STRIPE_PRICE_TEAM_MONTHLY` /
 `STRIPE_PRICE_TEAM_YEARLY` are empty; see [../billing.md](../billing.md) for the
 Stripe endpoint, test-mode procedure and the production checklist.
 
@@ -127,8 +127,28 @@ Secret values are injected with `envFrom` at pod start, so restart the
 Deployments after changing a Secret:
 
 ```bash
-kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-web deploy/asynchrone-space-control-tower deploy/asynchrone-space-landing
+kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-copilot deploy/asynchrone-space-control-tower deploy/asynchrone-space-landing
 ```
+
+### Upgrading from the pre-#175 chart
+
+The rename in [ADR 0035](../adr/0035-rename-web-app-to-copilot.md) renamed the
+image, the subchart and every Kubernetes resource. An existing release does not
+adopt the new names in place: Helm creates the Copilot resources and leaves the
+old `asynchrone-space-web-*` ones running against the same database. During a
+maintenance window:
+
+1. Create `asynchrone-space-copilot-secrets` from the same values as the old
+   `asynchrone-space-web-secrets` (read them from your secret manager; do not
+   copy a manifest with `resourceVersion`/`uid`).
+2. Install the new chart with a new immutable `global.imageTag`.
+3. Check the Copilot pod, sign-in, OAuth metadata and one cron run.
+4. Delete the old Deployment/Service/Ingress/ConfigMap/CronJobs/PDB and, once
+   no rollback is needed, the old Secret and the old
+   `ghcr.io/preskater/asynchrone-space` package.
+
+Rolling back before step 4 is a `helm rollback` plus pointing DNS at the old
+Ingress; the database schema did not change.
 
 ## Install
 
@@ -160,7 +180,7 @@ CI fails when a vendored archive no longer matches its subchart sources
 Use `-f my-values.yaml` for production overrides instead of long `--set`
 lists. The defaults target `asynchrone.space` (landing, with
 `www.asynchrone.space` redirected to the apex by the ingress annotation),
-`copilot.asynchrone.space` (customer app until #175) and
+`copilot.asynchrone.space` (Copilot) and
 `control-tower.asynchrone.space`, with the `nginx` ingress class.
 
 ## What gets created
@@ -168,50 +188,50 @@ lists. The defaults target `asynchrone.space` (landing, with
 | Resource       | Name                                                                                 | Notes                               |
 | -------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
 | Deployment     | `asynchrone-space-landing`                                                           | 2 replicas by default               |
-| Deployment     | `asynchrone-space-web`                                                               | 2 replicas by default               |
+| Deployment     | `asynchrone-space-copilot`                                                               | 2 replicas by default               |
 | Deployment     | `asynchrone-space-control-tower`                                                     | 2 replicas by default               |
-| Service        | `asynchrone-space-landing`, `asynchrone-space-web`, `asynchrone-space-control-tower` | ClusterIP, port 80 → container 3000 |
-| Ingress        | `asynchrone-space-landing`, `asynchrone-space-web`, `asynchrone-space-control-tower` | One host each                       |
-| ConfigMap      | `asynchrone-space-web`, `asynchrone-space-control-tower`                             | Non-secret runtime config           |
-| CronJob        | `asynchrone-space-web-uploads-sweep`                                                 | `0 3 * * *`                         |
-| CronJob        | `asynchrone-space-web-repository-sync`                                               | `0 * * * *`                         |
-| CronJob        | `asynchrone-space-web-trial-expiry`                                                  | `0 6 * * *`                         |
-| CronJob        | `asynchrone-space-web-organization-deletion`                                         | `30 3 * * *`                        |
-| CronJob        | `asynchrone-space-web-audit-retention`                                               | `45 3 * * *`                        |
-| CronJob        | `asynchrone-space-web-data-exports`                                                  | `*/15 * * * *`                      |
+| Service        | `asynchrone-space-landing`, `asynchrone-space-copilot`, `asynchrone-space-control-tower` | ClusterIP, port 80 → container 3000 |
+| Ingress        | `asynchrone-space-landing`, `asynchrone-space-copilot`, `asynchrone-space-control-tower` | One host each                       |
+| ConfigMap      | `asynchrone-space-copilot`, `asynchrone-space-control-tower`                             | Non-secret runtime config           |
+| CronJob        | `asynchrone-space-copilot-uploads-sweep`                                                 | `0 3 * * *`                         |
+| CronJob        | `asynchrone-space-copilot-repository-sync`                                               | `0 * * * *`                         |
+| CronJob        | `asynchrone-space-copilot-trial-expiry`                                                  | `0 6 * * *`                         |
+| CronJob        | `asynchrone-space-copilot-organization-deletion`                                         | `30 3 * * *`                        |
+| CronJob        | `asynchrone-space-copilot-audit-retention`                                               | `45 3 * * *`                        |
+| CronJob        | `asynchrone-space-copilot-data-exports`                                                  | `*/15 * * * *`                      |
 | Job (hook)     | `asynchrone-space-migrate`                                                           | Pre-install and pre-upgrade         |
-| ServiceAccount | `asynchrone-space-web`, `asynchrone-space-control-tower`, `asynchrone-space-migrate` | Token automount disabled            |
-| PDB            | `asynchrone-space-web`, `asynchrone-space-control-tower`                             | `minAvailable: 1`                   |
+| ServiceAccount | `asynchrone-space-copilot`, `asynchrone-space-control-tower`, `asynchrone-space-migrate` | Token automount disabled            |
+| PDB            | `asynchrone-space-copilot`, `asynchrone-space-control-tower`                             | `minAvailable: 1`                   |
 
 ## Configuration
 
-Web values live under `asynchrone-space-web` and `asynchrone-space-control-tower` in
+Values live under `asynchrone-space-copilot` and `asynchrone-space-control-tower` in
 `charts/asynchrone-space/values.yaml`. The most useful overrides:
 
 | Value                                          | Default                          | Purpose                                |
 | ---------------------------------------------- | -------------------------------- | -------------------------------------- |
 | `global.imageTag`                              | `""` (required)                  | Tag shared by all three images         |
 | `global.imagePullSecrets`                      | `[]`                             | Pull secrets for private GHCR packages |
-| `asynchrone-space-web.replicaCount`            | `2`                              | Customer app replicas                  |
+| `asynchrone-space-copilot.replicaCount`            | `2`                              | Copilot replicas                      |
 | `asynchrone-space-control-tower.replicaCount`  | `2`                              | Control tower replicas                 |
-| `asynchrone-space-web.ingress.hosts`           | `asynchrone.space`               | Customer app host(s)                   |
+| `asynchrone-space-copilot.ingress.hosts`           | `copilot.asynchrone.space`       | Copilot host(s)                       |
 | `asynchrone-space-control-tower.ingress.hosts` | `control-tower.asynchrone.space` | Control tower host(s)                  |
 | `*.ingress.className`                          | `nginx`                          | Ingress controller class               |
 | `*.ingress.tls`                                | `[]`                             | TLS secret(s) for the hosts            |
 | `*.config`                                     | see values                       | Non-secret environment variables       |
 | `*.networkPolicy.enabled`                      | `false`                          | Enable least-privilege ingress/egress  |
-| `asynchrone-space-web.cronjobs.*.enabled`      | `true`                           | Toggle each scheduled job              |
+| `asynchrone-space-copilot.cronjobs.*.enabled`      | `true`                           | Toggle each scheduled job              |
 | `migrate.enabled`                              | `true`                           | Toggle the migration hook              |
 
-`BETTER_AUTH_URL`, `PLATFORM_APP_URL`, `NEXT_PUBLIC_APP_URL` and
-`CONTROL_TOWER_URL` must match the public URLs served by the ingress. The web
-app uses `CONTROL_TOWER_URL` for "Stop impersonating"; the control tower uses
-`PLATFORM_APP_URL` for impersonation handoff links.
+`BETTER_AUTH_URL`, `MCP_RESOURCE_URL`, `PLATFORM_APP_URL`,
+`NEXT_PUBLIC_APP_URL` and `CONTROL_TOWER_URL` must match the public URLs served
+by the ingress. Copilot uses `CONTROL_TOWER_URL` for "Stop impersonating"; the
+control tower uses `PLATFORM_APP_URL` for impersonation handoff links.
 
-`asynchrone-space-web.config.TRUSTED_IP_HEADERS` (default
+`asynchrone-space-copilot.config.TRUSTED_IP_HEADERS` (default
 `x-real-ip,x-forwarded-for`) lists the headers Better Auth trusts for the
 per-IP auth rate limits. They are only trustworthy because ingress-nginx
-overwrites them: never expose the web pods without the ingress (no
+overwrites them: never expose the Copilot pods without the ingress (no
 `port-forward`, no direct `Service` URL) in production.
 
 ### TLS and DNS
@@ -220,7 +240,7 @@ Point both hostnames at the ingress controller's load balancer, then configure
 certificates either through cert-manager annotations:
 
 ```yaml
-asynchrone-space-web:
+asynchrone-space-copilot:
   ingress:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -249,7 +269,7 @@ in [Database operations](database-operations.md). In-flight uploads and
 downloads hold one connection each; keep the total below 70% of
 `max_connections`.
 
-Enable `asynchrone-space-web.networkPolicy.enabled` and
+Enable `asynchrone-space-copilot.networkPolicy.enabled` and
 `asynchrone-space-control-tower.networkPolicy.enabled` after setting the ingress
 and database namespaces. `/internal/v1/*` is never routed by the Ingress.
 
@@ -279,7 +299,7 @@ asynchrone-space-control-tower:
 
 The `asynchrone-space-migrate` Job is a Helm `pre-install,pre-upgrade` hook with a lower
 hook weight than the Deployments. It runs `cd packages/db && npx prisma migrate
-deploy` with `DATABASE_URL` from `asynchrone-space-web-secrets`. A failed migration aborts
+deploy` with `DATABASE_URL` from `asynchrone-space-copilot-secrets`. A failed migration aborts
 the release before pods roll; the Job is kept for inspection:
 
 ```bash
@@ -311,10 +331,10 @@ data-exports builds owner-requested organization exports every 15 minutes and
 unlinks archives older than 7 days
 ([ADR 0026](../adr/0026-export-organization-data-asynchronously.md)). They
 call the in-cluster Service and send the same `CRON_SECRET` bearer token read
-from `asynchrone-space-web-secrets`; the corresponding route rejects a missing
+from `asynchrone-space-copilot-secrets`; the corresponding route rejects a missing
 or incorrect token when `CRON_SECRET` is set. `concurrencyPolicy: Forbid`
 prevents overlapping runs. Change schedules through
-`asynchrone-space-web.cronjobs.<job>.schedule`.
+`asynchrone-space-copilot.cronjobs.<job>.schedule`.
 
 ## Observability
 
@@ -322,8 +342,8 @@ Error tracking and request timings go to Sentry (`@sentry/nextjs`, issue #44).
 Nothing is sent while `SENTRY_DSN` is empty, so development and CI need no
 account.
 
-- **Server**: add `SENTRY_DSN` to `asynchrone-space-web-secrets`. The web app
-  reads it at runtime in `apps/web/instrumentation.ts`, reports every request
+- **Server**: add `SENTRY_DSN` to `asynchrone-space-copilot-secrets`. Copilot
+  reads it at runtime in `apps/copilot/instrumentation.ts`, reports every request
   error through `onRequestError`, and samples 10 % of requests for latency.
 - **Browser**: the DSN is inlined at build time, so set the `SENTRY_DSN`
   repository variable in GitHub (Settings → Secrets and variables → Actions →
@@ -334,7 +354,7 @@ account.
 
 Configure monitoring in Sentry once events arrive:
 
-1. **Uptime**: an uptime monitor on `GET https://<web-host>/api/health` every
+1. **Uptime**: an uptime monitor on `GET https://<copilot-host>/api/health` every
    minute. The route returns 200 when the database answers and 503 otherwise,
    so it catches both a down pod and a lost database.
 2. **5xx rate**: a metric alert on the failure rate of
@@ -370,7 +390,7 @@ helm lint --strict charts/asynchrone-space --set global.imageTag=ci
 helm template asynchrone-space charts/asynchrone-space -n asynchrone-space --set global.imageTag=ci
 kubectl -n asynchrone-space get pods,svc,ingress,cronjob,job
 helm test asynchrone-space -n asynchrone-space
-kubectl -n asynchrone-space logs deploy/asynchrone-space-web --tail=100
+kubectl -n asynchrone-space logs deploy/asynchrone-space-copilot --tail=100
 ```
 
 `helm test` runs the per-subchart connection Pods against each Service.
@@ -391,7 +411,7 @@ global.imageTag=sha-…`; the chart intentionally refuses to default to a
 - **Client IPs are the ingress address** — configure the controller to preserve
   `X-Forwarded-For` (nginx: `use-forwarded-headers: "true"`).
 - **CronJob fails with `secret not found`** — `CRON_SECRET` is missing from
-  `asynchrone-space-web-secrets`; the chart mounts it as a required key.
+  `asynchrone-space-copilot-secrets`; the chart mounts it as a required key.
 - **Read-only filesystem errors** — Next.js writes its image cache to
   `apps/<app>/.next/cache`, mounted as an `emptyDir`. If a custom runtime path
   is used, override `cache.mountPath` or
