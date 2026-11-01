@@ -20,6 +20,7 @@
     "split:databases": "node scripts/split-databases.mjs"
   },
   "devDependencies": {
+    "@rolldown/binding-wasm32-wasi": "^1.2.15",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "pg-copy-streams": "^7.0.0",
@@ -39,6 +40,8 @@
   "allowScripts": {
     "@prisma/engines": true,
     "esbuild": true,
-    "prisma": true
+    "prisma": true,
+    "@parcel/watcher": true,
+    "@swc/core": true
   }
 }
