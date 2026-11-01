@@ -8,8 +8,11 @@ import type { RequestContext } from "@workspace/core/context"
 import { MessagingRepository } from "../lib/messaging/repository"
 import { MessagingService } from "../lib/messaging/service"
 import { prisma } from "../lib/prisma"
-import { ProjectRepository } from "../lib/projects/repository"
-import { ProjectService } from "../lib/projects/service"
+import { ProjectRepository } from "@workspace/projects/repository"
+import { ProjectService } from "@workspace/projects/service"
+import { recordUserAudit } from "../lib/audit/record"
+import { repositoryIntegrationService } from "../lib/integrations"
+import { notificationService } from "../lib/notifications"
 
 /**
  * Manual check for the authorization edge cases of issue #40, against two
@@ -79,7 +82,11 @@ async function main() {
 
     // 1. Cross-org subtask toggle: Mallory passes her own task id (B) with a
     //    subtask id that belongs to a task of organization A.
-    const projects = new ProjectService(new ProjectRepository(prisma), prisma)
+    const projects = new ProjectService(new ProjectRepository(prisma), prisma, {
+      audit: recordUserAudit,
+      notify: (args) => notificationService.notify(args),
+      repository: repositoryIntegrationService,
+    })
     const projectA = await prisma.project.create({
       data: { organizationId: orgA, name: "Secret A" },
     })

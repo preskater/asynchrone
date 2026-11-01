@@ -13,7 +13,7 @@ import {
   createTaskSchema,
   moveTaskSchema,
   updateTaskSchema,
-} from "@/lib/projects/schemas"
+} from "@workspace/projects/schemas"
 
 const empty = z.object({})
 const idInput = z.object({ id: z.string().describe("The resource id") })

@@ -1,15 +1,27 @@
 import { prisma } from "@/lib/prisma"
 
-import { RepositoryConnectionRepository } from "./repository"
-import { RepositoryIntegrationService } from "./service"
-import { RepositoryWebhookHandler } from "./webhooks"
+import {
+  RepositoryConnectionRepository,
+  RepositoryIntegrationService,
+  RepositoryWebhookHandler,
+} from "@workspace/projects/integrations"
 
+/**
+ * App adapter for the projects repository integration.
+ *
+ * The connection, encrypted tokens and sync state belong to the projects
+ * domain; this file only binds the shared client and the deployment origin
+ * used to build the webhook URLs.
+ */
 export const repositoryConnectionRepository =
   new RepositoryConnectionRepository(prisma)
+
 export const repositoryIntegrationService = new RepositoryIntegrationService(
   repositoryConnectionRepository,
-  prisma
+  prisma,
+  { appBaseUrl: process.env.BETTER_AUTH_URL ?? "" }
 )
+
 export const repositoryWebhookHandler = new RepositoryWebhookHandler(
   repositoryConnectionRepository,
   prisma
@@ -20,8 +32,11 @@ export {
   RepositoryIntegrationService,
   RepositoryWebhookHandler,
 }
-export * from "./schemas"
-export { REPOSITORY_PROVIDERS, repositoryProviderLabel } from "./types"
+export * from "@workspace/projects/integrations/schemas"
+export {
+  REPOSITORY_PROVIDERS,
+  repositoryProviderLabel,
+} from "@workspace/projects/integrations/types"
 export type {
   ConnectRepositoryInput,
   ConnectRepositoryResult,
@@ -31,4 +46,4 @@ export type {
   SetUserRepositoryTokenInput,
   TaskExternalLink,
   UserRepositoryTokenStatus,
-} from "./types"
+} from "@workspace/projects/integrations/types"

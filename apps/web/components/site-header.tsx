@@ -16,7 +16,7 @@ import { SidebarTrigger } from "@workspace/ui/components/sidebar"
 
 import { usePathname } from "@workspace/i18n/navigation"
 import type { NotificationsData } from "@/lib/notifications/types"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 
 const titleKeys = {
   "": "assistant",

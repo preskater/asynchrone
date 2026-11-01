@@ -8,7 +8,7 @@ import { Calendar } from "@workspace/ui/components/calendar"
 
 import { useCalendars } from "@/lib/calendars/store"
 import { tasksOnDay } from "@/lib/calendars/tasks"
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 
 const DAY_PICKER_LOCALES = { en: enUS, fr }
 

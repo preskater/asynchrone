@@ -5,7 +5,7 @@ import { LockIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import {

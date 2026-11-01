@@ -32,7 +32,7 @@ import type {
   PortalPolicy,
   TaskPriority,
   TaskStatus,
-} from "@/lib/projects/types"
+} from "@workspace/projects/types"
 
 import type { PortalContext } from "./context"
 import type { InvitePortalUserInput } from "./schemas"

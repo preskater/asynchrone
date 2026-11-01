@@ -14,7 +14,7 @@ import { useLocale, useTranslations } from "next-intl"
 
 import { FileIcon } from "@/components/files/file-icon"
 import { FileMenuItems } from "@/components/files/file-actions"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -73,10 +73,19 @@ function SortHeader({
   className?: string
 }) {
   const active = activeKey === sortKey
-  const Icon = !active ? ChevronsUpDownIcon : dir === "asc" ? ArrowUpIcon : ArrowDownIcon
+  const Icon = !active
+    ? ChevronsUpDownIcon
+    : dir === "asc"
+      ? ArrowUpIcon
+      : ArrowDownIcon
   return (
     <TableHead className={cn(className)}>
-      <Button variant="ghost" size="sm" className="-ms-2 h-7" onClick={() => onSort(sortKey)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ms-2 h-7"
+        onClick={() => onSort(sortKey)}
+      >
         {label}
         <Icon data-icon="inline-end" />
       </Button>
@@ -133,7 +142,8 @@ export function FilesTable({
   )
 
   const allSelected =
-    pageFiles.length > 0 && pageFiles.every((file) => selected.includes(file.id))
+    pageFiles.length > 0 &&
+    pageFiles.every((file) => selected.includes(file.id))
 
   const dir = sortDir
 
@@ -158,13 +168,26 @@ export function FilesTable({
                   onCheckedChange={(checked) =>
                     onSelectedChange(
                       checked === true
-                        ? Array.from(new Set([...selected, ...pageFiles.map((f) => f.id)]))
-                        : selected.filter((id) => !pageFiles.some((f) => f.id === id))
+                        ? Array.from(
+                            new Set([
+                              ...selected,
+                              ...pageFiles.map((f) => f.id),
+                            ])
+                          )
+                        : selected.filter(
+                            (id) => !pageFiles.some((f) => f.id === id)
+                          )
                     )
                   }
                 />
               </TableHead>
-              <SortHeader label={t("name")} sortKey="name" activeKey={sortKey} dir={dir} onSort={onSortChange} />
+              <SortHeader
+                label={t("name")}
+                sortKey="name"
+                activeKey={sortKey}
+                dir={dir}
+                onSort={onSortChange}
+              />
               <SortHeader
                 label={t("owner")}
                 sortKey="owner"
@@ -200,10 +223,14 @@ export function FilesTable({
                   <ContextMenuTrigger
                     render={
                       <TableRow
-                        data-state={selected.includes(file.id) ? "selected" : undefined}
+                        data-state={
+                          selected.includes(file.id) ? "selected" : undefined
+                        }
                         className="cursor-pointer"
                         onClick={() =>
-                          file.kind === "folder" ? onOpenFolder(file) : onPreview(file)
+                          file.kind === "folder"
+                            ? onOpenFolder(file)
+                            : onPreview(file)
                         }
                       />
                     }
@@ -218,7 +245,9 @@ export function FilesTable({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <FileIcon kind={file.kind} />
-                        <span className="truncate font-medium">{file.name}</span>
+                        <span className="truncate font-medium">
+                          {file.name}
+                        </span>
                         {file.starred ? (
                           <StarIcon className="size-3.5 shrink-0 fill-[color:var(--chart-4)] text-[color:var(--chart-4)]" />
                         ) : null}
@@ -248,13 +277,19 @@ export function FilesTable({
                       {formatRelativeDate(file.modifiedAt, locale, tc)}
                     </TableCell>
                     <TableCell className="hidden text-sm text-muted-foreground tabular-nums lg:table-cell">
-                      {file.kind === "folder" ? "—" : formatBytes(file.sizeBytes)}
+                      {file.kind === "folder"
+                        ? "—"
+                        : formatBytes(file.sizeBytes)}
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" size="icon-sm" aria-label={t("fileActions")} />
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t("fileActions")}
+                            />
                           }
                         >
                           <EllipsisIcon />
@@ -302,9 +337,7 @@ export function FilesTable({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          {t("itemCount", { count: files.length })}
-        </span>
+        <span>{t("itemCount", { count: files.length })}</span>
         {pageCount > 1 ? (
           <Pagination className="mx-0 w-auto">
             <PaginationContent>
@@ -327,7 +360,9 @@ export function FilesTable({
               <PaginationItem>
                 <PaginationNext
                   aria-disabled={currentPage === pageCount}
-                  onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}
+                  onClick={() =>
+                    setPage((prev) => Math.min(pageCount, prev + 1))
+                  }
                 />
               </PaginationItem>
             </PaginationContent>

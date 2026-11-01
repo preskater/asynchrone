@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 
 import { EventDialog } from "@/components/calendars/event-dialog"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import {
   AlertDialog,
   AlertDialogAction,

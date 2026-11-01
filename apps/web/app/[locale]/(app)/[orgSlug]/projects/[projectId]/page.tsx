@@ -1,7 +1,7 @@
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 
-import { ProjectWorkspace } from "@/components/project/project-workspace"
+import { ProjectWorkspace } from "@workspace/projects/components/project/project-workspace"
 
 import { auth } from "@/lib/auth"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"

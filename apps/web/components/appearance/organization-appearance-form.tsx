@@ -12,7 +12,7 @@ import {
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import { PriorityBadge } from "@/components/task/task-badge"
+import { PriorityBadge } from "@workspace/projects/components/task/task-badge"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -51,7 +51,7 @@ import { useAppearance } from "@workspace/app-shell/appearance"
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
-import { TASK_PRIORITY_VALUES } from "@/lib/projects/types"
+import { TASK_PRIORITY_VALUES } from "@workspace/projects/types"
 import { useRouter } from "@workspace/i18n/navigation"
 
 const LEVEL_ICONS: Record<

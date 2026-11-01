@@ -3,7 +3,7 @@
 import { AtSignIcon, SlashIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import {
   Command,
   CommandEmpty,

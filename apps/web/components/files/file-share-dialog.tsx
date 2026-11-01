@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { useTranslations } from "next-intl"
 
 import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {

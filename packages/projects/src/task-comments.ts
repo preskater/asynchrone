@@ -1,0 +1,174 @@
+import { NotFoundError } from "@workspace/core/errors"
+
+import type { ProjectDb } from "./db"
+import type { ProjectNotify } from "./ports"
+
+export interface TaskCommentDependencies {
+  db: ProjectDb
+  notify: ProjectNotify
+}
+
+export const TASK_COMMENT_MAX_LENGTH = 4000
+
+export interface TaskCommentData {
+  id: string
+  authorId: string
+  authorKind: "internal" | "client"
+  authorName?: string
+  body: string
+  createdAt: string
+}
+
+type CommentRow = {
+  id: string
+  authorId: string
+  authorKind: string
+  authorName: string | null
+  body: string
+  createdAt: Date
+}
+
+async function namesByIds(
+  db: ProjectDb,
+  ids: string[]
+): Promise<Map<string, string>> {
+  const nameById = new Map<string, string>()
+  if (ids.length === 0) return nameById
+  const users = await db.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true },
+  })
+  for (const user of users) nameById.set(user.id, user.name)
+  return nameById
+}
+
+export async function listTaskComments(
+  { db }: TaskCommentDependencies,
+  organizationId: string,
+  taskId: string
+): Promise<TaskCommentData[]> {
+  const rows = await db.taskComment.findMany({
+    where: { taskId, task: { organizationId } },
+    orderBy: { createdAt: "asc" },
+  })
+  const missingNames = [
+    ...new Set(
+      rows.filter((row) => !row.authorName).map((row) => row.authorId)
+    ),
+  ]
+  const nameById = await namesByIds(db, missingNames)
+  return rows.map((row) => mapComment(row, nameById))
+}
+
+function mapComment(
+  row: CommentRow,
+  nameById: Map<string, string>
+): TaskCommentData {
+  return {
+    id: row.id,
+    authorId: row.authorId,
+    authorKind: row.authorKind === "client" ? "client" : "internal",
+    authorName: row.authorName ?? nameById.get(row.authorId),
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+  }
+}
+
+/**
+ * Add a comment to a task. Comments from the client notify the internal
+ * project members so the team sees them in the header bell.
+ */
+export async function createTaskComment(
+  { db, notify }: TaskCommentDependencies,
+  input: {
+    organizationId: string
+    taskId: string
+    authorId: string
+    authorKind: "internal" | "client"
+    authorName?: string
+    body: string
+  }
+): Promise<TaskCommentData> {
+  const task = await db.task.findFirst({
+    where: { id: input.taskId, organizationId: input.organizationId },
+    select: {
+      id: true,
+      identifier: true,
+      title: true,
+      projectId: true,
+      project: { select: { name: true } },
+    },
+  })
+  if (!task) throw new NotFoundError("Task")
+
+  const row = await db.taskComment.create({
+    data: {
+      taskId: input.taskId,
+      authorId: input.authorId,
+      authorKind: input.authorKind,
+      authorName: input.authorName ?? null,
+      body: input.body,
+    },
+  })
+
+  if (input.authorKind === "client") {
+    await notifyTeamOfClientComment({ db, notify }, input, task)
+  }
+
+  const nameById = await namesByIds(db, row.authorName ? [] : [row.authorId])
+  return mapComment(row, nameById)
+}
+
+async function notifyTeamOfClientComment(
+  { db, notify }: TaskCommentDependencies,
+  input: {
+    organizationId: string
+    authorId: string
+    authorName?: string
+    body: string
+  },
+  task: {
+    id: string
+    identifier: string
+    title: string
+    projectId: string
+    project: { name: string } | null
+  }
+): Promise<void> {
+  const members = await db.projectMember.findMany({
+    where: { projectId: task.projectId },
+    select: { userId: true },
+  })
+  if (members.length === 0) return
+
+  const internalMembers = await db.member.findMany({
+    where: {
+      organizationId: input.organizationId,
+      userId: { in: members.map((member) => member.userId) },
+      clientId: null,
+    },
+    select: { userId: true },
+  })
+
+  const preview =
+    input.body.length > 120 ? `${input.body.slice(0, 117)}...` : input.body
+  await Promise.all(
+    internalMembers.map((member) =>
+      notify({
+        organizationId: input.organizationId,
+        userId: member.userId,
+        actorId: input.authorId,
+        type: "portal.comment",
+        data: {
+          projectId: task.projectId,
+          projectName: task.project?.name ?? "",
+          taskId: task.id,
+          identifier: task.identifier,
+          title: task.title,
+          actorName: input.authorName ?? "",
+          preview,
+        },
+      })
+    )
+  )
+}

@@ -8,12 +8,16 @@ import {
 } from "node:http"
 
 import type { RequestContext } from "@workspace/core/context"
-import { RepositoryConnectionRepository } from "../lib/integrations/repository"
-import { RepositoryIntegrationService } from "../lib/integrations/service"
-import { RepositoryWebhookHandler } from "../lib/integrations/webhooks"
+import {
+  RepositoryConnectionRepository,
+  RepositoryIntegrationService,
+  RepositoryWebhookHandler,
+} from "@workspace/projects/integrations"
+import { ProjectRepository } from "@workspace/projects/repository"
+import { ProjectService } from "@workspace/projects/service"
+import { recordUserAudit } from "../lib/audit/record"
+import { notificationService } from "../lib/notifications"
 import { prisma } from "../lib/prisma"
-import { ProjectRepository } from "../lib/projects/repository"
-import { ProjectService } from "../lib/projects/service"
 
 /**
  * Manual end-to-end check for the repository integration (issue #47).
@@ -360,11 +364,18 @@ async function main() {
       role: "owner",
     }
     const connectionRepo = new RepositoryConnectionRepository(prisma)
-    const service = new RepositoryIntegrationService(connectionRepo, prisma)
+    const service = new RepositoryIntegrationService(connectionRepo, prisma, {
+      appBaseUrl: process.env.BETTER_AUTH_URL ?? "",
+    })
     const webhookHandler = new RepositoryWebhookHandler(connectionRepo, prisma)
     const projectService = new ProjectService(
       new ProjectRepository(prisma),
-      prisma
+      prisma,
+      {
+        audit: recordUserAudit,
+        notify: (args) => notificationService.notify(args),
+        repository: service,
+      }
     )
 
     // 1. Token gating: connecting requires the admin's own token, and the

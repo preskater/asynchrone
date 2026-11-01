@@ -18,7 +18,7 @@ import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 
 import { FileIcon } from "@/components/files/file-icon"
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +40,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workspace/ui/components/tabs"
 
 import { formatBytes, formatRelativeDate } from "@/lib/files/file-utils"
 import { useFiles } from "@/lib/files/store"
@@ -111,16 +116,26 @@ export function FilePreviewSheet({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}
+              onClick={() =>
+                window.open(`/api/files/${file.id}/download`, "_blank")
+              }
             >
               <DownloadIcon data-icon="inline-start" />
               {t("download")}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onOpenShare(file)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenShare(file)}
+            >
               <Share2Icon data-icon="inline-start" />
               {t("share")}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => toggleStar(file.id)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toggleStar(file.id)}
+            >
               <StarIcon data-icon="inline-start" />
               {file.starred ? t("favorited") : t("favorite")}
             </Button>
@@ -129,7 +144,11 @@ export function FilePreviewSheet({
           <Separator />
 
           <div className="flex flex-col gap-3">
-            <DetailRow icon={UsersIcon} label={t("owner")} value={owner?.name ?? t("unknown")} />
+            <DetailRow
+              icon={UsersIcon}
+              label={t("owner")}
+              value={owner?.name ?? t("unknown")}
+            />
             <DetailRow
               icon={CalendarIcon}
               label={t("modified")}
@@ -165,7 +184,10 @@ export function FilePreviewSheet({
                   const member = getMember(entry.memberId)
                   if (!member) return null
                   return (
-                    <div key={entry.memberId} className="flex items-center gap-3">
+                    <div
+                      key={entry.memberId}
+                      className="flex items-center gap-3"
+                    >
                       <MemberAvatar member={member} size="sm" />
                       <span className="flex-1 text-sm">{member.name}</span>
                       <Badge variant="outline">
@@ -203,7 +225,8 @@ export function FilePreviewSheet({
                         <div className="flex flex-col">
                           <span className="text-sm">{version.note}</span>
                           <span className="text-xs text-muted-foreground">
-                            {author?.name} · {formatRelativeDate(version.at, locale, tc)}
+                            {author?.name} ·{" "}
+                            {formatRelativeDate(version.at, locale, tc)}
                           </span>
                         </div>
                       </div>
@@ -216,7 +239,9 @@ export function FilePreviewSheet({
             <TabsContent value="activity" className="pt-3">
               <div className="flex flex-col gap-3">
                 {fileActivities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("activityEmpty")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("activityEmpty")}
+                  </p>
                 ) : (
                   fileActivities.map((activity) => {
                     const actor = getMember(activity.memberId)
@@ -274,7 +299,11 @@ export function FilePreviewSheet({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button variant="outline" size="sm" onClick={() => onOpenPermissions(file)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenPermissions(file)}
+          >
             <PencilIcon data-icon="inline-start" />
             {t("permissions")}
           </Button>

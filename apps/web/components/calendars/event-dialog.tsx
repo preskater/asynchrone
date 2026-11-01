@@ -8,7 +8,7 @@ import {
   AttendeePicker,
   type AttendeeDraft,
 } from "@/components/calendars/attendee-picker"
-import { DatePicker } from "@/components/task/date-picker"
+import { DatePicker } from "@workspace/projects/components/task/date-picker"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import {

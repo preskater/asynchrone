@@ -4,7 +4,7 @@ import * as React from "react"
 import { CalendarPlusIcon } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { DatePicker } from "@/components/task/date-picker"
+import { DatePicker } from "@workspace/projects/components/task/date-picker"
 import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,

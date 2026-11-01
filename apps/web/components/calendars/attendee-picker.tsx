@@ -4,7 +4,7 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { CheckIcon, UserPlusIcon, XIcon } from "lucide-react"
 
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {

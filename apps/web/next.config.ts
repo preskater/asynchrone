@@ -16,6 +16,7 @@ export default createNextConfig({
     "@workspace/db-core",
     "@workspace/db-identity",
     "@workspace/service-auth",
+    "@workspace/projects",
   ],
   // `pg-large-object` is CommonJS with native `pg` bindings; keep it external
   // so the server bundle loads it at runtime instead of trying to bundle it.

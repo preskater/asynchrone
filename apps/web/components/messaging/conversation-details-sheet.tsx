@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
 import { PresenceDot } from "@/components/messaging/presence-dot"
 import { Button } from "@workspace/ui/components/button"
 import {
