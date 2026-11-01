@@ -57,3 +57,4 @@ collection.
 | [0031](0031-add-copilot-app-with-persisted-conversations.md)               | accepted | Make Copilot the workspace shell with persisted conversations             |
 | [0032](0032-give-each-app-its-own-database.md)                             | accepted | Give each workspace app its own PostgreSQL database                       |
 | [0033](0033-keep-audit-export-and-deletion-consistent-across-databases.md) | accepted | Keep audit, export and deletion consistent across databases               |
+| [0034](0034-cut-the-control-tower-over-to-its-own-database.md)              | accepted | Cut the control tower over to its own database                            |

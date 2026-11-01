@@ -6,7 +6,7 @@ import {
   hasEntitlement,
   type Entitlement,
   type Entitlements,
-} from "@workspace/db/plans"
+} from "@workspace/core/plans"
 
 const EntitlementsContext = React.createContext<Entitlements>(
   entitlementsFor("free")

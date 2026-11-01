@@ -83,9 +83,14 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-web-secrets \
   --from-literal=CRON_SECRET='<random-token>'
 
 kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower-secrets \
-  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_control_tower?schema=public' \
+  --from-literal=CONTROL_TOWER_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_control_tower?schema=public' \
   --from-literal=CONTROL_TOWER_BETTER_AUTH_SECRET='<at-least-32-chars>'
 ```
+
+The control tower reads `CONTROL_TOWER_DATABASE_URL` (never `DATABASE_URL`) so a
+copied customer secret cannot point platform sign-in at the identity database.
+Run the data cutover described in [../control-tower-database.md](../control-tower-database.md)
+before rolling the new image out.
 
 Add optional keys to `asynchrone-space-web-secrets` as needed:
 

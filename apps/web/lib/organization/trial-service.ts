@@ -1,4 +1,4 @@
-import { parsePlan } from "@workspace/db/plans"
+import { parsePlan } from "@workspace/core/plans"
 import {
   isTrialActive,
   trialClaimKeys,
@@ -6,7 +6,7 @@ import {
   trialEndsAtFrom,
   trialRefusal,
   trialStage,
-} from "@workspace/db/trial"
+} from "@workspace/core/trial"
 
 import { AUDIT_ACTIONS } from "@/lib/audit/actions"
 import { recordSystemAudit, recordUserAudit } from "@/lib/audit/record"

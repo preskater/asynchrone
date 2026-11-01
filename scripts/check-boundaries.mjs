@@ -178,6 +178,27 @@ function checkDbOwnership(importer, packageName, file, specifier) {
 }
 
 /**
+ * `@workspace/db` is the monolith/identity client. The control tower owns its
+ * own database (ADR 0032) and reads customer data through the identity admin
+ * API, so it must never import it — including its plan helpers, which live in
+ * `@workspace/core` now.
+ */
+const MONOLITH_DATABASE = "@workspace/db"
+
+function checkMonolithDatabase(importer, file, specifier) {
+  if (importer.appKey !== "control-tower") return
+  if (specifier !== MONOLITH_DATABASE && !specifier.startsWith(`${MONOLITH_DATABASE}/`)) {
+    return
+  }
+  report(
+    file,
+    specifier,
+    "control-tower-identity-import",
+    "control-tower must use @workspace/db-control-tower and the identity admin API"
+  )
+}
+
+/**
  * Only the database packages may construct a Prisma client. An app or a
  * domain package reaching for `@prisma/client` directly would bypass both the
  * pool budget (`@workspace/db-core`) and the per-app database ownership rule.
@@ -265,6 +286,7 @@ for (const workspace of workspaces) {
       }
 
       checkDbOwnership(workspace, packageName, file, specifier)
+      checkMonolithDatabase(workspace, file, specifier)
     }
   }
 }

@@ -458,11 +458,12 @@ parentheses; keep the checklist honest rather than pre-checking it.
 
 ### Control tower (#209, #210)
 
-- [ ] Signs in with only `asynchrone_control_tower`.
-- [ ] Platform audit and handoff rows live there.
-- [ ] Customer identity changes go through `IdentityAdminClient`.
-- [ ] No control-tower code imports the identity database.
-- [ ] `verify:auth-config` and `verify:platform-authorization` pass.
+- [x] Signs in with only `asynchrone_control_tower`.
+- [x] Platform audit rows live there; handoff rows are created by Copilot and
+      copied for schema parity (ADR 0034).
+- [x] Customer identity reads and mutations go through `IdentityAdminClient`.
+- [x] No control-tower code imports the identity database.
+- [x] `verify:auth-config` and `verify:platform-authorization` pass.
 
 ## Known coupling that must disappear
 

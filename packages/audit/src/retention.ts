@@ -1,5 +1,5 @@
-import { parsePlan, type OrgPlan } from "@workspace/db/plans"
-import { effectivePlan } from "@workspace/db/trial"
+import { parsePlan, type OrgPlan } from "@workspace/core/plans"
+import { effectivePlan } from "@workspace/core/trial"
 
 /**
  * How long each plan keeps audit rows. The cleanup job prunes everything older

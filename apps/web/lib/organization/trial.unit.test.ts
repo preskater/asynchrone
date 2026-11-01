@@ -8,7 +8,7 @@ import {
   trialRefusal,
   trialStage,
   type TrialFields,
-} from "@workspace/db/trial"
+} from "@workspace/core/trial"
 
 const DAY = 24 * 60 * 60 * 1000
 const now = new Date("2026-11-01T12:00:00Z")

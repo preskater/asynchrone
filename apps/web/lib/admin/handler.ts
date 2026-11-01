@@ -1,6 +1,7 @@
 import {
   AdminBanInputSchema,
   AdminHandoffInputSchema,
+  AdminOAuthClientDisabledInputSchema,
   AdminPlanInputSchema,
   AdminTrialInputSchema,
   INTERNAL_API_VERSION,
@@ -53,15 +54,23 @@ function isHttpError(value: unknown): value is {
 function query(request: Request): {
   query?: string
   cursor?: string | null
+  offset?: number
   limit?: number
 } {
   const search = new URL(request.url).searchParams
   const limit = search.get("limit")
+  const offset = search.get("offset")
   return {
     query: search.get("query") ?? undefined,
     cursor: search.get("cursor"),
+    offset: offset ? Number(offset) : undefined,
     limit: limit ? Number(limit) : undefined,
   }
+}
+
+function limit(request: Request): number | undefined {
+  const value = new URL(request.url).searchParams.get("limit")
+  return value ? Number(value) : undefined
 }
 
 async function body<T>(
@@ -103,6 +112,30 @@ export async function handleAdminRequest({
       return organization
         ? envelope(organization)
         : error(404, "not_found", "Organization not found")
+    }
+
+    if (
+      resource === "organizations" &&
+      id &&
+      action === "detail" &&
+      method === "GET"
+    ) {
+      const organization = await repository.getOrganizationDetail(id)
+      return organization
+        ? envelope(organization)
+        : error(404, "not_found", "Organization not found")
+    }
+
+    if (resource === "overview" && !id && method === "GET") {
+      return envelope(await repository.overview())
+    }
+
+    if (resource === "ops" && !id && method === "GET") {
+      return envelope(await repository.ops())
+    }
+
+    if (resource === "audit" && !id && method === "GET") {
+      return envelope(await repository.listAudit({ limit: limit(request) }))
     }
 
     if (
@@ -156,6 +189,11 @@ export async function handleAdminRequest({
       return user ? envelope(user) : error(404, "not_found", "User not found")
     }
 
+    if (resource === "users" && id && action === "detail" && method === "GET") {
+      const user = await repository.getUserDetail(id)
+      return user ? envelope(user) : error(404, "not_found", "User not found")
+    }
+
     if (resource === "users" && id && action === "ban" && method === "POST") {
       const user = await repository.setBan(
         id,
@@ -179,6 +217,23 @@ export async function handleAdminRequest({
           await body(request, AdminHandoffInputSchema)
         )
       )
+    }
+
+    if (resource === "oauth-clients" && id && !action && method === "GET") {
+      const client = await repository.getOAuthClient(id)
+      return client
+        ? envelope(client)
+        : error(404, "not_found", "OAuth client not found")
+    }
+
+    if (resource === "oauth-clients" && id && !action && method === "POST") {
+      const client = await repository.setOAuthClientDisabled(
+        id,
+        await body(request, AdminOAuthClientDisabledInputSchema)
+      )
+      return client
+        ? envelope(client)
+        : error(404, "not_found", "OAuth client not found")
     }
 
     return error(404, "not_found", "Admin endpoint not found")

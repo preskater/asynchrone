@@ -1,4 +1,4 @@
-import type { OrgPlan } from "@workspace/db/plans"
+import type { OrgPlan } from "@workspace/core/plans"
 
 import { parseRoles } from "@workspace/organization/utils"
 

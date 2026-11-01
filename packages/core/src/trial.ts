@@ -1,5 +1,5 @@
 /**
- * Team trial rules, kept free of I/O so both apps can resolve the same plan
+ * Team trial rules, kept free of I/O so every app can resolve the same plan
  * and the rules can be unit tested.
  *
  * The trial never rewrites `metadata.plan`: a free organization is treated as

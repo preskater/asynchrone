@@ -1,4 +1,4 @@
-import { entitlementsFor } from "@workspace/db/plans"
+import { entitlementsFor } from "@workspace/core/plans"
 
 import { resolvePlan } from "@/lib/organization/entitlements"
 import { prisma } from "@/lib/prisma"

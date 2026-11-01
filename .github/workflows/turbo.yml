@@ -22,6 +22,7 @@ jobs:
       DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
       BETTER_AUTH_SECRET: ci-build-placeholder-secret-not-used-at-runtime
       BETTER_AUTH_URL: http://localhost:3000
+      CONTROL_TOWER_DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
       CONTROL_TOWER_BETTER_AUTH_SECRET: ci-control-tower-placeholder-secret-not-used
       PLATFORM_APP_URL: http://localhost:3000
       CONTROL_TOWER_URL: http://localhost:3001

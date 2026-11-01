@@ -1,8 +1,8 @@
 import {
   entitlementsFor,
   type Entitlements as DbEntitlements,
-} from "@workspace/db/plans"
-import { effectivePlan } from "@workspace/db/trial"
+} from "@workspace/core/plans"
+import { effectivePlan } from "@workspace/core/trial"
 import { prisma } from "@workspace/db-identity"
 import type {
   Entitlements,

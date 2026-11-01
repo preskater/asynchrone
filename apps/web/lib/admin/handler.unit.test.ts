@@ -21,10 +21,23 @@ const user = {
   id: "user_1",
   name: "Ada",
   email: "ada@example.com",
+  emailVerified: true,
   role: "platform_admin",
   banned: false,
   banReason: null,
   twoFactorEnabled: true,
+  lastSeenAt: null,
+  organizationCount: 2,
+  lastSessionAt: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+}
+
+const oauthClient = {
+  clientId: "client_1",
+  name: "MCP",
+  disabled: false,
+  userId: "user_1",
+  referenceId: null,
   createdAt: "2026-01-01T00:00:00.000Z",
 }
 
@@ -38,6 +51,26 @@ function repository(): AdminRepository {
     getOrganization: vi.fn(async (id) =>
       id === "org_1" ? organization : null
     ),
+    getOrganizationDetail: vi.fn(async (id) =>
+      id === "org_1"
+        ? {
+            ...organization,
+            trialStartedAt: null,
+            subscription: null,
+            seatCount: 2,
+            members: [],
+            oauthClients: [oauthClient],
+            recentAudit: [],
+            aiUsage: {
+              costMicros: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              runs: 0,
+            },
+            previousMonthAiCostMicros: 0,
+          }
+        : null
+    ),
     updatePlan: vi.fn(async () => organization),
     releasePlan: vi.fn(async () => organization),
     setTrial: vi.fn(async () => organization),
@@ -47,10 +80,64 @@ function repository(): AdminRepository {
       total: 1,
     })),
     getUser: vi.fn(async (id) => (id === "user_1" ? user : null)),
+    getUserDetail: vi.fn(async (id) =>
+      id === "user_1"
+        ? {
+            ...user,
+            memberships: [],
+            sessions: [],
+            accounts: [],
+            oauthClients: [oauthClient],
+          }
+        : null
+    ),
     setBan: vi.fn(async () => ({ ...user, banned: true })),
     revokeSessions: vi.fn(async () => ({ deleted: 2 })),
     createHandoff: vi.fn(async () => ({
       url: "https://copilot.example/api/platform/handoff?token=t",
+    })),
+    overview: vi.fn(async () => ({
+      organizations: 1,
+      users: 1,
+      activeSessions: 1,
+      newestOrganizations: [organization],
+    })),
+    ops: vi.fn(async () => ({
+      sessions: { active: 1, expired: 0 },
+      invitations: { pending: 0 },
+      signingKeys: [],
+      oauthClients: { total: 1, disabled: 0 },
+      aiUsage: {
+        costMicros: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        runs: 0,
+        windowDays: 30,
+      },
+    })),
+    listAudit: vi.fn(async () => ({
+      items: [
+        {
+          id: "audit_1",
+          organizationId: "org_1",
+          organizationName: "Acme",
+          action: "task.create",
+          entityType: "task",
+          entityId: "task_1",
+          entityLabel: "ABC-1",
+          actorId: "user_1",
+          actorName: "Ada",
+          actorEmail: "ada@example.com",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    })),
+    getOAuthClient: vi.fn(async (clientId) =>
+      clientId === "client_1" ? oauthClient : null
+    ),
+    setOAuthClientDisabled: vi.fn(async (_clientId, input) => ({
+      ...oauthClient,
+      disabled: input.disabled,
     })),
   }
 }
@@ -108,6 +195,30 @@ describe("admin handler", () => {
       userId: "user_1",
     })
     expect((await handoff.json()).data.url).toContain("/api/platform/handoff")
+  })
+
+  it("serves the control-tower read models", async () => {
+    const overview = await call(["overview"])
+    expect((await overview.json()).data.organizations).toBe(1)
+
+    const ops = await call(["ops"])
+    expect((await ops.json()).data.sessions.active).toBe(1)
+
+    const audit = await call(["audit"])
+    expect((await audit.json()).data.items[0].organizationName).toBe("Acme")
+
+    const organization = await call(["organizations", "org_1", "detail"])
+    expect((await organization.json()).data.oauthClients[0].clientId).toBe(
+      "client_1"
+    )
+
+    const user = await call(["users", "user_1", "detail"])
+    expect((await user.json()).data.organizationCount).toBe(2)
+
+    const toggled = await call(["oauth-clients", "client_1"], "POST", {
+      disabled: true,
+    })
+    expect((await toggled.json()).data.disabled).toBe(true)
   })
 
   it("rejects an invalid body and a missing token", async () => {

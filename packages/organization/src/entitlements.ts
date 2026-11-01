@@ -4,8 +4,8 @@ import {
   type Entitlement,
   type Entitlements,
   type OrgPlan,
-} from "@workspace/db/plans"
-import { effectivePlan } from "@workspace/db/trial"
+} from "@workspace/core/plans"
+import { effectivePlan } from "@workspace/core/trial"
 import { ForbiddenError } from "@workspace/core/errors"
 
 export {
@@ -14,7 +14,7 @@ export {
   type Entitlement,
   type Entitlements,
   type OrgPlan,
-} from "@workspace/db/plans"
+} from "@workspace/core/plans"
 
 /** The organization fields plan resolution needs. */
 export interface PlanSource {

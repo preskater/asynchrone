@@ -1,6 +1,5 @@
-import { Building2, HardDrive, Timer, Users } from "lucide-react"
+import { Building2, Timer, Users } from "lucide-react"
 
-import { prisma } from "@workspace/db"
 import {
   Table,
   TableBody,
@@ -11,35 +10,19 @@ import {
 } from "@workspace/ui/components/table"
 
 import { StatCard } from "@/components/stat-card"
-import { formatBytes, formatDate, formatNumber, formatRelative } from "@/lib/platform/format"
+import { formatDate, formatNumber, formatRelative } from "@/lib/platform/format"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 
 export const metadata = { title: "Overview" }
 
 export default async function OverviewPage() {
   await requirePlatformContext()
 
-  const now = new Date()
-  const [organizations, users, activeSessions, storage, recent] = await Promise.all([
-    prisma.organization.count(),
-    prisma.user.count(),
-    prisma.session.count({ where: { expiresAt: { gt: now } } }),
-    prisma.fileNode.aggregate({
-      where: { trashed: false },
-      _sum: { sizeBytes: true },
-    }),
-    prisma.organization.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        createdAt: true,
-        _count: { select: { members: true } },
-      },
-    }),
-  ])
+  // Customer read models come from Copilot's identity admin API; the control
+  // tower never connects to another app's database (ADR 0032).
+  const overview = await identityAdmin().overview()
+  const recent = overview.newestOrganizations
 
   return (
     <div className="space-y-6">
@@ -50,24 +33,22 @@ export default async function OverviewPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Organizations"
-          value={formatNumber(organizations)}
+          value={formatNumber(overview.organizations)}
           icon={Building2}
         />
-        <StatCard label="Users" value={formatNumber(users)} icon={Users} />
         <StatCard
-          label="Active sessions"
-          value={formatNumber(activeSessions)}
-          hint="Unexpired sessions across all apps"
-          icon={Timer}
+          label="Users"
+          value={formatNumber(overview.users)}
+          icon={Users}
         />
         <StatCard
-          label="Stored files"
-          value={formatBytes(Number(storage._sum.sizeBytes ?? 0))}
-          hint="PostgreSQL large objects, trashed excluded"
-          icon={HardDrive}
+          label="Active sessions"
+          value={formatNumber(overview.activeSessions)}
+          hint="Unexpired customer sessions"
+          icon={Timer}
         />
       </div>
 
@@ -104,7 +85,7 @@ export default async function OverviewPage() {
                       </div>
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatNumber(organization._count.members)}
+                      {formatNumber(organization.memberCount)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(organization.createdAt)}

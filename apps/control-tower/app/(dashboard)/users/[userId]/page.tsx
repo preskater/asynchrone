@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-control-tower"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   Table,
@@ -22,6 +22,7 @@ import {
   formatRelative,
 } from "@/lib/platform/format"
 import { requirePlatformContext } from "@/lib/platform/guard"
+import { identityAdmin } from "@/lib/platform/identity"
 import { parsePlatformRoles } from "@/lib/platform/roles"
 
 export const metadata = { title: "User" }
@@ -35,68 +36,18 @@ export default async function UserDetailPage({
 
   const { userId } = await params
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      emailVerified: true,
-      banned: true,
-      banReason: true,
-      banExpires: true,
-      role: true,
-      lastSeenAt: true,
-      createdAt: true,
-    },
-  })
+  // Customer data comes from Copilot's identity admin API; platform audit rows
+  // stay in this app's own database.
+  const user = await identityAdmin().getUserDetail(userId)
 
   if (!user) notFound()
 
-  const now = new Date()
-  const [memberships, sessions, accounts, oauthClients, platformEvents] =
-    await Promise.all([
-      prisma.member.findMany({
-        where: { userId },
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          role: true,
-          clientId: true,
-          createdAt: true,
-          organization: { select: { id: true, name: true, slug: true } },
-        },
-      }),
-      prisma.session.findMany({
-        where: { userId, expiresAt: { gt: now } },
-        orderBy: { updatedAt: "desc" },
-        take: 20,
-        select: {
-          id: true,
-          createdAt: true,
-          updatedAt: true,
-          expiresAt: true,
-          ipAddress: true,
-          userAgent: true,
-          impersonatedBy: true,
-        },
-      }),
-      prisma.account.findMany({
-        where: { userId },
-        select: { providerId: true, createdAt: true },
-      }),
-      prisma.oauthClient.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        select: { clientId: true, name: true, disabled: true, createdAt: true },
-      }),
-      prisma.platformAuditEvent.findMany({
-        where: { targetType: "user", targetId: userId },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: { id: true, action: true, actorEmail: true, createdAt: true },
-      }),
-    ])
+  const platformEvents = await prisma.platformAuditEvent.findMany({
+    where: { targetType: "user", targetId: userId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { id: true, action: true, actorEmail: true, createdAt: true },
+  })
 
   const platformRoles = parsePlatformRoles(user.role)
 
@@ -122,7 +73,7 @@ export default async function UserDetailPage({
         actions={
           <UserActions
             userId={user.id}
-            banned={Boolean(user.banned)}
+            banned={user.banned}
             canImpersonate={context.role === "platform_admin"}
           />
         }
@@ -133,9 +84,7 @@ export default async function UserDetailPage({
           <p className="font-medium text-destructive">Account banned</p>
           <p className="text-muted-foreground">
             {user.banReason ?? "No reason recorded."}
-            {user.banExpires
-              ? ` · expires ${formatDateTime(user.banExpires)}`
-              : " · permanent"}
+            {` · permanent`}
           </p>
         </div>
       ) : null}
@@ -143,11 +92,20 @@ export default async function UserDetailPage({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Organizations"
-          value={formatNumber(memberships.length)}
+          value={formatNumber(user.memberships.length)}
         />
-        <StatCard label="Active sessions" value={formatNumber(sessions.length)} />
-        <StatCard label="Linked accounts" value={formatNumber(accounts.length)} />
-        <StatCard label="MCP clients" value={formatNumber(oauthClients.length)} />
+        <StatCard
+          label="Active sessions"
+          value={formatNumber(user.sessions.length)}
+        />
+        <StatCard
+          label="Linked accounts"
+          value={formatNumber(user.accounts.length)}
+        />
+        <StatCard
+          label="MCP clients"
+          value={formatNumber(user.oauthClients.length)}
+        />
       </div>
 
       <section className="space-y-3">
@@ -163,14 +121,14 @@ export default async function UserDetailPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {memberships.length === 0 ? (
+              {user.memberships.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
                     This account is not a member of any organization.
                   </TableCell>
                 </TableRow>
               ) : (
-                memberships.map((membership) => (
+                user.memberships.map((membership) => (
                   <TableRow key={membership.id}>
                     <TableCell>
                       <Link
@@ -222,14 +180,14 @@ export default async function UserDetailPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.length === 0 ? (
+              {user.sessions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-muted-foreground">
                     No active session.
                   </TableCell>
                 </TableRow>
               ) : (
-                sessions.map((session) => (
+                user.sessions.map((session) => (
                   <TableRow key={session.id}>
                     <TableCell className="max-w-64">
                       <span className="line-clamp-1 text-muted-foreground">
@@ -274,14 +232,14 @@ export default async function UserDetailPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.length === 0 ? (
+                {user.accounts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={2} className="text-muted-foreground">
                       No linked account.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  accounts.map((account) => (
+                  user.accounts.map((account) => (
                     <TableRow key={account.providerId}>
                       <TableCell className="capitalize">
                         {account.providerId}
@@ -309,30 +267,34 @@ export default async function UserDetailPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {oauthClients.length === 0 ? (
+                {user.oauthClients.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-muted-foreground">
                       No OAuth client registered by this user.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  oauthClients.map((client) => (
+                  user.oauthClients.map((client) => (
                     <TableRow key={client.clientId}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">{client.name}</span>
+                          <span className="font-medium">
+                            {client.name ?? client.clientId}
+                          </span>
                           <span className="font-mono text-xs text-muted-foreground">
                             {client.clientId}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={client.disabled ? "destructive" : "outline"}>
+                        <Badge
+                          variant={client.disabled ? "destructive" : "outline"}
+                        >
                           {client.disabled ? "disabled" : "active"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-end text-muted-foreground">
-                        {formatDate(client.createdAt)}
+                        {client.createdAt ? formatDate(client.createdAt) : "—"}
                       </TableCell>
                     </TableRow>
                   ))
@@ -344,7 +306,9 @@ export default async function UserDetailPage({
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Platform actions on this account</h2>
+        <h2 className="text-sm font-semibold">
+          Platform actions on this account
+        </h2>
         <div className="overflow-hidden rounded-xl border bg-card">
           <Table>
             <TableHeader>
@@ -364,7 +328,9 @@ export default async function UserDetailPage({
               ) : (
                 platformEvents.map((event) => (
                   <TableRow key={event.id}>
-                    <TableCell className="font-medium">{event.action}</TableCell>
+                    <TableCell className="font-medium">
+                      {event.action}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {event.actorEmail}
                     </TableCell>
@@ -383,7 +349,9 @@ export default async function UserDetailPage({
 
       <p className="text-xs text-muted-foreground">
         Created {formatDateTime(user.createdAt)}
-        {user.lastSeenAt ? ` · last seen ${formatDateTime(user.lastSeenAt)}` : ""}
+        {user.lastSeenAt
+          ? ` · last seen ${formatDateTime(user.lastSeenAt)}`
+          : ""}
       </p>
     </div>
   )

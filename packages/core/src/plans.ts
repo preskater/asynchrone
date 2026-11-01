@@ -1,6 +1,8 @@
 /**
  * Plan → entitlements, the single source of truth for what each plan includes.
- * Dependency-free so both the customer app and the control tower can import it.
+ *
+ * Dependency-free (no database client) so every app — including the control
+ * tower, which owns a different database — can resolve the same plans.
  */
 export type OrgPlan = "free" | "team" | "enterprise"
 

@@ -28,8 +28,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./prisma": "./src/prisma.ts",
-    "./env": "./src/env.ts",
-    "./plans": "./src/plans.ts",
-    "./trial": "./src/trial.ts"
+    "./env": "./src/env.ts"
   }
 }
