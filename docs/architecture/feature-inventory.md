@@ -1,6 +1,6 @@
 # Feature inventory and parity checklist
 
-Last audited: 2026-10-31 (issues #146, #147 and #148).
+Last audited: 2026-11-01 (issues #146–#149).
 
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
@@ -8,7 +8,7 @@ portal surface, internal endpoint, environment variable and test is assigned to
 exactly one app. It is a snapshot of the monolith before phase 4: `apps/web`
 still serves every customer surface from one runtime and one database, while
 the per-app database packages and the shared kernel (`@workspace/core`,
-`@workspace/i18n`, `@workspace/next-config`) already exist.
+`@workspace/auth`, `@workspace/i18n`, `@workspace/next-config`) already exist.
 
 Keep this document current in the same pull request that moves a surface. A
 surface may only move when its target app owns the database, internal contract
@@ -354,10 +354,10 @@ Never bake secrets into an image.
 
 | Suite                     | Location                                                                                                                                     |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search,signup-policy}*.unit.test.ts`                       |
+| Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
 | Unit — Projects           | domain has no standalone unit file yet; covered by `e2e` and scripts                                                                         |
 | Unit — Files              | `apps/web/lib/files/duplicate.unit.test.ts`                                                                                                  |
-| Unit — shared packages    | `packages/{audit,contracts,core,db-core,oidc,sagas,search,service-auth}/**/*.unit.test.ts`                                                   |
+| Unit — shared packages    | `packages/{audit,auth,contracts,core,db-core,oidc,sagas,search,service-auth}/**/*.unit.test.ts`                                              |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                    |
 | Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts` |
 | Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                      |

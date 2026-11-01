@@ -16,7 +16,7 @@ import {
 } from "@workspace/ui/components/card"
 import { Spinner } from "@workspace/ui/components/spinner"
 
-import { describeUserAgent } from "@/lib/account/user-agent"
+import { describeUserAgent } from "@workspace/auth/user-agent"
 import { authClient } from "@/lib/auth-client"
 
 interface ActiveSession {

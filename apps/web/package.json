@@ -41,6 +41,7 @@
     "@sentry/nextjs": "^11.10.0",
     "@shadcn/helpers": "^0.3.0",
     "@workspace/audit": "*",
+    "@workspace/auth": "*",
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/db": "*",
