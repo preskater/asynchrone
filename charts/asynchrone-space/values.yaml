@@ -7,7 +7,7 @@
 #                                           GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET
 #   asynchrone-space-control-tower-secrets: DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET
 #
-# Install with an immutable image tag shared by all three images:
+# Install with an immutable image tag shared by all images:
 #   helm dependency build charts/asynchrone-space
 #   helm upgrade --install asynchrone-space charts/asynchrone-space -n asynchrone-space --create-namespace \
 #     --set global.imageTag=sha-abc1234
@@ -19,7 +19,39 @@ global:
   imagePullSecrets: []
 
 # ---------------------------------------------------------------------------
-# Customer-facing app
+# Public marketing site (no database, no session)
+# ---------------------------------------------------------------------------
+asynchrone-space-landing:
+  enabled: true
+
+  # Release `asynchrone-space` yields the resources `asynchrone-space-landing-*`.
+  nameOverride: landing
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-landing
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      # www.asynchrone.space -> asynchrone.space at the edge.
+      nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    hosts:
+      - host: asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: asynchrone-space-tls
+      #   hosts:
+      #     - asynchrone.space
+      #     - www.asynchrone.space
+
+# ---------------------------------------------------------------------------
+# Customer-facing app (the workspace shell until #175 moves it to Copilot)
 # ---------------------------------------------------------------------------
 asynchrone-space-web:
   enabled: true
@@ -41,18 +73,18 @@ asynchrone-space-web:
       nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
       nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     hosts:
-      - host: asynchrone.space
+      - host: copilot.asynchrone.space
         paths:
           - path: /
             pathType: Prefix
     tls: []
-      # - secretName: asynchrone-space-tls
+      # - secretName: copilot-asynchrone-space-tls
       #   hosts:
-      #     - asynchrone.space
+      #     - copilot.asynchrone.space
 
   config:
-    BETTER_AUTH_URL: https://asynchrone.space
-    NEXT_PUBLIC_APP_URL: https://asynchrone.space
+    BETTER_AUTH_URL: https://copilot.asynchrone.space
+    NEXT_PUBLIC_APP_URL: https://copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "10"
@@ -141,7 +173,7 @@ asynchrone-space-control-tower:
 
   config:
     BETTER_AUTH_URL: https://control-tower.asynchrone.space
-    PLATFORM_APP_URL: https://asynchrone.space
+    PLATFORM_APP_URL: https://copilot.asynchrone.space
     PLATFORM_ALLOWED_IPS: ""
     DATABASE_POOL_MAX: "10"
     DEPLOY_ENV: production

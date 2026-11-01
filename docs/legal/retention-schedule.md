@@ -6,7 +6,7 @@ The public retention table lives in `packages/i18n/messages/{en,fr}/legal.json` 
 the code that implements it, so whoever answers a security questionnaire can
 point at a mechanism rather than a promise.
 
-`npm run verify:legal-copy --workspace=web` checks that both locales have the
+`npm run verify:legal-copy --workspace=landing` checks that both locales have the
 same keys and that tables are well formed. It cannot check facts: when either
 the copy or the code changes, a reviewer has to confirm the two still agree.
 

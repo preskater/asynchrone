@@ -91,11 +91,11 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
    The app is available at http://localhost:3000.
 
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
-> migrations, serves the customer app on port **3002** and the control tower on
-> port **3001**. Each container loads its app's `.env` (then overrides
-> `DATABASE_URL` and the public URLs), so local dev and Docker share the same
-> secrets. The image is parameterised with
-> `--build-arg APP=web|control-tower`.
+> migrations, serves the public landing site on port **3002**, the customer app
+> on port **3003** and the control tower on port **3001**. Each container loads
+> its app's `.env` (then overrides `DATABASE_URL` and the public URLs), so local
+> dev and Docker share the same secrets. The image is parameterised with
+> `--build-arg APP=web|control-tower|landing`.
 
 ### Control tower
 
@@ -230,16 +230,18 @@ npm run verify:large-object --workspace=web
 
 ## Deployment
 
-The Docker workflow publishes three images to GHCR:
+The Docker workflow publishes four images to GHCR:
 
 | Image                                              | Dockerfile stage               | Runs                       |
 | -------------------------------------------------- | ------------------------------ | -------------------------- |
 | `ghcr.io/preskater/asynchrone-space`               | `runner` (`APP=web`)           | Customer app               |
 | `ghcr.io/preskater/asynchrone-space-control-tower` | `runner` (`APP=control-tower`) | Internal control tower     |
+| `ghcr.io/preskater/asynchrone-space-landing`       | `runner` (`APP=landing`)       | Public landing site        |
 | `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate` (`APP=web`)          | One-shot Prisma migrations |
 
 Deploy them with the Helm umbrella chart in `charts/asynchrone-space`, which composes the
-`asynchrone-space-web` and `asynchrone-space-control-tower` subcharts:
+`asynchrone-space-landing`, `asynchrone-space-web` and
+`asynchrone-space-control-tower` subcharts:
 
 ```bash
 helm dependency build charts/asynchrone-space

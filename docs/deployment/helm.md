@@ -1,16 +1,19 @@
 # Deploying Asynchrone Space with Helm
 
-Asynchrone Space runs as two Next.js apps backed by eight PostgreSQL databases
-(one per app; the customer app owns identity). This guide installs both from the
-umbrella chart in `charts/asynchrone-space`. Secrets, network policy, backups,
+Asynchrone Space runs as three Next.js apps: the stateless public landing site,
+the customer app (Copilot until #175) and the control tower, the latter two
+backed by eight PostgreSQL databases (one per app; the customer app owns
+identity). This guide installs all of them from the umbrella chart in
+`charts/asynchrone-space`. Secrets, network policy, backups,
 restore order and the connection budget are covered in
 [Database operations](database-operations.md).
 
 ```
 charts/
-  asynchrone-space/                 # umbrella: dependencies, migration hook, values
-  asynchrone-space-web/             # customer app, ingress, CronJobs
-  asynchrone-space-control-tower/   # internal platform app, ingress
+  asynchrone-space/                   # umbrella: dependencies, migration hook, values
+  asynchrone-space-landing/           # public site, ingress (asynchrone.space + www redirect)
+  asynchrone-space-web/               # customer app, ingress, CronJobs
+  asynchrone-space-control-tower/     # internal platform app, ingress
 ```
 
 ## Prerequisites
@@ -40,13 +43,14 @@ charts/
 
 ## Images
 
-`.github/workflows/docker.yml` publishes three images for every push to `main`
+`.github/workflows/docker.yml` publishes four images for every push to `main`
 and every `v*` tag:
 
 | Image                                              | Built from                             | Purpose                                       |
 | -------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
-| `ghcr.io/preskater/asynchrone-space`               | `runner` stage, `APP=web`              | Customer app                                  |
+| `ghcr.io/preskater/asynchrone-space`               | `runner` stage, `APP=web`              | Customer app (`copilot.asynchrone.space`)     |
 | `ghcr.io/preskater/asynchrone-space-control-tower` | `runner` stage, `APP=control-tower`    | Control tower                                 |
+| `ghcr.io/preskater/asynchrone-space-landing`       | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
 | `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
 
 The workflow tags images with the branch, the release tag and `sha-<shortsha>`.
@@ -123,7 +127,7 @@ Secret values are injected with `envFrom` at pod start, so restart the
 Deployments after changing a Secret:
 
 ```bash
-kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-web deploy/asynchrone-space-control-tower
+kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-web deploy/asynchrone-space-control-tower deploy/asynchrone-space-landing
 ```
 
 ## Install
@@ -142,7 +146,7 @@ helm upgrade --install asynchrone-space charts/asynchrone-space \
 `helm dependency build` writes packaged copies to `charts/asynchrone-space/charts/`
 and creates `Chart.lock`. Those archives **are committed**, so a chart source
 that clones the repository (Rancher, Fleet) or a packaged `.tgz` works without
-running a dependency step first. After changing either subchart, rebuild and
+running a dependency step first. After changing any subchart, rebuild and
 commit the archives:
 
 ```bash
@@ -154,17 +158,20 @@ CI fails when a vendored archive no longer matches its subchart sources
 (`.github/workflows/helm.yml`, "Check vendored subcharts are up to date").
 
 Use `-f my-values.yaml` for production overrides instead of long `--set`
-lists. The defaults already target `asynchrone.space` and
-`control-tower.asynchrone.space` with the `nginx` ingress class.
+lists. The defaults target `asynchrone.space` (landing, with
+`www.asynchrone.space` redirected to the apex by the ingress annotation),
+`copilot.asynchrone.space` (customer app until #175) and
+`control-tower.asynchrone.space`, with the `nginx` ingress class.
 
 ## What gets created
 
 | Resource       | Name                                                                                 | Notes                               |
 | -------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
+| Deployment     | `asynchrone-space-landing`                                                           | 2 replicas by default               |
 | Deployment     | `asynchrone-space-web`                                                               | 2 replicas by default               |
 | Deployment     | `asynchrone-space-control-tower`                                                     | 2 replicas by default               |
-| Service        | `asynchrone-space-web`, `asynchrone-space-control-tower`                             | ClusterIP, port 80 → container 3000 |
-| Ingress        | `asynchrone-space-web`, `asynchrone-space-control-tower`                             | One host each                       |
+| Service        | `asynchrone-space-landing`, `asynchrone-space-web`, `asynchrone-space-control-tower` | ClusterIP, port 80 → container 3000 |
+| Ingress        | `asynchrone-space-landing`, `asynchrone-space-web`, `asynchrone-space-control-tower` | One host each                       |
 | ConfigMap      | `asynchrone-space-web`, `asynchrone-space-control-tower`                             | Non-secret runtime config           |
 | CronJob        | `asynchrone-space-web-uploads-sweep`                                                 | `0 3 * * *`                         |
 | CronJob        | `asynchrone-space-web-repository-sync`                                               | `0 * * * *`                         |

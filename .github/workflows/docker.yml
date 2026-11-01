@@ -23,6 +23,10 @@ jobs:
             suffix: "-control-tower"
             target: runner
             cacheScope: control-tower
+          - app: landing
+            suffix: "-landing"
+            target: runner
+            cacheScope: landing
           # One-shot Prisma migration image (Dockerfile `migrate` stage). The
           # pruned `web` workspace already contains packages/db, which holds
           # the shared schema and migrations.

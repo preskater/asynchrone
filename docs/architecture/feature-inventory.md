@@ -45,10 +45,10 @@ Target: `apps/landing`, stateless. No session, no database, no internal API.
 
 | Surface         | Current location                                                                                                | Notes                                                                                  |
 | --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Marketing pages | `apps/web/app/[locale]/(marketing)/*`                                                                           | home, about, blog, blog/[slug], careers, contact, FAQ, features, legal/[slug], pricing |
-| Content         | `apps/web/content/{blog,legal,careers,features,faq}/<locale>`                                                   | MDX mirrored in `en` and `fr`                                                          |
-| Legal copy/PDFs | `apps/web/lib/landing/legal.ts`, `packages/i18n/messages/{en,fr}/legal.json`, `apps/web/public/downloads/legal` | `verify:legal-copy`, `legal:pdfs`                                                      |
-| Layout/metadata | `apps/web/app/[locale]/(marketing)/layout.tsx`, `apps/web/mdx-components.tsx`                                   |                                                                                        |
+| Marketing pages | `apps/landing/app/[locale]/(marketing)/*`                                                                           | home, about, blog, blog/[slug], careers, contact, FAQ, features, legal/[slug], pricing |
+| Content         | `apps/landing/content/blog/<locale>`                                                                            | MDX mirrored in `en` and `fr`                                                          |
+| Legal copy/PDFs | `apps/landing/lib/landing/legal.ts`, `packages/i18n/messages/{en,fr}/legal.json`, `apps/landing/public/downloads/legal` | `verify:legal-copy`, `legal:pdfs`                                                      |
+| Layout/metadata | `apps/landing/app/[locale]/(marketing)/layout.tsx`, `apps/landing/mdx-components.tsx`                           |                                                                                        |
 
 No server actions, API routes, cron jobs, MCP tools, Prisma models or audit
 actions. Keeping the landing database-free is an acceptance criterion of #176

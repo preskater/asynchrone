@@ -65,5 +65,5 @@ rarely needs to start from scratch:
 - Privacy policy and retention schedule:
   [asynchrone.space/legal/privacy](https://asynchrone.space/legal/privacy)
 
-Printable PDFs live in `apps/web/public/downloads/legal` and are regenerated with
-`npm run legal:pdfs --workspace=web`.
+Printable PDFs live in `apps/landing/public/downloads/legal` and are regenerated
+with `npm run legal:pdfs --workspace=landing`.
