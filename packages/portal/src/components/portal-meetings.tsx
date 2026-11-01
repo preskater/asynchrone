@@ -11,10 +11,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import {
-  cancelMeetingRequestAction,
-  createMeetingRequestAction,
-} from "@/actions/meetings"
 import { DatePicker } from "@workspace/projects/components/task/date-picker"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -73,6 +69,8 @@ import {
   type PortalMeetingsData,
 } from "@workspace/meetings/types"
 
+import { usePortalActions } from "./actions"
+
 const STATUS_VARIANT: Record<
   MeetingStatus,
   "default" | "secondary" | "destructive" | "outline"
@@ -102,6 +100,7 @@ export function PortalMeetings({ data }: { data: PortalMeetingsData }) {
   const te = useErrorTranslator()
   const locale = useLocale()
   const router = useRouter()
+  const actions = usePortalActions()
   const { settings, requests } = data
 
   const [cancelId, setCancelId] = React.useState<string>()
@@ -119,7 +118,9 @@ export function PortalMeetings({ data }: { data: PortalMeetingsData }) {
     if (!cancelId) return
     setCancelling(true)
     try {
-      unwrapActionResult(await cancelMeetingRequestAction({ id: cancelId }))
+      unwrapActionResult(
+        await actions.cancelMeetingRequestAction({ id: cancelId })
+      )
       toast.success(t("requestCancelled"))
       setCancelId(undefined)
       router.refresh()
@@ -331,6 +332,7 @@ function RequestMeetingDialog({
   const t = useTranslations("MeetingRequests")
   const te = useErrorTranslator()
   const router = useRouter()
+  const actions = usePortalActions()
   const [open, setOpen] = React.useState(false)
   const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
@@ -430,7 +432,7 @@ function RequestMeetingDialog({
     setSaving(true)
     try {
       unwrapActionResult(
-        await createMeetingRequestAction({
+        await actions.createMeetingRequestAction({
           title: title.trim(),
           description: description.trim() || undefined,
           durationMinutes,

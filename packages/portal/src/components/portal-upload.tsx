@@ -15,7 +15,12 @@ import { useErrorTranslator } from "@workspace/i18n/errors"
  * Uploads one document from the portal (max 25 MB). The file becomes a
  * client-visible document on the company, so both sides can see it.
  */
-export function PortalUpload() {
+export function PortalUpload({
+  uploadUrl = "/api/portal/documents/upload",
+}: {
+  /** The app's upload route; the portal routes stay in Copilot. */
+  uploadUrl?: string
+} = {}) {
   const t = useTranslations("Portal")
   const tT = useTranslations("Toasts")
   const te = useErrorTranslator()
@@ -30,7 +35,7 @@ export function PortalUpload() {
     try {
       const form = new FormData()
       form.append("file", file)
-      const response = await fetch("/api/portal/documents/upload", {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: form,
       })

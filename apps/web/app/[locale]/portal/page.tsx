@@ -14,8 +14,8 @@ import { Progress } from "@workspace/ui/components/progress"
 import { Link } from "@workspace/i18n/navigation"
 import { getPortalContext } from "@/lib/portal/context"
 import { portalService } from "@/lib/portal"
-import { PortalSeenTracker } from "@/components/portal/portal-seen-tracker"
-import { PortalUpload } from "@/components/portal/portal-upload"
+import { PortalSeenTracker } from "@workspace/portal/components/portal-seen-tracker"
+import { PortalUpload } from "@workspace/portal/components/portal-upload"
 
 function formatBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return ""

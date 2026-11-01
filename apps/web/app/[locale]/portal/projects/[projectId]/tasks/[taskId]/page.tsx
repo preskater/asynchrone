@@ -11,8 +11,8 @@ import {
 } from "@workspace/ui/components/card"
 
 import { Link } from "@workspace/i18n/navigation"
-import { PortalSeenTracker } from "@/components/portal/portal-seen-tracker"
-import { PortalTaskComments } from "@/components/portal/portal-task-comments"
+import { PortalSeenTracker } from "@workspace/portal/components/portal-seen-tracker"
+import { PortalTaskComments } from "@workspace/portal/components/portal-task-comments"
 import { PriorityBadge } from "@workspace/projects/components/task/task-badge"
 import { getPortalContext } from "@/lib/portal/context"
 import { portalService } from "@/lib/portal"

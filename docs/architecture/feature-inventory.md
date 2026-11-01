@@ -1,6 +1,6 @@
 # Feature inventory and parity checklist
 
-Last audited: 2026-11-01 (issues #146–#156).
+Last audited: 2026-11-01 (issues #146–#158).
 
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
@@ -291,7 +291,7 @@ routes still run in `apps/web` (Copilot) and bind the package through
 | `GET /api/files/uploads/[uploadId]/complete`  | `apps/web/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | 405                                                                                                        |
 | `GET /api/files/[fileId]/download`            | `apps/web/app/api/files/[fileId]/download/route.ts`                                                                                                                                                                            | streams the file’s large object after an access check                                                      |
 | `GET /api/files/uploads/sweep`                | `apps/web/app/api/files/uploads/sweep/route.ts`                                                                                                                                                                                | unlinks expired upload sessions (`CRON_SECRET`-guarded)                                                    |
-| `GET /api/portal/files/[fileId]/download`     | `apps/web/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; streams a client-visible document                                                            |
+| `GET /api/portal/files/[fileId]/download`     | `apps/web/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; `@workspace/portal` resolves the client-visible link and streams its large object            |
 | Server actions                                | `apps/web/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
 | Cron                                          | `uploads-sweep` (`/api/files/uploads/sweep`, daily 03:00)                                                                                                                                                                      |                                                                                                            |
 | MCP tools                                     | `apps/web/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
@@ -450,21 +450,52 @@ customer cookie.
 
 ## Portal
 
-Target: stays in `apps/copilot` (#164). Portal reads come from Projects, Files
-and Messages through internal APIs; Copilot keeps the portal session and the
-client-company membership.
+Target: stays in `apps/copilot` (#164); there is no `apps/portal`. The domain
+package landed in #158: `@workspace/portal` owns the context and authorization
+rules, the dashboard/project/task/document read models, document upload and
+download, the shared thread and task comments, portal access management and the
+meetings read model. Portal reads still run in-process through the domain
+packages until #190 replaces them with internal API calls.
 
 | Surface        | Inventory                                                                                                                                                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pages          | `/portal`, `/portal/projects/[projectId]`, `/portal/projects/[projectId]/tasks/[taskId]`, `/portal/documents`, `/portal/meetings`                                                                                             |
-| Server actions | `actions/portal.ts` (invite, revoke, cancel invite, claim access, post message, mark seen, post task comment)                                                                                                                 |
+| Pages          | `/[locale]/portal`, `/[locale]/portal/projects/[projectId]`, `/[locale]/portal/projects/[projectId]/tasks/[taskId]`, `/[locale]/portal/documents`, `/[locale]/portal/meetings` (per-route rows below)                          |
+| Server actions | `actions/portal.ts` (invite, revoke, cancel invite, claim access, post message, mark seen, post task comment); `actions/meetings.ts` (portal create/cancel)                                                                   |
 | API            | `POST /api/portal/documents/upload`, `GET /api/portal/files/[fileId]/download`                                                                                                                                                |
-| Library        | `lib/portal/{context,schemas,service,types}.ts`; `lib/portal/context.ts` resolves `Member.clientId`                                                                                                                           |
+| Library        | `@workspace/portal` (`context`, `schemas`, `repository`, `service`, `runtime`, `types`, `components/*`); `apps/web/lib/portal/index.ts` binds Prisma, storage, files, projects, meetings, Better Auth, audit and notifications |
 | Models         | `PortalInvite`, `Member.clientId` (identity); `Client` (clients); `Project`, `Task`, `ProjectMessage`, `TaskComment` (projects); `FileNode` (files)                                                                           |
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
-| Audit          | portal message/task-comment mutations currently write no `AuditLog` row; #190 must preserve that behavior or add a deliberate action                                                                                          |
-| Tests          | `e2e/member-rbac.spec.ts`, `verify:authorization`, `verify:data-export`, `verify:organization-deletion`                                                                                                                       |
+| Audit          | portal document upload writes `client.document.linked`; portal message/task-comment mutations still write no `AuditLog` row; #190 must preserve that behavior or add a deliberate action                                      |
+| Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `e2e/member-rbac.spec.ts`, `verify:portal`, `verify:data-export`, `verify:organization-deletion`                     |
+
+### Package layout (#158)
+
+| Module                             | Exports                                                                                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/portal/src/types.ts`     | `PortalContext`, dashboard, project, task, document, access and download types                                                                     |
+| `packages/portal/src/context.ts`   | `requirePortalContext`, `isPortalContext`, `requirePortalManager`, `requireInternalMember`                                                         |
+| `packages/portal/src/schemas.ts`   | Zod inputs for invitations, revocation, claim, project messages and task comments                                                                  |
+| `packages/portal/src/deps.ts`      | Ports: storage, files, collaboration (projects thread/comments), meetings, Better Auth invitations, audit and notifications                          |
+| `packages/portal/src/repository.ts`| `PortalRepository` over the structural `PortalDb` port                                                                                             |
+| `packages/portal/src/service.ts`   | `PortalService`: dashboard, project/task reads, documents, upload/download, seen state, access management and meetings                              |
+| `packages/portal/src/runtime.ts`   | `createPortalRuntime` binds db + storage + files + collaboration + meetings + invitations + audit + notifications                                  |
+| `packages/portal/src/components/*` | Portal header/nav, seen tracker, upload, discussion, task comments and meetings UI; actions come through `PortalActions`                           |
+| `apps/web/lib/portal/index.ts`     | Adapter: binds Prisma, `@workspace/storage`, `@workspace/files`, `@workspace/projects`, `@workspace/meetings`, Better Auth, audit and notifications |
+| `apps/web/lib/portal/context.ts`   | Adapter: resolves `Member.clientId` from Copilot's Better Auth session (`getPortalContext` / `isPortalMember`)                                     |
+
+### Routes
+
+| Route                                                  | Kind   | Inventory                                                                                                                  |
+| ------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `/[locale]/portal`                                     | Page   | `portal/page.tsx`; `portalService.getDashboard` → project progress and shared documents                                     |
+| `/[locale]/portal/layout`                              | Layout | `portal/layout.tsx`; session + `getPortalContext` guard, appearance provider and `PortalActionsProvider`                   |
+| `/[locale]/portal/documents`                           | Page   | `portal/documents/page.tsx`; `portalService.getDocuments` → `PortalUpload`                                                  |
+| `/[locale]/portal/meetings`                            | Page   | `portal/meetings/page.tsx`; `portalService.getMeetings` → `PortalMeetings`                                                  |
+| `/[locale]/portal/projects/[projectId]`                | Page   | `portal/projects/[projectId]/page.tsx`; `portalService.getProject` + `listMessages` → `PortalDiscussion`                   |
+| `/[locale]/portal/projects/[projectId]/tasks/[taskId]` | Page   | `portal/.../tasks/[taskId]/page.tsx`; `portalService.getTaskDetail` → `PortalTaskComments`                                 |
+| `POST /api/portal/documents/upload`                    | API    | `app/api/portal/documents/upload/route.ts`; `portalService.uploadDocument` (25 MB cap, quota, client-visible link, audit)   |
+| `GET /api/portal/files/[fileId]/download`              | API    | `app/api/portal/files/[fileId]/download/route.ts`; `portalService.openDocument` (client-visible link + large-object stream) |
 
 ## Internal API map
 
@@ -531,6 +562,7 @@ Never bake secrets into an image.
 | Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                                                                                                                     |
 | Unit — Clients/Employees  | `packages/clients/src/{access,import-export}.unit.test.ts` (role permissions, CSV export); `packages/employees/src/{access,exports}.unit.test.ts` (role/validator permissions, leave and audit exports)                                                        |
 | Unit — Messaging          | `packages/messaging/src/service.unit.test.ts` (membership, unread state, threads, attachment upload/download, cross-org authorization)                                                                                                                         |
+| Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
@@ -638,7 +670,8 @@ phase issues rather than fixed in #146.
    `@workspace/calendars` and meeting tools `@workspace/meetings` through the
    app adapters. All of them still run inside Copilot instead of the domain
    internal API (#190).
-3. The portal service reads project/files data in-process.
+3. The portal service (`@workspace/portal`) reads project/files/meeting data
+   in-process through its injected ports.
 4. Search, export and deletion handlers exist in packages but only Copilot's
    audit/identity endpoints are wired; domain endpoints arrive with each app.
 5. The control tower still uses the identity database for its own auth tables.

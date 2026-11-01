@@ -1,0 +1,57 @@
+{
+  "name": "@workspace/portal",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@workspace/audit": "*",
+    "@workspace/core": "*",
+    "@workspace/db": "*",
+    "@workspace/i18n": "*",
+    "@workspace/meetings": "*",
+    "@workspace/notifications": "*",
+    "@workspace/organization": "*",
+    "@workspace/projects": "*",
+    "@workspace/storage": "*",
+    "@workspace/ui": "*",
+    "lucide-react": "^1.61.0",
+    "next-intl": "^4.14.9",
+    "react": "19.3.1",
+    "sonner": "^2.0.8",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.13.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./context": "./src/context.ts",
+    "./deps": "./src/deps.ts",
+    "./repository": "./src/repository.ts",
+    "./runtime": "./src/runtime.ts",
+    "./schemas": "./src/schemas.ts",
+    "./service": "./src/service.ts",
+    "./types": "./src/types.ts",
+    "./components/actions": "./src/components/actions.tsx",
+    "./components/portal-discussion": "./src/components/portal-discussion.tsx",
+    "./components/portal-header": "./src/components/portal-header.tsx",
+    "./components/portal-meetings": "./src/components/portal-meetings.tsx",
+    "./components/portal-nav": "./src/components/portal-nav.tsx",
+    "./components/portal-seen-tracker": "./src/components/portal-seen-tracker.tsx",
+    "./components/portal-task-comments": "./src/components/portal-task-comments.tsx",
+    "./components/portal-upload": "./src/components/portal-upload.tsx"
+  }
+}

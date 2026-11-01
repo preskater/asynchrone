@@ -13,6 +13,7 @@ export default createNextConfig({
     "@workspace/contracts",
     "@workspace/files",
     "@workspace/messaging",
+    "@workspace/portal",
     "@workspace/sagas",
     "@workspace/search",
     "@workspace/db-core",

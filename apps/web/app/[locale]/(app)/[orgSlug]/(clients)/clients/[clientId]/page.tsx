@@ -9,7 +9,7 @@ import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import { isAppError } from "@workspace/core/errors"
 import { clientsService } from "@/lib/clients"
 import { portalService } from "@/lib/portal"
-import type { PortalAccessData } from "@/lib/portal/types"
+import type { PortalAccessData } from "@workspace/portal/types"
 import { prisma } from "@/lib/prisma"
 
 export default async function ClientDetailPage({
@@ -57,7 +57,9 @@ export default async function ClientDetailPage({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">{t("clientsTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("clientsDescription")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("clientsDescription")}
+        </p>
       </div>
       <ClientDetail orgSlug={orgSlug} data={data} portal={portal} />
     </div>
