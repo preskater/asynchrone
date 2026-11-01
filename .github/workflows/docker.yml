@@ -23,6 +23,14 @@ jobs:
             suffix: "-projects"
             target: runner
             cacheScope: projects
+          - app: calendars
+            suffix: "-calendars"
+            target: runner
+            cacheScope: calendars
+          - app: files
+            suffix: "-files"
+            target: runner
+            cacheScope: files
           - app: messages
             suffix: "-messages"
             target: runner

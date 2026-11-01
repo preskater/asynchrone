@@ -18,6 +18,10 @@ const LOCALES = new Set<string>(routing.locales)
 const MOVED_SECTIONS: Partial<Record<string, AppKey>> = {
   // Projects moved in #160.
   projects: "projects",
+  // Calendars (with meetings) and files (with the upload/download APIs) moved
+  // in #161.
+  calendars: "calendars",
+  files: "files",
   // Messaging moved in #162.
   messages: "messages",
 }

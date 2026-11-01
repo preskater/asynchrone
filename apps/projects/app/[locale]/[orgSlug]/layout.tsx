@@ -73,6 +73,8 @@ export default async function OrgLayout({
                     orgSlug={orgSlug}
                     copilotUrl={copilotUrl}
                     messagesUrl={messagesUrl}
+                    calendarsUrl={appOrigin("calendars")}
+                    filesUrl={appOrigin("files")}
                   />
                 }
                 banners={

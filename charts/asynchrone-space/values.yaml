@@ -230,6 +230,95 @@ asynchrone-space-messages:
     existingSecret: asynchrone-space-messages-secrets
 
 # ---------------------------------------------------------------------------
+# Domain app: calendars and meetings (#161). Own image, own chart.
+# ---------------------------------------------------------------------------
+asynchrone-space-calendars:
+  enabled: true
+
+  # Release `asynchrone-space` yields the resources `asynchrone-space-calendars-*`.
+  nameOverride: calendars
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-calendars
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: calendars.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: calendars-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - calendars.copilot.asynchrone.space
+
+  config:
+    CALENDARS_APP_URL: https://calendars.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-calendars-secrets
+
+# ---------------------------------------------------------------------------
+# Domain app: files (#161). Own image, own chart and the uploads-sweep CronJob.
+# ---------------------------------------------------------------------------
+asynchrone-space-files:
+  enabled: true
+
+  # Release `asynchrone-space` yields the resources `asynchrone-space-files-*`.
+  nameOverride: files
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-files
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      # Chunked uploads send large request bodies.
+      nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    hosts:
+      - host: files.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: files-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - files.copilot.asynchrone.space
+
+  config:
+    FILES_APP_URL: https://files.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-files-secrets
+
+  # Moved from the Copilot chart in #161; the schedule and CRON_SECRET are
+  # unchanged.
+  cronjobs:
+    uploadsSweep:
+      enabled: true
+      schedule: "0 3 * * *"
+      path: /api/files/uploads/sweep
+
+# ---------------------------------------------------------------------------
 # Internal control tower
 # ---------------------------------------------------------------------------
 asynchrone-space-control-tower:

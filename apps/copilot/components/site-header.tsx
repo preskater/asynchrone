@@ -5,6 +5,7 @@ import { SearchIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { AppSwitcher } from "@/components/app-switcher"
+import type { DomainAppUrls } from "@/components/app-sidebar"
 import { CommandMenu } from "@/components/command-menu"
 import { NavUser } from "@/components/nav-user"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -43,17 +44,14 @@ function usePageTitle(orgSlug: string, pathname: string) {
 
 export function SiteHeader({
   orgSlug,
-  projectsUrl,
-  messagesUrl,
+  domainApps,
   user,
   activeOrganizationId,
   notifications,
 }: {
   orgSlug: string
-  /** Origin of the projects app (its own image and chart since #160). */
-  projectsUrl: string
-  /** Origin of the messages app (its own image and chart since #162). */
-  messagesUrl: string
+  /** Origins of the domain apps that own their own host (#160–#162). */
+  domainApps: DomainAppUrls
   user: {
     name: string
     email: string
@@ -96,11 +94,7 @@ export function SiteHeader({
           orientation="vertical"
           className="mx-2 h-4 data-vertical:self-auto"
         />
-        <AppSwitcher
-          orgSlug={orgSlug}
-          projectsUrl={projectsUrl}
-          messagesUrl={messagesUrl}
-        />
+        <AppSwitcher orgSlug={orgSlug} domainApps={domainApps} />
         <Separator
           orientation="vertical"
           className="mx-2 hidden h-4 sm:block data-vertical:self-auto"
@@ -133,8 +127,7 @@ export function SiteHeader({
       </div>
       <CommandMenu
         orgSlug={orgSlug}
-        projectsUrl={projectsUrl}
-        messagesUrl={messagesUrl}
+        domainApps={domainApps}
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
       />

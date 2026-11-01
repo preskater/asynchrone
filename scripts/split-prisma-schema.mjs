@@ -99,6 +99,8 @@ const DATABASES = {
       "MeetingSettings",
       "MeetingRequest",
       "MeetingSlot",
+      // The app-local relying-party session (#161).
+      "OidcSession",
     ],
   },
   files: {
@@ -110,6 +112,8 @@ const DATABASES = {
       "FileShare",
       "FileVersion",
       "FileActivity",
+      // The app-local relying-party session (#161).
+      "OidcSession",
     ],
   },
   messages: {

@@ -10,43 +10,28 @@ import { resolveWorkspace } from "@workspace/app-shell/resolve-workspace"
 import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { TrialBanner } from "@workspace/app-shell/trial-banner"
 import { AppSidebar } from "@/components/app-sidebar"
-import { FilesShellProvider } from "@/components/files-provider"
 import { SiteHeader } from "@/components/site-header"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getOrganizationAppearance } from "@/lib/appearance/service"
-import { CalendarsProvider } from "@/lib/calendars/store"
-import type { CalendarData } from "@workspace/calendars/types"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
-import type { FilesData } from "@workspace/files/types"
 import { notificationService } from "@/lib/notifications"
 import { mustEnrollTwoFactor } from "@/lib/organization/two-factor-policy"
 import { getOrganizationShell } from "@/lib/organization/shell"
 import { getTrialStatus } from "@/lib/organization/trial-service"
 import { EntitlementsProvider } from "@/lib/organization/use-entitlements"
 import { isPortalMember } from "@/lib/portal/context"
-import { WorkspaceNavProvider } from "@/lib/workspace-nav/store"
-import { toMemberDirectoryEntry } from "@workspace/organization/directory"
 import { appOrigin } from "@workspace/contracts/server"
-
-/** Domain screens hydrate their own data; the shell starts empty. */
-const EMPTY_CALENDAR_DATA: CalendarData = { calendars: [], events: [] }
-const EMPTY_FILES_DATA: FilesData = {
-  files: [],
-  shares: {},
-  versions: {},
-  activities: {},
-}
 
 /**
  * The Copilot workspace shell.
  *
- * The project screens moved to `apps/projects` (#160) and the messaging
- * screens to `apps/messages` (#162): this shell renders neither. The member
- * directory comes from the identity database Copilot owns and feeds the files
- * and calendar providers.
+ * The project screens moved to `apps/projects` (#160), calendars/meetings and
+ * files to `apps/calendars` and `apps/files` (#161) and messaging to
+ * `apps/messages` (#162). This shell renders the assistant, clients and
+ * employees — it mounts no project, calendar, files or messaging provider.
  */
 export default async function AppLayout({
   children,
@@ -68,24 +53,22 @@ export default async function AppLayout({
   const { session, organization } = workspace
   const ctx = await getRequestContextForOrganization(organization.id)
   const t = await getTranslations("Common")
-  const projectsUrl = appOrigin("projects")
-  const messagesUrl = appOrigin("messages")
+  const domainApps = {
+    projects: appOrigin("projects"),
+    messages: appOrigin("messages"),
+    calendars: appOrigin("calendars"),
+    files: appOrigin("files"),
+  }
 
-  const [notificationData, appearance, trial, shell, memberRows] =
-    await Promise.all([
-      notificationService.list(ctx),
-      getOrganizationAppearance(organization.id),
-      getTrialStatus(organization.id),
-      getOrganizationShell(organization.id),
-      prisma.member.findMany({
-        where: { organizationId: organization.id, clientId: null },
-        include: { user: true },
-        orderBy: { createdAt: "asc" },
-      }),
-    ])
+  const [notificationData, appearance, trial, shell] = await Promise.all([
+    notificationService.list(ctx),
+    getOrganizationAppearance(organization.id),
+    getTrialStatus(organization.id),
+    getOrganizationShell(organization.id),
+  ])
   if (!shell) redirect("/onboarding")
 
-  const { entitlements, storageQuotaBytes, deletionScheduledAt } = shell
+  const { entitlements, deletionScheduledAt } = shell
   if (
     mustEnrollTwoFactor({
       required: shell.requireTwoFactor,
@@ -97,77 +80,48 @@ export default async function AppLayout({
     redirect("/two-factor/setup")
   }
 
-  // Organization members never carry the client role; the directory type keeps
-  // it for portal rows, so normalize it for the workspace providers.
-  const members = memberRows.map(toMemberDirectoryEntry).map((member) => ({
-    id: member.id,
-    name: member.name,
-    email: member.email,
-    avatarUrl: member.avatarUrl,
-    role: (member.role === "client" ? "member" : member.role) as
-      "owner" | "admin" | "member" | "viewer",
-  }))
-
   return (
     <TooltipProvider>
       <EntitlementsProvider entitlements={entitlements}>
         <AppearanceProvider initialAppearance={appearance} userId={ctx.userId}>
           <RecentsProvider organizationId={organization.id}>
-            <CalendarsProvider
-              initialData={EMPTY_CALENDAR_DATA}
-              currentUserId={ctx.userId}
-              members={members}
+            <WorkspaceShell
+              skipLabel={t("skipToContent")}
+              sidebar={
+                <AppSidebar
+                  variant="inset"
+                  orgSlug={organization.slug}
+                  domainApps={domainApps}
+                />
+              }
+              banners={
+                <>
+                  {session.session.impersonatedBy ? (
+                    <ImpersonationBanner name={session.user.name} />
+                  ) : null}
+                  {deletionScheduledAt ? (
+                    <DeletionBanner
+                      scheduledAt={deletionScheduledAt}
+                      orgSlug={organization.slug}
+                    />
+                  ) : null}
+                  {trial?.state === "active" ? (
+                    <TrialBanner daysLeft={trial.daysLeft} />
+                  ) : null}
+                </>
+              }
+              header={
+                <SiteHeader
+                  orgSlug={organization.slug}
+                  domainApps={domainApps}
+                  user={session.user}
+                  activeOrganizationId={organization.id}
+                  notifications={notificationData}
+                />
+              }
             >
-              <WorkspaceNavProvider>
-                <FilesShellProvider
-                  initialData={EMPTY_FILES_DATA}
-                  currentUserId={ctx.userId}
-                  organizationId={organization.id}
-                  storageQuotaBytes={storageQuotaBytes}
-                  members={members}
-                >
-                  <WorkspaceShell
-                    skipLabel={t("skipToContent")}
-                    sidebar={
-                      <AppSidebar
-                        variant="inset"
-                        orgSlug={organization.slug}
-                        projectsUrl={projectsUrl}
-                        messagesUrl={messagesUrl}
-                      />
-                    }
-                    banners={
-                      <>
-                        {session.session.impersonatedBy ? (
-                          <ImpersonationBanner name={session.user.name} />
-                        ) : null}
-                        {deletionScheduledAt ? (
-                          <DeletionBanner
-                            scheduledAt={deletionScheduledAt}
-                            orgSlug={organization.slug}
-                          />
-                        ) : null}
-                        {trial?.state === "active" ? (
-                          <TrialBanner daysLeft={trial.daysLeft} />
-                        ) : null}
-                      </>
-                    }
-                    header={
-                      <SiteHeader
-                        orgSlug={organization.slug}
-                        projectsUrl={projectsUrl}
-                        messagesUrl={messagesUrl}
-                        user={session.user}
-                        activeOrganizationId={organization.id}
-                        notifications={notificationData}
-                      />
-                    }
-                  >
-                    {children}
-                  </WorkspaceShell>
-                </FilesShellProvider>
-              </WorkspaceNavProvider>
-            </CalendarsProvider>
+              {children}
+            </WorkspaceShell>
           </RecentsProvider>
         </AppearanceProvider>
       </EntitlementsProvider>

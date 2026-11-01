@@ -8,15 +8,10 @@ test("core routes have no serious accessibility violations", async ({
 }) => {
   const slug = await signUp(page)
 
-  // Projects moved to its own host in #160 and messages in #162; the Copilot
-  // shell no longer renders them (the old paths 308-redirect).
-  const routes = [
-    `/${slug}`,
-    `/${slug}/files`,
-    `/${slug}/calendars`,
-    `/${slug}/search`,
-    `/${slug}/settings`,
-  ]
+  // Projects (#160), calendars/files (#161) and messages (#162) moved to their
+  // own hosts; the Copilot shell no longer renders them (the old paths
+  // 308-redirect) and their own suites cover accessibility.
+  const routes = [`/${slug}`, `/${slug}/search`, `/${slug}/settings`]
 
   for (const route of routes) {
     await page.goto(route)

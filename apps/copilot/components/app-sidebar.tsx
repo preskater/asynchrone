@@ -16,11 +16,9 @@ import {
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
-import { FilesSidebar } from "@workspace/files/components/files-sidebar"
 import { NavMain, type NavApp } from "@workspace/app-shell/nav-main"
 import { NavSecondary } from "@workspace/ui/components/nav-secondary"
-import { Link, usePathname } from "@workspace/i18n/navigation"
+import { Link } from "@workspace/i18n/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -31,13 +29,27 @@ import {
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
+/**
+ * Origins of the domain apps that own their own host.
+ *
+ * They are resolved on the server (from the deployment environment) and passed
+ * down, so a client component never reads `process.env`.
+ */
+export interface DomainAppUrls {
+  projects: string
+  messages: string
+  calendars: string
+  files: string
+}
+
 export function useNavMain(
   orgSlug: string,
-  projectsUrl: string,
-  messagesUrl: string
+  domainApps: DomainAppUrls
 ): NavApp[] {
   const t = useTranslations("Sidebar")
   const locale = useLocale()
+  const domainUrl = (origin: string, path: string) =>
+    `${origin}/${locale}/${orgSlug}${path}`
   return [
     {
       title: t("assistant"),
@@ -48,7 +60,7 @@ export function useNavMain(
       key: "projects",
       title: t("projects"),
       // Projects is its own app since #160; link to its host.
-      url: `${projectsUrl}/${locale}/${orgSlug}/projects`,
+      url: domainUrl(domainApps.projects, "/projects"),
       icon: <FolderIcon />,
       external: true,
     },
@@ -56,21 +68,25 @@ export function useNavMain(
       key: "messages",
       title: t("messages"),
       // Messages is its own app since #162; link to its host.
-      url: `${messagesUrl}/${locale}/${orgSlug}/messages`,
+      url: domainUrl(domainApps.messages, "/messages"),
       icon: <MessageSquareIcon />,
       external: true,
     },
     {
       key: "calendars",
       title: t("calendars"),
-      url: `/${orgSlug}/calendars`,
+      // Calendars and meetings moved to their own app in #161.
+      url: domainUrl(domainApps.calendars, "/calendars"),
       icon: <CalendarIcon />,
+      external: true,
     },
     {
       key: "files",
       title: t("files"),
-      url: `/${orgSlug}/files`,
+      // Files and the upload/download APIs moved to their own app in #161.
+      url: domainUrl(domainApps.files, "/files"),
       icon: <FileIcon />,
+      external: true,
     },
     {
       title: t("clients"),
@@ -114,40 +130,15 @@ export function useNavSecondary(orgSlug: string) {
 
 export function AppSidebar({
   orgSlug,
-  projectsUrl,
-  messagesUrl,
+  domainApps,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   orgSlug: string
-  /** Origin of the projects app (its own image and chart since #160). */
-  projectsUrl: string
-  /** Origin of the messages app (its own image and chart since #162). */
-  messagesUrl: string
+  /** Origins of the domain apps that own their own host (#160–#162). */
+  domainApps: DomainAppUrls
 }) {
-  const pathname = usePathname()
-  const navMain = useNavMain(orgSlug, projectsUrl, messagesUrl)
+  const navMain = useNavMain(orgSlug, domainApps)
   const navSecondary = useNavSecondary(orgSlug)
-
-  const prefix = `/${orgSlug}`
-  const relative = pathname.startsWith(prefix)
-    ? pathname.slice(prefix.length)
-    : pathname
-
-  const contextual =
-    relative === "/files" || relative.startsWith("/files/") ? (
-      <FilesSidebar />
-    ) : relative === "/calendars" || relative.startsWith("/calendars/") ? (
-      <CalendarsSidebar />
-    ) : null
-
-  if (contextual) {
-    return (
-      <Sidebar collapsible="offcanvas" {...props}>
-        <SidebarContent>{contextual}</SidebarContent>
-        <SidebarRail />
-      </Sidebar>
-    )
-  }
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -165,7 +156,11 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} orgSlug={orgSlug} messagesUrl={messagesUrl} />
+        <NavMain
+          items={navMain}
+          orgSlug={orgSlug}
+          messagesUrl={domainApps.messages}
+        />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

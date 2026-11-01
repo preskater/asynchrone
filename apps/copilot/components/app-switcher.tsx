@@ -3,7 +3,7 @@
 import { ChevronsUpDownIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { useNavMain } from "@/components/app-sidebar"
+import { useNavMain, type DomainAppUrls } from "@/components/app-sidebar"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -18,16 +18,14 @@ import { Link, usePathname } from "@workspace/i18n/navigation"
 
 export function AppSwitcher({
   orgSlug,
-  projectsUrl,
-  messagesUrl,
+  domainApps,
 }: {
   orgSlug: string
-  projectsUrl: string
-  messagesUrl: string
+  domainApps: DomainAppUrls
 }) {
   const t = useTranslations("Sidebar")
   const pathname = usePathname()
-  const items = useNavMain(orgSlug, projectsUrl, messagesUrl)
+  const items = useNavMain(orgSlug, domainApps)
 
   const current =
     [...items]

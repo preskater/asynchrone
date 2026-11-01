@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server"
 
+import { appOrigin } from "@workspace/contracts/server"
+
 import type { CheckoutReturn } from "@/components/billing/billing-panel"
 import { DataExportCard } from "@/components/organization/data-export-card"
 import { OrganizationSettings } from "@/components/organization/organization-settings"
@@ -42,11 +44,13 @@ export default async function SettingsPage({
         </p>
       </div>
       <TrialCard />
+      {/* Meeting settings moved with calendars (#161); the tab links there. */}
       <OrganizationSettings
         checkout={checkout}
         deletionScheduledAt={deletionScheduledAt}
         twoFactorPolicy={twoFactorPolicy}
         exportCard={<DataExportCard />}
+        calendarsUrl={appOrigin("calendars")}
       />
     </div>
   )

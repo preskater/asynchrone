@@ -1,8 +1,9 @@
 # Domain app template
 
-`apps/projects` is the pilot for the domain-app split (#160) and `apps/messages`
-is the second app (#162). This document is the checklist for the next apps
-(`calendars` and `files` #161, `clients`/`employees` #163–#164): copy the shape,
+`apps/projects` is the pilot for the domain-app split (#160); `apps/calendars`
+and `apps/files` followed in #161 and `apps/messages` in #162. This document is
+the checklist for the next apps (`clients`/`employees` #163–#164): copy the
+shape,
 not the code.
 
 Architecture and ownership: [domain-apps.md](./architecture/domain-apps.md),
@@ -103,13 +104,18 @@ Copilot only redirects to a registered customer origin and only to its
 ## Databases
 
 Each app owns one `@workspace/db-<domain>` package and imports only that. The
-pilot is transitional: `@workspace/projects` still reads `member`/`user`/
-`account`, so `apps/projects` binds `@workspace/db` (the shared client) until
-#190. It imports exactly one database package and `check:boundaries` passes.
+pilot and the #161 apps are transitional: their domain packages still read
+`member`/`user`/`account` (and, for calendars/files, the shared
+`rateLimit`/notification tables, the project task overlay and message
+attachments), so `apps/projects`, `apps/calendars` and `apps/files` bind
+`@workspace/db` (the shared client) until #190/#171. Each imports exactly one
+database package, `check:boundaries` passes, and their own schema already
+carries `oidcSession`, `auditLog` and the domain models.
 
-New apps should bind their own package from the start. When a domain package
-still reads identity tables, keep `ProjectDb`-style ports explicit and list the
-gap in [feature-inventory.md](./architecture/feature-inventory.md) rather than
+A new app should bind its own package when every port it needs is satisfied by
+that schema. When a domain package still reads identity tables, keep
+`ProjectDb`-style ports explicit and list the gap in
+[feature-inventory.md](./architecture/feature-inventory.md) rather than
 importing a second database client.
 
 ## Environment
@@ -163,9 +169,14 @@ still render the moved screens.
 
 ## Known gaps for the pilot
 
-- The projects domain's identity reads (`member`, `user`, `account`) move behind
-  the identity internal API in #190/#171; until then the app runs on the shared
-  database.
+- The projects, calendars and files domain identity reads (`member`, `user`,
+  `account`, `session`, and the calendars task overlay / files message
+  attachments) move behind the identity internal API in #190/#171; until then
+  those apps run on the shared database with their own `oidcSession` table
+  already migrated.
+- Meeting settings moved with calendars: they render at
+  `/{locale}/{orgSlug}/calendars/settings`, and Copilot's organization settings
+  tab links there.
 - Repository webhook delivery stays on Copilot (`/api/webhooks/repositories/:id`)
   so existing GitHub/GitLab hooks keep working; the sync UI and its actions moved.
 - The assistant, MCP and portal keep using the in-process projects adapter in

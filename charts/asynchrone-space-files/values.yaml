@@ -1,0 +1,178 @@
+# Default values for the Asynchrone Space files app, a domain app served at
+# files.copilot.asynchrone.space. It signs in through Copilot with @workspace/oidc
+# and has its own image and chart (#161).
+#
+# The umbrella chart (charts/asynchrone-space) overrides these values for a full
+# production release. Every value here is safe to override with `--set` or a
+# values file.
+
+# Propagated by the umbrella chart. `global.imageTag` lets one tag pin every
+# Asynchrone Space image in the release.
+global:
+  imageTag: ""
+  imagePullSecrets: []
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/preskater/asynchrone-space-files
+  # Falls back to global.imageTag. One of the two must be set.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+containerPort: 3000
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+  hosts:
+    - host: files.copilot.asynchrone.space
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: files-copilot-asynchrone-space-tls
+    #   hosts:
+    #     - files.copilot.asynchrone.space
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: ""
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Requests/limits deliberately empty: set them per cluster.
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    # Checks the database as well as the server.
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+terminationGracePeriodSeconds: 30
+
+# Non-secret runtime configuration. Rendered into a ConfigMap and consumed
+# with envFrom. Empty values are omitted so the app's own defaults apply.
+config:
+  # The files app's own origin: the OIDC redirect URI, post-logout URI and
+  # back-channel logout URL are derived from it.
+  FILES_APP_URL: http://localhost:3006
+  # Copilot is the OIDC issuer and identity server.
+  COPILOT_APP_URL: http://localhost:3003
+  # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
+  DATABASE_POOL_MAX: "10"
+  # Headers a proxy overwrites; audit rows store the client address from them.
+  TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  DEPLOY_ENV: production
+
+# Existing Secret containing DATABASE_URL, FILES_OAUTH_CLIENT_ID and
+# FILES_OAUTH_CLIENT_SECRET (from the provisioned client manifest).
+# Until #190 the domain still reads identity tables, so DATABASE_URL is the
+# same database as Copilot's. The chart never creates or stores secrets.
+secret:
+  existingSecret: asynchrone-space-files-secrets
+
+# Least-privilege network policy. Disabled by default so an existing cluster
+# keeps working; enable it after reviewing the ingress controller and database
+# namespaces for your installation.
+networkPolicy:
+  enabled: false
+  # Who may reach the HTTP port. Defaults to the common ingress-nginx namespace.
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  # Restrict the database destination to its namespace or ipBlock.
+  databaseFrom: []
+  databasePort: 5432
+
+extraEnv: []
+extraEnvFrom: []
+extraVolumes: []
+extraVolumeMounts: []
+
+# The `uploads-sweep` CronJob moved here from the Copilot chart in #161: it
+# unlinks large objects of upload sessions that were never completed. The
+# Secret holding CRON_SECRET defaults to `secret.existingSecret`.
+cronjobs:
+  image: curlimages/curl:8.16.0
+  secretName: ""
+  timeoutSeconds: 60
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 300
+  uploadsSweep:
+    enabled: true
+    schedule: "0 3 * * *"
+    path: /api/files/uploads/sweep
+
+# The Next.js server writes its incremental/image cache here at runtime. Keep
+# it on an emptyDir because the container root filesystem is read-only.
+cache:
+  mountPath: /usr/src/asynchrone-space/apps/files/.next/cache
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+tests:
+  image: busybox:1.37.0

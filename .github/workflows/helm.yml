@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for chart in asynchrone-space-landing asynchrone-space-copilot asynchrone-space-projects asynchrone-space-messages asynchrone-space-control-tower; do
+          for chart in asynchrone-space-landing asynchrone-space-copilot asynchrone-space-projects asynchrone-space-calendars asynchrone-space-files asynchrone-space-messages asynchrone-space-control-tower; do
             set -- charts/asynchrone-space/charts/"${chart}"-*.tgz
             if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
               echo "Expected exactly one vendored archive for ${chart}" >&2

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Building2Icon, MailIcon, UsersIcon } from "lucide-react"
 
 import { AuditLogPanel } from "@/components/audit/audit-log-panel"
@@ -12,7 +12,6 @@ import {
   type CheckoutReturn,
 } from "@/components/billing/billing-panel"
 import { OrganizationAppearanceForm } from "@/components/appearance/organization-appearance-form"
-import { MeetingSettingsForm } from "@/components/meetings/meeting-settings-form"
 import { OrganizationDangerZone } from "@/components/organization/danger-zone"
 import { InvitationsTable } from "@/components/organization/invitations-table"
 import { InviteMemberDialog } from "@/components/organization/invite-member-dialog"
@@ -22,6 +21,7 @@ import {
   TwoFactorPolicyCard,
   type TwoFactorPolicy,
 } from "@/components/organization/two-factor-policy-card"
+import { Button } from "@workspace/ui/components/button"
 import {
   Card,
   CardContent,
@@ -64,6 +64,7 @@ export function OrganizationSettings({
   deletionScheduledAt,
   twoFactorPolicy,
   exportCard,
+  calendarsUrl,
 }: {
   checkout?: CheckoutReturn
   deletionScheduledAt: Date | null
@@ -71,11 +72,14 @@ export function OrganizationSettings({
   twoFactorPolicy: TwoFactorPolicy | null
   /** Server-rendered, owner-only data export card for the General tab. */
   exportCard?: React.ReactNode
+  /** Origin of the calendars app, which owns the meeting settings (#161). */
+  calendarsUrl: string
 }) {
   const t = useTranslations("Org")
   const tAudit = useTranslations("Audit")
   const tAppearance = useTranslations("Appearance")
   const tMeetings = useTranslations("MeetingRequests")
+  const locale = useLocale()
   const permissions = useOrgPermissions()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -177,7 +181,27 @@ export function OrganizationSettings({
       </TabsContent>
 
       <TabsContent value="meetings">
-        <MeetingSettingsForm />
+        <Card>
+          <CardHeader>
+            <CardTitle>{tMeetings("settingsTitle")}</CardTitle>
+            <CardDescription>
+              {tMeetings("settingsDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <a
+                  href={`${calendarsUrl}/${locale}/${organization.slug}/calendars/settings`}
+                />
+              }
+            >
+              {tMeetings("openSettings")}
+            </Button>
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="members" className="flex flex-col gap-4">

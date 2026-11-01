@@ -33,7 +33,7 @@ Required secrets:
   - {{ $ct.secret.existingSecret }} (DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET)
 
 Scheduled jobs (formerly Vercel crons):
-{{- range $job := list (dict "name" "uploads-sweep" "config" $copilot.cronjobs.uploadsSweep) (dict "name" "repository-sync" "config" $copilot.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" $copilot.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" $copilot.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" $copilot.cronjobs.auditRetention) (dict "name" "data-exports" "config" $copilot.cronjobs.dataExports) }}
+{{- range $job := list (dict "name" "repository-sync" "config" $copilot.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" $copilot.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" $copilot.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" $copilot.cronjobs.auditRetention) (dict "name" "data-exports" "config" $copilot.cronjobs.dataExports) }}
 {{- if $job.config.enabled }}
   - {{ $job.name }} {{ $job.config.schedule }} -> {{ $job.config.path }}
 {{- end }}

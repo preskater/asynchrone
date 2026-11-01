@@ -97,5 +97,7 @@
   "settingsSaved": "Paramètres des rendez-vous enregistrés.",
   "save": "Enregistrer",
   "saving": "Enregistrement…",
-  "readOnly": "Seuls les propriétaires et les administrateurs peuvent modifier ces paramètres."
+  "readOnly": "Seuls les propriétaires et les administrateurs peuvent modifier ces paramètres.",
+  "backToSettings": "Retour aux paramètres de l'espace",
+  "openSettings": "Ouvrir les paramètres des rendez-vous"
 }
