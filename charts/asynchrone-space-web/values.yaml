@@ -1,4 +1,6 @@
-# Default values for the customer-facing Asynchrone Space app.
+# Default values for the customer-facing Asynchrone Space app (the workspace
+# shell served at copilot.asynchrone.space; the public site lives in
+# charts/asynchrone-space-landing).
 #
 # The umbrella chart (charts/asynchrone-space) overrides these values for a full
 # production release. Every value here is safe to override with `--set` or a
@@ -61,14 +63,14 @@ ingress:
     # nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
   hosts:
-    - host: asynchrone.space
+    - host: copilot.asynchrone.space
       paths:
         - path: /
           pathType: Prefix
   tls: []
     # - secretName: asynchrone-space-tls
     #   hosts:
-    #     - asynchrone.space
+    #     - copilot.asynchrone.space
 
 autoscaling:
   enabled: false
@@ -110,8 +112,8 @@ terminationGracePeriodSeconds: 30
 # Non-secret runtime configuration. Rendered into a ConfigMap and consumed
 # with envFrom. Empty values are omitted so the app's own defaults apply.
 config:
-  BETTER_AUTH_URL: http://localhost:3000
-  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  BETTER_AUTH_URL: http://localhost:3003
+  NEXT_PUBLIC_APP_URL: http://localhost:3003
   CONTROL_TOWER_URL: http://localhost:3001
   DATABASE_POOL_MAX: "10"
   MCP_RESOURCE_URL: ""

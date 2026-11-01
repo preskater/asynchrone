@@ -49,12 +49,28 @@ services:
       - postgres-network
     restart: "no"
 
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: landing
+        # The landing links account actions to Copilot; in compose it runs on
+        # 3003.
+        NEXT_PUBLIC_WORKSPACE_URL: http://localhost:3003
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - postgres-network
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3002:3000"
+      - "3003:3000"
     # Load the app's .env so local `next dev` and this container share the same
     # BETTER_AUTH_SECRET: the JWKS signing keys stored in the database are
     # encrypted with it, and a different secret breaks MCP/OAuth token
@@ -66,7 +82,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
-      - BETTER_AUTH_URL=http://localhost:3002
+      - BETTER_AUTH_URL=http://localhost:3003
       - CONTROL_TOWER_URL=http://localhost:3001
     depends_on:
       postgres:
@@ -95,7 +111,7 @@ services:
       - NODE_ENV=production
       - CONTROL_TOWER_DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/asynchrone_control_tower?schema=public
       - BETTER_AUTH_URL=http://localhost:3001
-      - PLATFORM_APP_URL=http://localhost:3002
+      - PLATFORM_APP_URL=http://localhost:3003
     depends_on:
       postgres:
         condition: service_healthy

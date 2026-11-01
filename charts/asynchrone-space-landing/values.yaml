@@ -1,0 +1,131 @@
+# Default values for the public landing site (asynchrone.space).
+#
+# The landing is stateless: no database, no auth secret and no CronJobs. The
+# umbrella chart (charts/asynchrone-space) overrides these values for a full
+# production release.
+
+# Propagated by the umbrella chart. `global.imageTag` lets one tag pin every
+# Asynchrone Space image in the release.
+global:
+  imageTag: ""
+  imagePullSecrets: []
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/preskater/asynchrone-space-landing
+  # Falls back to global.imageTag. One of the two must be set.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+containerPort: 3000
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # Redirect www.asynchrone.space to the apex in the ingress controller, so
+    # a request never reaches the app. The Next.js config repeats the rule for
+    # deployments behind another proxy.
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+  hosts:
+    - host: asynchrone.space
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: asynchrone-space-tls
+    #   hosts:
+    #     - asynchrone.space
+    #     - www.asynchrone.space
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: ""
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Requests/limits deliberately empty: set them per cluster.
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  # The landing has no database: a successful page render is the whole check.
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+terminationGracePeriodSeconds: 30
+
+# Non-secret runtime configuration. The landing needs none: the Copilot origin
+# is compiled from NEXT_PUBLIC_WORKSPACE_URL at build time.
+config: {}
+
+extraEnv: []
+extraEnvFrom: []
+
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  # Only the ingress controller, DNS and public HTTPS (Sentry) — no database.
+  egressFrom: []
+
+nodeSelector: {}
+tolerations: {}
+affinity: {}
+
+cache:
+  mountPath: /usr/src/asynchrone-space/apps/landing/.next/cache
+
+tests:
+  image: busybox:1.37.0

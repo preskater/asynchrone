@@ -36,7 +36,7 @@ export type Entitlements = {
 const GB = 1024 * 1024 * 1024
 // $8 of AI spend per seat/month. Team lists at $12 monthly / $10 yearly, so a
 // seat keeps a 33% / 20% gross margin before infrastructure. Keep this below
-// the yearly price in `apps/web/lib/landing/content.ts` and `pricing.json`.
+// the yearly price in `apps/landing/lib/landing/content.ts` and `pricing.json`.
 const AI_BUDGET_PER_SEAT = 8_000_000
 
 const ENTITLEMENTS: Record<OrgPlan, Entitlements> = {

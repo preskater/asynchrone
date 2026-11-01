@@ -72,7 +72,7 @@ boot (`lib/env.ts`).
    (`event.data.object`), so they would be ignored.
 
    `localhost:3000` is `npm run dev`; under `docker compose` the web app is on
-   `localhost:3002`. The port must match `BETTER_AUTH_URL` (or
+   `localhost:3003`. The port must match `BETTER_AUTH_URL` (or
    `NEXT_PUBLIC_APP_URL` when set), because the same origin is used for the
    Checkout success/cancel URLs.
 
@@ -136,7 +136,7 @@ boot (`lib/env.ts`).
 
    `stripe listen` prints one line per delivery (`checkout.session.completed
 [200]`). No lines means nothing reached the app; check the forwarded URL
-   (3000 for `npm run dev`, 3002 for `docker compose`).
+   (3000 for `npm run dev`, 3003 for `docker compose`).
 
 ## Production checklist
 

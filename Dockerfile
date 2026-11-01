@@ -7,7 +7,8 @@ ARG WORKDIR=/usr/src/asynchrone-space
 # ---
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
 ARG WORKDIR
-# Workspace app to build: `web` (customer app) or `control-tower`.
+# Workspace app to build: `web` (customer app), `control-tower` or `landing`
+# (the stateless public site).
 ARG APP=web
 WORKDIR ${WORKDIR}
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -43,6 +44,10 @@ ENV BETTER_AUTH_URL=http://localhost:3000
 ENV CONTROL_TOWER_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV CONTROL_TOWER_BETTER_AUTH_SECRET=build-placeholder-control-tower-secret-not-used
 ENV PLATFORM_APP_URL=http://localhost:3000
+# Public Copilot origin inlined into the landing's browser bundle. Empty keeps
+# the production default (https://copilot.asynchrone.space).
+ARG NEXT_PUBLIC_WORKSPACE_URL=""
+ENV NEXT_PUBLIC_WORKSPACE_URL=${NEXT_PUBLIC_WORKSPACE_URL}
 # Public Sentry DSN, inlined into the browser bundle (empty disables Sentry).
 # The server reads SENTRY_DSN again at runtime from the deployment secret.
 ARG SENTRY_DSN=""

@@ -141,4 +141,5 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Organization roles, entitlements, shell and directory (#150)
 - [x] App shell and lazy domain hydration (#151)
 - [x] Cross-domain services: storage, notifications, integrations, AI, appearance, billing and audit (#152)
+- [x] Landing app extracted to `apps/landing` (#176)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

@@ -45,9 +45,31 @@ export function securityHeaders(
   ]
 }
 
+/** Packages every app in the monorepo transpiles by default. */
+const DEFAULT_WORKSPACE_PACKAGES = [
+  "@workspace/ui",
+  "@workspace/core",
+  "@workspace/ai",
+  "@workspace/app-shell",
+  "@workspace/appearance",
+  "@workspace/auth",
+  "@workspace/billing",
+  "@workspace/integrations",
+  "@workspace/i18n",
+  "@workspace/notifications",
+  "@workspace/organization",
+  "@workspace/storage",
+]
+
 export interface WorkspaceNextConfigOptions {
   /** Repo root, usually `path.join(projectRoot, "../..")`. */
   outputFileTracingRoot: string
+  /**
+   * Workspace packages to transpile. Defaults to every shared package an app
+   * may use; pass a smaller list for apps that must not depend on auth, the
+   * database or the workspace shell (the landing).
+   */
+  workspacePackages?: string[]
   transpilePackages?: string[]
   serverExternalPackages?: string[]
   redirects?: NextConfig["redirects"]
@@ -71,18 +93,7 @@ export function createNextConfig(
     output: "standalone",
     outputFileTracingRoot: options.outputFileTracingRoot,
     transpilePackages: [
-      "@workspace/ui",
-      "@workspace/core",
-      "@workspace/ai",
-      "@workspace/app-shell",
-      "@workspace/appearance",
-      "@workspace/auth",
-      "@workspace/billing",
-      "@workspace/integrations",
-      "@workspace/i18n",
-      "@workspace/notifications",
-      "@workspace/organization",
-      "@workspace/storage",
+      ...(options.workspacePackages ?? DEFAULT_WORKSPACE_PACKAGES),
       ...(options.transpilePackages ?? []),
     ],
     serverExternalPackages: options.serverExternalPackages,

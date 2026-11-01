@@ -69,6 +69,56 @@ jobs:
       - name: Unit tests
         run: npm run test:unit --workspace=web
 
+  # The landing must build with no database, no auth secret and no workspace
+  # package, so it gets its own job with an empty environment.
+  landing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck landing
+        run: npm run typecheck --workspace=landing
+
+      - name: Lint landing
+        run: npm run lint --workspace=landing
+
+      - name: Verify landing has no database or auth dependency
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs"
+          const pkg = JSON.parse(readFileSync("apps/landing/package.json", "utf8"))
+          const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
+          const forbidden = deps.filter(
+            (name) =>
+              /^@workspace\/(auth|sagas|service-auth)$/.test(name) ||
+              /^@workspace\/db(-|$)/.test(name) ||
+              /^(better-auth|prisma|@prisma\/)/.test(name)
+          )
+          if (forbidden.length > 0) {
+            console.error("landing must not depend on " + forbidden.join(", "))
+            process.exit(1)
+          }
+          NODE
+
+      - name: Build landing
+        run: npm run build --workspace=landing
+
+      - name: Legal copy parity
+        run: npm run verify:legal-copy --workspace=landing
+
   e2e:
     runs-on: ubuntu-latest
     permissions:

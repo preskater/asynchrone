@@ -13,29 +13,29 @@ questionnaire is a link rather than an email thread.
 | Data processing agreement (template to sign) | `/legal/dpa` | `dpa-{en,fr}.pdf` |
 | Sub-processor list | `/legal/subprocessors` | `subprocessors-{en,fr}.pdf` |
 
-PDFs are served from `apps/web/public/downloads/legal` and linked from every
+PDFs are served from `apps/landing/public/downloads/legal` and linked from every
 legal page and from the contact page's legal pack. The path avoids
 `/legal/*.pdf` on purpose: a file in `public` takes precedence over the
 `/legal/[slug]` route, so a dotted name there would shadow a document.
 
 ## Where the content lives
 
-- **Structure** — `apps/web/lib/landing/legal.ts` lists the sections and blocks
+- **Structure** — `apps/landing/lib/landing/legal.ts` lists the sections and blocks
   of each document (`p`, `list`, `table`, `pre`). A missing block renders
   nothing, so keep it in step with the copy.
 - **Copy** — `packages/i18n/messages/en/legal.json` and `fr/legal.json`, keyed by the
   identifiers in that structure. English is type-checked through
   `Messages = typeof en`; French is not, which is why the check below exists.
-- **Page chrome** — `apps/web/components/landing/legal-page.tsx`.
-- **Discovery** — the footer legal column in `apps/web/lib/landing/content.ts`,
+- **Page chrome** — `apps/landing/components/landing/legal-page.tsx`.
+- **Discovery** — the footer legal column in `apps/landing/lib/landing/content.ts`,
   the contact page pack, and `.github/ISSUE_TEMPLATE/config.yml`.
 
 ## Changing a document
 
 1. Edit the section list in `lib/landing/legal.ts` if the layout changes.
 2. Write the copy in **both** locales. Bump `updated` in both.
-3. Run `npm run verify:legal-copy --workspace=web`.
-4. Regenerate the PDFs: `npm run legal:pdfs --workspace=web` (needs Chromium;
+3. Run `npm run verify:legal-copy --workspace=landing`.
+4. Regenerate the PDFs: `npm run legal:pdfs --workspace=landing` (needs Chromium;
    `npx playwright install chromium` once).
 5. Commit the copy, the structure and the regenerated PDFs together — a PDF
    that disagrees with the page is worse than no PDF.

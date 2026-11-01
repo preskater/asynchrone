@@ -1,11 +1,15 @@
 apiVersion: v2
 name: asynchrone-space
-description: Umbrella chart for the Asynchrone Space customer app and control tower
+description: Umbrella chart for the Asynchrone Space landing, customer app and control tower
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.0.1"
 
 dependencies:
+  - name: asynchrone-space-landing
+    version: 0.1.0
+    repository: file://../asynchrone-space-landing
+    condition: asynchrone-space-landing.enabled
   - name: asynchrone-space-web
     version: 0.1.0
     repository: file://../asynchrone-space-web
