@@ -4,7 +4,7 @@ import * as filesActions from "@/actions/files"
 import { FilesProvider } from "@workspace/files/store"
 import type { FilesData } from "@workspace/files/types"
 
-import { useProjectStore } from "@/lib/projects/store"
+import { useProjectStore } from "@workspace/projects/store"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 
 /**
