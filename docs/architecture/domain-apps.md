@@ -158,6 +158,9 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Landing finalized as marketing only: legacy apex redirects, stateless
       guard, indexable landing and noindex workspace hosts (#167)
 - [x] Cross-domain contract tests (#159)
+- [x] Client portal stays in Copilot: invitation flow, document upload and
+      download, project visibility and Playwright coverage of the client and
+      internal accounts (#164)
 - [x] Customer app renamed to `apps/copilot`; it owns identity and serves
       `copilot.asynchrone.space` (#175)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)

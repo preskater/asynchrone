@@ -469,7 +469,7 @@ packages until #190 replaces them with internal API calls.
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
 | Audit          | portal document upload writes `client.document.linked`; portal message/task-comment mutations still write no `AuditLog` row; #190 must preserve that behavior or add a deliberate action                                      |
-| Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `e2e/member-rbac.spec.ts`, `verify:portal`, `verify:data-export`, `verify:organization-deletion`                     |
+| Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `e2e/portal.spec.ts` (invitation → portal, project visibility, document upload/download, workspace and portal rejection), `verify:portal`, `verify:data-export`, `verify:organization-deletion` |
 
 ### Package layout (#158)
 
@@ -567,7 +567,7 @@ Never bake secrets into an image.
 | Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
-| E2E                       | `apps/copilot/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                                                                                                                                      |
+| E2E                       | `apps/copilot/e2e/{a11y,audit-log,member-rbac,password-reset,portal,upload}.spec.ts`                                                                                                                                                                          |
 | Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
 | Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
@@ -597,7 +597,11 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [ ] Auth, 2FA, onboarding, organization selection, settings, billing, audit,
       search, help, feedback, MCP, platform handoff and the assistant run here.
 - [ ] OIDC authorization server, JWKS, consent and token lifecycle are unchanged.
-- [ ] The portal stays here and calls domain internal APIs.
+- [x] The client portal stays here: `/{locale}/portal` pages, `/api/portal/*`,
+      the client invitation flow, document upload/download, project visibility
+      and the workspace/portal redirects, with Playwright coverage (#164).
+- [ ] The portal reads domain data through internal APIs instead of the
+      in-process packages (#190).
 - [ ] Conversations persist and the server owns model history.
 - [ ] No domain Prisma import remains after #190.
 
