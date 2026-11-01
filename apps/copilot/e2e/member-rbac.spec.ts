@@ -1,32 +1,12 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
-import { signUp } from "./fixtures"
+import { createProject, signUp } from "./fixtures"
 
 /**
  * Workspace RBAC checks. The REST CRUD endpoints these tests used to call were
  * removed in favour of server actions (see ADR 0016), so the same service
  * guards are exercised through the UI.
  */
-
-/** Create a project from the projects page and return its persisted id. */
-async function createProject(page: Page, name: string): Promise<string> {
-  const dialog = page.getByRole("dialog")
-  // Retry the click: a click that lands before hydration is a no-op.
-  await expect(async () => {
-    await page.getByRole("button", { name: "Create project" }).first().click()
-    await expect(dialog).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 15_000 })
-  await dialog.getByLabel("Name", { exact: true }).fill(name)
-  await dialog.getByRole("button", { name: "Create", exact: true }).click()
-
-  const link = page.getByRole("link", { name })
-  await expect(link).toBeVisible({ timeout: 15_000 })
-  // The store first shows an optimistic `p_…` id; wait for the persisted
-  // cuid to land before reading the link.
-  await expect(link).toHaveAttribute("href", /\/projects\/c[a-z0-9]+$/)
-  const href = await link.getAttribute("href")
-  return href!.split("/").pop()!
-}
 
 test("a member cannot remove themselves from the workspace", async ({
   page,

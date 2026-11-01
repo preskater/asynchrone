@@ -13,12 +13,18 @@ export function uniqueEmail() {
 const ORIGIN = E2E_BASE_URL
 
 /**
- * Create a fresh account through the Better Auth API (registration is open)
- * and an organization, returning the organization slug. Uses `page.request`
- * so the session cookies are shared with the browser context.
+ * Register a fresh account through the Better Auth API (registration is open)
+ * and return its email. Uses `page.request` so the session cookies are shared
+ * with the browser context.
+ *
+ * Pass an email to register the address an invitation was issued for — a
+ * client-portal account is created by accepting an invitation, never by
+ * creating an organization.
  */
-export async function signUp(page: Page): Promise<string> {
-  const email = uniqueEmail()
+export async function register(
+  page: Page,
+  email = uniqueEmail()
+): Promise<string> {
   // Random so the breached-password check (HIBP) never rejects it.
   const password = `e2e-${crypto.randomUUID()}`
   const name = "E2E User"
@@ -29,6 +35,13 @@ export async function signUp(page: Page): Promise<string> {
   })
   expect(signUpRes.ok(), await signUpRes.text()).toBeTruthy()
 
+  return email
+}
+
+/** Create an account and its organization, returning the organization slug. */
+export async function signUp(page: Page): Promise<string> {
+  await register(page)
+
   const slug = `e2e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const orgRes = await page.request.post("/api/auth/organization/create", {
     headers: { Origin: ORIGIN },
@@ -37,4 +50,29 @@ export async function signUp(page: Page): Promise<string> {
   expect(orgRes.ok(), await orgRes.text()).toBeTruthy()
 
   return slug
+}
+
+/**
+ * Create a project from the projects page and return its persisted id.
+ */
+export async function createProject(page: Page, name: string): Promise<string> {
+  const dialog = page.getByRole("dialog")
+  // Retry the click: a click that lands before hydration is a no-op.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Create project" }).first().click()
+    await expect(dialog).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 15_000 })
+  await dialog.getByLabel("Name", { exact: true }).fill(name)
+  await dialog.getByRole("button", { name: "Create", exact: true }).click()
+
+  const link = page.getByRole("link", { name })
+  await expect(link).toBeVisible({ timeout: 15_000 })
+  // The store first shows an optimistic `p_…` id; wait for the persisted
+  // cuid to land before reading the link. A cold `next dev` action can take a
+  // few seconds, so allow for it.
+  await expect(link).toHaveAttribute("href", /\/projects\/c[a-z0-9]+$/, {
+    timeout: 30_000,
+  })
+  const href = await link.getAttribute("href")
+  return href!.split("/").pop()!
 }

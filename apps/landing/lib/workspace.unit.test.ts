@@ -35,6 +35,25 @@ describe("legacyCopilotTarget", () => {
     expect(legacyCopilotTarget("/fr/api/assistant")).toBe("/fr/api/assistant")
   })
 
+  it("redirects every legacy apex portal path to Copilot", () => {
+    // The portal moved to copilot.asynchrone.space with #175; there is no
+    // `apps/portal`, so old bookmarks must land on Copilot's portal.
+    for (const path of [
+      "/portal",
+      "/portal/documents",
+      "/portal/meetings",
+      "/fr/portal",
+      "/fr/portal/documents",
+      "/en/portal/projects/project_123",
+      "/en/portal/projects/project_123/tasks/task_123",
+    ]) {
+      expect(legacyCopilotTarget(path)).toBe(path)
+    }
+    expect(legacyCopilotTarget("/portal", "?tab=documents")).toBe(
+      "/portal?tab=documents"
+    )
+  })
+
   it("redirects organization-scoped workspace paths with the slug intact", () => {
     for (const section of WORKSPACE_SECTIONS) {
       expect(legacyCopilotTarget(`/acme/${section}`)).toBe(`/acme/${section}`)
