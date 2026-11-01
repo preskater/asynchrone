@@ -1,16 +1,14 @@
-export const REPOSITORY_PROVIDERS = ["github", "gitlab"] as const
+import type { RepositoryProvider } from "@workspace/integrations/types"
 
-export type RepositoryProvider = (typeof REPOSITORY_PROVIDERS)[number]
-
-const PROVIDER_LABELS: Record<RepositoryProvider, string> = {
-  github: "GitHub",
-  gitlab: "GitLab",
-}
-
-/** Display name used in error messages and hints. */
-export function repositoryProviderLabel(provider: RepositoryProvider) {
-  return PROVIDER_LABELS[provider]
-}
+export {
+  REPOSITORY_PROVIDERS,
+  repositoryProviderLabel,
+  type RemoteIssue,
+  type RemotePullRequest,
+  type RemoteRepository,
+  type RepositoryProvider,
+  type RepositoryWebhookEvent,
+} from "@workspace/integrations/types"
 
 /**
  * A repository connection as exposed to the UI. The access token and the
@@ -71,51 +69,3 @@ export interface ConnectRepositoryResult {
   connection: RepositoryConnectionView
   summary: RepositorySyncSummary
 }
-
-/** An issue as returned by the provider, normalized across GitHub/GitLab. */
-export interface RemoteIssue {
-  number: number
-  title: string
-  body: string
-  state: "open" | "closed"
-  url: string
-  updatedAt: string
-}
-
-export interface RemoteRepository {
-  owner: string
-  repo: string
-  url: string
-  defaultBranch: string
-}
-
-export interface RemotePullRequest {
-  number: number
-  title: string
-  body: string
-  url: string
-  state: "open" | "closed" | "merged"
-  sourceBranch: string
-  targetBranch: string
-}
-
-/** Normalized webhook event produced by a provider adapter. */
-export type RepositoryWebhookEvent =
-  | { kind: "ping" }
-  | {
-      kind: "issue"
-      action: "opened" | "edited" | "closed" | "reopened" | "deleted"
-      issue: RemoteIssue
-    }
-  | {
-      kind: "pull_request"
-      action:
-        | "opened"
-        | "reopened"
-        | "edited"
-        | "ready_for_review"
-        | "closed"
-        | "merged"
-      pullRequest: RemotePullRequest
-    }
-  | { kind: "ignored"; reason: string }

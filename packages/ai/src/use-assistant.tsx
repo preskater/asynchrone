@@ -2,11 +2,7 @@
 
 import * as React from "react"
 
-import {
-  toAgentInput,
-  type AssistantPart,
-  type ChatMessage,
-} from "@/lib/assistant/chat"
+import { toAgentInput, type AssistantPart, type ChatMessage } from "./chat"
 
 export type AssistantStatus = "ready" | "submitted" | "streaming" | "error"
 

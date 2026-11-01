@@ -1,6 +1,6 @@
 export * from "./appearance"
 export * from "./appearance-boot"
-export * from "./appearance-types"
+export * from "@workspace/appearance/types"
 export * from "./deletion-banner"
 export * from "./impersonation-banner"
 export * from "./nav-main"

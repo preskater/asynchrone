@@ -1,5 +1,8 @@
 import { createGitHubClient } from "./github"
 import { createGitLabClient } from "./gitlab"
+
+export { githubApiBase } from "./github"
+export { gitlabApiBase } from "./gitlab"
 import type { ProviderClient, ProviderClientConfig } from "./types"
 
 export function createProviderClient(

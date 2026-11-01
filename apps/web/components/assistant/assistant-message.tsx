@@ -9,12 +9,9 @@ import {
   isTextPart,
   isToolPart,
   type ChatMessage,
-} from "@/lib/assistant/chat"
+} from "@workspace/ai/chat"
 
-import {
-  Bubble,
-  BubbleContent,
-} from "@workspace/ui/components/bubble"
+import { Bubble, BubbleContent } from "@workspace/ui/components/bubble"
 import {
   Message,
   MessageAvatar,

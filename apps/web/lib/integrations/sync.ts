@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@workspace/db"
 import { allocateTaskIdentifier, taskPrefix } from "@/lib/projects/task-key"
 
-import { createProviderClient } from "./providers"
+import { createProviderClient } from "@workspace/integrations"
 import type { RepositoryConnectionRow } from "./repository"
 import {
   REPOSITORY_PROVIDERS,

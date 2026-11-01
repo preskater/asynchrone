@@ -9,8 +9,13 @@ import type { RequestContext } from "@workspace/core/context"
 import type { PrismaClient } from "@workspace/db"
 import { ROLE_RANK } from "@workspace/organization/roles"
 
-import { decryptSecret, encryptSecret, generateWebhookSecret } from "./crypto"
-import { createProviderClient, RepositoryApiError } from "./providers"
+import {
+  decryptSecret,
+  encryptSecret,
+  generateWebhookSecret,
+  createProviderClient,
+  RepositoryApiError,
+} from "@workspace/integrations"
 import type {
   RepositoryConnectionRepository,
   RepositoryConnectionRow,
@@ -74,7 +79,7 @@ export class RepositoryIntegrationService {
   private readonly contentPushTimers = new Map<
     string,
     ReturnType<typeof setTimeout>
-  >
+  >()
 
   constructor(
     private readonly repo: RepositoryConnectionRepository,
@@ -97,7 +102,9 @@ export class RepositoryIntegrationService {
     if (!project) throw new NotFoundError("Project")
   }
 
-  private toView(connection: RepositoryConnectionRow): RepositoryConnectionView {
+  private toView(
+    connection: RepositoryConnectionRow
+  ): RepositoryConnectionView {
     const appUrl = process.env.BETTER_AUTH_URL ?? ""
     return {
       id: connection.id,
@@ -247,7 +254,10 @@ export class RepositoryIntegrationService {
     projectId: string
   ): Promise<RepositoryConnectionView | null> {
     this.canManage(ctx)
-    const connection = await this.repo.findByProject(ctx.organizationId, projectId)
+    const connection = await this.repo.findByProject(
+      ctx.organizationId,
+      projectId
+    )
     return connection ? this.toView(connection) : null
   }
 
@@ -342,7 +352,10 @@ export class RepositoryIntegrationService {
     projectId: string
   ): Promise<{ id: string }> {
     this.canManage(ctx)
-    const connection = await this.repo.findByProject(ctx.organizationId, projectId)
+    const connection = await this.repo.findByProject(
+      ctx.organizationId,
+      projectId
+    )
     if (!connection) {
       throw new ValidationError("No repository is connected.", undefined, {
         code: "repository_not_connected",
@@ -358,7 +371,10 @@ export class RepositoryIntegrationService {
     projectId: string
   ): Promise<RepositorySyncSummary> {
     this.canManage(ctx)
-    const connection = await this.repo.findByProject(ctx.organizationId, projectId)
+    const connection = await this.repo.findByProject(
+      ctx.organizationId,
+      projectId
+    )
     if (!connection) {
       throw new ValidationError("No repository is connected.", undefined, {
         code: "repository_not_connected",

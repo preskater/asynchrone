@@ -3,7 +3,7 @@ import {
   customThemeVariables,
   EFFECT_ATTRIBUTES,
   type OrganizationAppearance,
-} from "./appearance-types"
+} from "@workspace/appearance/types"
 
 /** localStorage key that scopes accessibility preferences per user. */
 export function userAppearanceStorageKey(userId: string) {

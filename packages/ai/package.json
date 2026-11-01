@@ -1,0 +1,39 @@
+{
+  "name": "@workspace/ai",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.21.0",
+    "@workspace/core": "*",
+    "@workspace/db": "*",
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.13.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./agent": "./src/agent.ts",
+    "./chat": "./src/chat.ts",
+    "./model": "./src/model.ts",
+    "./pricing": "./src/pricing.ts",
+    "./provider": "./src/provider.ts",
+    "./suggestions": "./src/suggestions.ts",
+    "./usage": "./src/usage.ts",
+    "./use-assistant": "./src/use-assistant.tsx"
+  }
+}

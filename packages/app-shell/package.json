@@ -11,6 +11,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@workspace/appearance": "*",
     "@workspace/i18n": "*",
     "@workspace/ui": "*",
     "lucide-react": "^1.61.0",
@@ -31,7 +32,6 @@
     ".": "./src/index.ts",
     "./appearance": "./src/appearance.tsx",
     "./appearance-boot": "./src/appearance-boot.ts",
-    "./appearance-types": "./src/appearance-types.ts",
     "./deletion-banner": "./src/deletion-banner.tsx",
     "./impersonation-banner": "./src/impersonation-banner.tsx",
     "./nav-main": "./src/nav-main.tsx",

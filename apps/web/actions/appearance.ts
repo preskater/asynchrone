@@ -4,7 +4,7 @@ import { withAction } from "@workspace/core/action"
 import { getRequestContext } from "@/lib/core/auth-context"
 import { parseLocalized } from "@/lib/core/validation-server"
 
-import { organizationAppearanceSchema } from "@/lib/appearance/schemas"
+import { organizationAppearanceSchema } from "@workspace/appearance/schemas"
 import { updateOrganizationAppearance } from "@/lib/appearance/service"
 
 export const updateOrganizationAppearanceAction = withAction(

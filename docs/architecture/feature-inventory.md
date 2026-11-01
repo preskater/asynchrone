@@ -114,7 +114,9 @@ organization 2FA policy.
 
 ### Assistant and MCP
 
-- Assistant agent/tools: `apps/web/lib/assistant/*` and `apps/web/app/api/assistant/route.ts`.
+- Assistant agent/tools: `@workspace/ai` (chat parts, pricing, agent factory and
+  the quota ledger) plus `apps/web/lib/assistant/*` (tools and app wiring) and
+  `apps/web/app/api/assistant/route.ts`.
 - Assistant tools currently call the domain services in-process:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
@@ -157,6 +159,22 @@ organization 2FA policy.
 `/internal/v1/audit/facets`, `/internal/v1/audit/export`,
 `/internal/v1/audit/prune`, `POST /internal/v1/notifications`. See the internal
 API map below.
+
+## Cross-domain services (#152)
+
+These packages are shared services over a port, not a second database client.
+The owning app binds the pool, repository, provider or notifier in a thin
+adapter; every other app goes through the internal contract.
+
+| Package                   | Ships                                                                       | Bound by                                             |
+| ------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `@workspace/storage`      | PostgreSQL large-object engine for file bytes                               | Files app (`apps/web/lib/large-object.ts` today)     |
+| `@workspace/notifications` | Inbox types, schemas and the notification service over a repository port    | Copilot's identity repository; domain apps use `NotificationClient` |
+| `@workspace/integrations` | Provider protocol, GitHub/GitLab clients and the token cipher               | The app that owns the connection; tokens stay in its database |
+| `@workspace/ai`           | Chat parts, model pricing, agent factory and the quota ledger over a store  | Copilot's `AiUsageEvent`; tools call domain APIs (#190) |
+| `@workspace/appearance`   | Organization appearance types, schemas and service over a metadata store    | Copilot's `Organization.metadata`                     |
+| `@workspace/billing`      | Plans, types, webhook payloads and the subscription state machine           | Copilot's Prisma repository + Stripe provider         |
+| `@workspace/audit`        | Audit writer/reader, retention, HTTP handlers and cross-app fan-out         | Each app's own `AuditLog`; Copilot aggregates         |
 
 ## Projects
 
@@ -358,7 +376,7 @@ Never bake secrets into an image.
 | Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
 | Unit — Projects           | domain has no standalone unit file yet; covered by `e2e` and scripts                                                                         |
 | Unit — Files              | `apps/web/lib/files/duplicate.unit.test.ts`                                                                                                  |
-| Unit — shared packages    | `packages/{app-shell,audit,auth,contracts,core,db-core,oidc,organization,sagas,search,service-auth}/**/*.unit.test.ts`                       |
+| Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts` |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                    |
 | Verification scripts (DB) | `apps/web/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,repository-sync}.ts` |
 | Legal copy                | `apps/web/scripts/verify-legal-copy.ts`                                                                                                      |

@@ -5,7 +5,7 @@ import {
   pruneAuditAcrossApps,
   type AuditPruneTarget,
   type PruneAcrossAppsResult,
-} from "./fanout"
+} from "@workspace/audit"
 import { auditRemotes } from "./remotes"
 
 const ORG_PAGE_SIZE = 100

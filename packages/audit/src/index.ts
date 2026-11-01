@@ -66,3 +66,13 @@ export type {
   AuditRetentionView,
   AuditUnavailableApp,
 } from "./types"
+export {
+  exportAuditAcrossApps,
+  facetsAcrossApps,
+  listAuditAcrossApps,
+  pruneAuditAcrossApps,
+  type AuditPruneTarget,
+  type LocalAuditSource,
+  type PruneAcrossAppsResult,
+  type RemoteAuditSource,
+} from "./fanout"

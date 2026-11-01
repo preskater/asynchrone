@@ -1,10 +1,6 @@
-import {
-  decodeAuditCursor,
-  type AuditEntryView,
-  type AuditFacets,
-  type AuditFilter,
-  type AuditPageInput,
-} from "@workspace/audit"
+import type { AuditFilter, AuditPageInput } from "./filters"
+import { decodeAuditCursor } from "./reader"
+import type { AuditEntryView, AuditFacets } from "./types"
 import type { AuditClient } from "@workspace/contracts"
 import { describe, expect, it, vi } from "vitest"
 

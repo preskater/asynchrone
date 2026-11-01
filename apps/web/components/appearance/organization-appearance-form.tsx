@@ -46,7 +46,7 @@ import {
   type AnimationLevel,
   type CustomTheme,
   type OrgThemeId,
-} from "@workspace/app-shell/appearance-types"
+} from "@workspace/appearance/types"
 import { useAppearance } from "@workspace/app-shell/appearance"
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
