@@ -20,8 +20,10 @@ export class NotificationRepository implements NotificationRepositoryPort {
     })
   }
 
-  countUnread(userId: string) {
-    return this.db.notification.count({ where: { userId, readAt: null } })
+  countUnread(organizationId: string, userId: string) {
+    return this.db.notification.count({
+      where: { organizationId, userId, readAt: null },
+    })
   }
 
   create(data: {
@@ -36,17 +38,20 @@ export class NotificationRepository implements NotificationRepositoryPort {
     })
   }
 
-  /** Only the recipient can mark their own notifications as read. */
-  markRead(userId: string, id: string) {
+  /**
+   * Only the recipient can mark their own notifications as read, and only
+   * from the organization they currently have open.
+   */
+  markRead(organizationId: string, userId: string, id: string) {
     return this.db.notification.updateMany({
-      where: { id, userId, readAt: null },
+      where: { id, organizationId, userId, readAt: null },
       data: { readAt: new Date() },
     })
   }
 
-  markAllRead(userId: string) {
+  markAllRead(organizationId: string, userId: string) {
     return this.db.notification.updateMany({
-      where: { userId, readAt: null },
+      where: { organizationId, userId, readAt: null },
       data: { readAt: new Date() },
     })
   }

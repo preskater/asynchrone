@@ -36,6 +36,7 @@
     "./impersonation-banner": "./src/impersonation-banner.tsx",
     "./nav-main": "./src/nav-main.tsx",
     "./recents": "./src/recents.tsx",
+    "./recents-storage": "./src/recents-storage.ts",
     "./resolve-workspace": "./src/resolve-workspace.ts",
     "./shell": "./src/shell.tsx",
     "./trial-banner": "./src/trial-banner.tsx"

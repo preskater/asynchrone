@@ -57,6 +57,7 @@ describe("NotificationService", () => {
       unreadCount: 1,
     })
     expect(repo.list).toHaveBeenCalledWith("org_1", "user_1", 20)
+    expect(repo.countUnread).toHaveBeenCalledWith("org_1", "user_1")
   })
 
   it("skips self-notifications and missing recipients", async () => {
@@ -107,6 +108,6 @@ describe("NotificationService", () => {
     await expect(
       new NotificationService(repo).markRead(ctx, "n1")
     ).resolves.toEqual({ unreadCount: 2 })
-    expect(repo.markRead).toHaveBeenCalledWith("user_1", "n1")
+    expect(repo.markRead).toHaveBeenCalledWith("org_1", "user_1", "n1")
   })
 })
