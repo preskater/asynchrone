@@ -23,6 +23,10 @@ jobs:
             suffix: "-projects"
             target: runner
             cacheScope: projects
+          - app: messages
+            suffix: "-messages"
+            target: runner
+            cacheScope: messages
           - app: control-tower
             suffix: "-control-tower"
             target: runner

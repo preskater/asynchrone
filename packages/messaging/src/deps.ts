@@ -16,8 +16,9 @@ export interface MessagingStorage {
 /**
  * A member of the organization as the messaging screens render it.
  *
- * Today the owning app binds its member directory; once the messages app runs
- * on its own it resolves the same shape from the identity internal API.
+ * The owning app binds its member directory; once the identity reads move
+ * behind the internal API (#190/#171) the messages app resolves the same shape
+ * from there.
  */
 export interface MessagingMember {
   id: string

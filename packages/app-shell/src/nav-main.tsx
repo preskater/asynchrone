@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { MailIcon } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
 import { Link, usePathname, useRouter } from "@workspace/i18n/navigation"
 import { Button } from "@workspace/ui/components/button"
@@ -39,15 +39,19 @@ export function NavMain({
   items,
   orgSlug,
   quickCreate,
+  messagesUrl,
   unreadTotal = 0,
 }: {
   items: NavApp[]
   orgSlug: string
   /** Domain-specific create action slot. */
   quickCreate?: React.ReactNode
+  /** Origin of the messages app; the quick-create button opens it (#162). */
+  messagesUrl?: string
   unreadTotal?: number
 }) {
   const t = useTranslations("Sidebar")
+  const locale = useLocale()
   const pathname = usePathname()
   const router = useRouter()
   const { recents, setActive } = useRecents()
@@ -55,6 +59,10 @@ export function NavMain({
   function openRecent(app: NavApp, id: string) {
     if (!app.key) return
     setActive(app.key, id)
+    if (app.external) {
+      window.location.href = app.url
+      return
+    }
     router.push(app.url)
   }
 
@@ -69,7 +77,13 @@ export function NavMain({
               size="icon"
               className="size-8 group-data-[collapsible=icon]:opacity-0"
               variant="outline"
-              render={<Link href={`/${orgSlug}/messages`} prefetch={false} />}
+              render={
+                messagesUrl ? (
+                  <a href={`${messagesUrl}/${locale}/${orgSlug}/messages`} />
+                ) : (
+                  <Link href={`/${orgSlug}/messages`} prefetch={false} />
+                )
+              }
               nativeButton={false}
             >
               <MailIcon />

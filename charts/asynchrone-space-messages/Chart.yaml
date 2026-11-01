@@ -1,0 +1,6 @@
+apiVersion: v2
+name: asynchrone-space-messages
+description: "Messages: the messaging domain app (conversations, threads, reactions and attachments)"
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

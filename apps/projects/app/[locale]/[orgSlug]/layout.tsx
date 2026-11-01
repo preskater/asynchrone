@@ -49,6 +49,7 @@ export default async function OrgLayout({
 
   const t = await getTranslations("Common")
   const copilotUrl = appOrigin("copilot")
+  const messagesUrl = appOrigin("messages")
   const organizations = memberships.map(({ organization }) => organization)
 
   return (
@@ -68,7 +69,11 @@ export default async function OrgLayout({
               <WorkspaceShell
                 skipLabel={t("skipToContent")}
                 sidebar={
-                  <ProjectSidebar orgSlug={orgSlug} copilotUrl={copilotUrl} />
+                  <ProjectSidebar
+                    orgSlug={orgSlug}
+                    copilotUrl={copilotUrl}
+                    messagesUrl={messagesUrl}
+                  />
                 }
                 banners={
                   workspace.impersonatedBy ? (

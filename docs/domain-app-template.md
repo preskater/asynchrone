@@ -1,8 +1,9 @@
 # Domain app template
 
-`apps/projects` is the pilot for the domain-app split (#160). This document is
-the checklist for the next apps (`calendars` #161, `files` #162, `messages`
-#163, `clients`/`employees` #164): copy the shape, not the code.
+`apps/projects` is the pilot for the domain-app split (#160) and `apps/messages`
+is the second app (#162). This document is the checklist for the next apps
+(`calendars` and `files` #161, `clients`/`employees` #163–#164): copy the shape,
+not the code.
 
 Architecture and ownership: [domain-apps.md](./architecture/domain-apps.md),
 [ADR 0028](./adr/0028-split-workspace-into-domain-apps.md),

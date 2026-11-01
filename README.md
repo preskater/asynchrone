@@ -37,6 +37,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
 | `apps/projects`              | Projects: the first domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
+| `apps/messages`              | Messages: the messaging domain app (`messages.copilot.asynchrone.space`), host-only OIDC session. |
 | `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
 | `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
@@ -95,11 +96,11 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
 > migrations, serves the public landing site on port **3002**, the Copilot app
-> on port **3003**, the projects app on port **3004** and the control tower on
-> port **3001**. Each container loads its app's `.env` (then overrides
-> `DATABASE_URL` and the public URLs), so local dev and Docker share the same
-> secrets. The image is parameterised with
-> `--build-arg APP=copilot|projects|control-tower|landing`.
+> on port **3003**, the projects app on port **3004**, the messages app on port
+> **3007** and the control tower on port **3001**. Each container loads its app's
+> `.env` (then overrides `DATABASE_URL` and the public URLs), so local dev and
+> Docker share the same secrets. The image is parameterised with
+> `--build-arg APP=copilot|projects|messages|control-tower|landing`.
 
 ### Domain apps
 
@@ -114,9 +115,13 @@ cp apps/projects/.env.example apps/projects/.env
 npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
 ```
 
-Start Copilot and the projects app together (`npm run dev` starts both). The
-next apps copy the template in
-[`docs/domain-app-template.md`](./docs/domain-app-template.md).
+`apps/messages` follows the same template (#162) on
+http://localhost:3007/`{locale}/{orgSlug}/messages`; it has its own
+`apps/messages/.env` (see
+[`apps/messages/.env.example`](./apps/messages/.env.example)) and
+`MESSAGES_OAUTH_CLIENT_ID/SECRET` pair. Start Copilot and the domain apps
+together (`npm run dev` starts all of them). The remaining apps copy the
+template in [`docs/domain-app-template.md`](./docs/domain-app-template.md).
 
 ### Control tower
 
@@ -186,7 +191,9 @@ nofollow` and disallow `/` in `robots.txt`.
 Copilot variables live in `apps/copilot/.env` (see
 [`apps/copilot/.env.example`](./apps/copilot/.env.example)); the projects app reads
 `apps/projects/.env` (see
-[`apps/projects/.env.example`](./apps/projects/.env.example)); the control tower
+[`apps/projects/.env.example`](./apps/projects/.env.example)); the messages app
+reads `apps/messages/.env` (see
+[`apps/messages/.env.example`](./apps/messages/.env.example)); the control tower
 reads `apps/control-tower/.env` (see
 [`apps/control-tower/.env.example`](./apps/control-tower/.env.example)); the
 stateless landing reads only `apps/landing/.env` (see

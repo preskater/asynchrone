@@ -17,18 +17,21 @@ import { useRouter } from "@workspace/i18n/navigation"
 export function CommandMenu({
   orgSlug,
   projectsUrl,
+  messagesUrl,
   open,
   onOpenChange,
 }: {
   orgSlug: string
   /** Origin of the projects app (its own image and chart since #160). */
   projectsUrl: string
+  /** Origin of the messages app (its own image and chart since #162). */
+  messagesUrl: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("Sidebar")
   const router = useRouter()
-  const apps = useNavMain(orgSlug, projectsUrl)
+  const apps = useNavMain(orgSlug, projectsUrl, messagesUrl)
   const secondary = useNavSecondary(orgSlug)
 
   function go(url: string, external?: boolean) {

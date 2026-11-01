@@ -122,6 +122,8 @@ const DATABASES = {
       "Message",
       "MessageReaction",
       "MessageAttachment",
+      // The app-local relying-party session (#162).
+      "OidcSession",
     ],
   },
   clients: {

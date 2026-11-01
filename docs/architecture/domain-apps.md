@@ -23,9 +23,9 @@ inventory in [#146](./feature-inventory.md).
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
-`apps/projects` is live: it serves `projects.copilot.asynchrone.space` from its
-own image and chart with a host-only OIDC session (#160). The remaining domain
-apps follow the same template — see
+`apps/projects` (#160) and `apps/messages` (#162) are live: each serves its own
+host from its own image and chart with a host-only OIDC session. The remaining
+domain apps follow the same template — see
 [domain-app-template.md](../domain-app-template.md).
 
 The registry lives in `@workspace/contracts`:
@@ -41,10 +41,12 @@ baked into an image or committed.
 ## Ownership rules
 
 1. A workspace owns its database and its Prisma client. A domain may only import
-   its own `@workspace/db-<domain>` package. The one exception is the projects
-   pilot, which binds the shared client (`@workspace/db`) until #190 moves its
-   identity reads behind the internal API; it still imports exactly one database
-   package and the exception is documented rather than copied.
+   its own `@workspace/db-<domain>` package. Two apps are transitional: the
+   projects pilot and, since #162, messages bind the shared client
+   (`@workspace/db`) until #190/#171 move their identity reads behind the
+   internal API (messages also needs the files upload sessions and large
+   objects). Each still imports exactly one database package and the exception
+   is documented rather than copied.
 2. A package never imports an app. An app never imports another app.
 3. Relative imports never escape their workspace.
 4. Every `@workspace/*` import is declared in the importer's `package.json`.
@@ -195,6 +197,7 @@ also catches imports in files that are not currently reachable from a route.
       `copilot.asynchrone.space` (#175)
 - [x] App template and the projects pilot at
       `projects.copilot.asynchrone.space` (#160)
+- [x] Messages app at `messages.copilot.asynchrone.space` (#162)
 - [x] Assistant conversations persisted with server-owned history (#165)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)
-- [ ] Calendars, files, messages, clients and employees apps (#161–#164)
+- [ ] Calendars, files, clients and employees apps (#161, #163–#164)

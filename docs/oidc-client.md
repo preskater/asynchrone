@@ -71,7 +71,8 @@ import { PrismaOidcSessionStore } from "@workspace/oidc"
 const store = new PrismaOidcSessionStore(prisma.oidcSession)
 ```
 
-`apps/projects` is the reference binding (`apps/projects/lib/oidc.ts`). Add the
+`apps/projects` is the reference binding (`apps/projects/lib/oidc.ts`) and
+`apps/messages` follows it (`apps/messages/lib/oidc.ts`). Add the
 `OidcSession` model to the app's schema (the split script shares it) and keep one
 local session per Copilot `sid`: a new authorization for the same sign-in
 replaces the previous row.
@@ -115,5 +116,6 @@ back-channel logout, the token issuer, and the Prisma session store.
 ## Follow-up
 
 - #182 registers the client, redirect URIs, secrets and back-channel logout URI.
-- #160 binds the store in `apps/projects`; #161–#164 do the same per app.
+- #160 binds the store in `apps/projects`, #162 in `apps/messages`; #161 and
+  #163–#164 do the same per app.
 - #169 adds the full logout and token-revocation hardening at the fleet level.

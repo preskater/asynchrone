@@ -88,6 +88,7 @@ services:
       - BETTER_AUTH_URL=http://localhost:3003
       - COPILOT_APP_URL=http://localhost:3003
       - PROJECTS_APP_URL=http://localhost:3004
+      - MESSAGES_APP_URL=http://localhost:3007
       - MCP_RESOURCE_URL=http://localhost:3003/mcp
       - CONTROL_TOWER_URL=http://localhost:3001
     depends_on:
@@ -117,6 +118,35 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
       - PROJECTS_APP_URL=http://localhost:3004
+      - COPILOT_APP_URL=http://localhost:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # The messages domain app (#162): its own image and chart, same database
+  # client as Copilot until #190/#171 move the identity reads behind the
+  # internal APIs and attachments behind the files app.
+  messages:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: messages
+    ports:
+      - "3007:3000"
+    # Own env file: the provisioned MESSAGES_OAUTH_CLIENT_* credentials and the
+    # audit/trusted header settings.
+    env_file:
+      - path: apps/messages/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - MESSAGES_APP_URL=http://localhost:3007
       - COPILOT_APP_URL=http://localhost:3003
     depends_on:
       postgres:

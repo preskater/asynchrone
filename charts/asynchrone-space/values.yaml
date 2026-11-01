@@ -8,6 +8,10 @@
 #   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as
 #                                           Copilot until #190), PROJECTS_OAUTH_CLIENT_ID,
 #                                           PROJECTS_OAUTH_CLIENT_SECRET
+#   asynchrone-space-messages-secrets:      DATABASE_URL (the same database as
+#                                           Copilot until #190/#171),
+#                                           MESSAGES_OAUTH_CLIENT_ID,
+#                                           MESSAGES_OAUTH_CLIENT_SECRET
 #   asynchrone-space-control-tower-secrets: DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET
 #
 # Install with an immutable image tag shared by all images:
@@ -90,6 +94,7 @@ asynchrone-space-copilot:
     NEXT_PUBLIC_APP_URL: https://copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
     PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
+    MESSAGES_APP_URL: https://messages.copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "10"
@@ -181,6 +186,48 @@ asynchrone-space-projects:
 
   secret:
     existingSecret: asynchrone-space-projects-secrets
+
+# ---------------------------------------------------------------------------
+# Domain app: messages (#162). Own image, own chart, host-only OIDC session.
+# ---------------------------------------------------------------------------
+asynchrone-space-messages:
+  enabled: true
+
+  # Release `asynchrone-space` yields the resources `asynchrone-space-messages-*`.
+  nameOverride: messages
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-messages
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      # Attachment chunks are posted to the app; keep the same 8 MB ceiling as
+      # Copilot so a chunk of the files upload client always fits.
+      nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    hosts:
+      - host: messages.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: messages-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - messages.copilot.asynchrone.space
+
+  config:
+    MESSAGES_APP_URL: https://messages.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-messages-secrets
 
 # ---------------------------------------------------------------------------
 # Internal control tower
