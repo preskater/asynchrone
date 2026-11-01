@@ -5,8 +5,8 @@ import { LinkIcon, LockIcon, PlusIcon, XIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
 
-import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { PlanUpgradePrompt } from "./plan-upgrade-prompt"
+import { MemberAvatar } from "./member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -40,11 +40,11 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 
-import { useFiles } from "@/lib/files/store"
+import { useFiles } from "../store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { useEntitlements } from "@/lib/organization/use-entitlements"
-import { useOrgSlug } from "@/lib/organization/use-org-slug"
-import type { FileNode, SharePermission } from "@/lib/files/types"
+import { useEntitlements } from "@workspace/organization/use-entitlements"
+import { useOrgSlug } from "@workspace/organization/use-org-slug"
+import type { FileNode, SharePermission } from "../types"
 
 export function FileShareDialog({
   file,

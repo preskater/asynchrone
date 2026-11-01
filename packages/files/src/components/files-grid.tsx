@@ -4,8 +4,8 @@ import * as React from "react"
 import { EllipsisIcon, LockIcon, Share2Icon, StarIcon } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { FileIcon } from "@/components/files/file-icon"
-import { FileMenuItems } from "@/components/files/file-actions"
+import { FileIcon } from "./file-icon"
+import { FileMenuItems } from "./file-actions"
 import { Button } from "@workspace/ui/components/button"
 import {
   ContextMenu,
@@ -20,9 +20,9 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 
-import { formatBytes, formatRelativeDate } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
-import type { FileLocation, FileNode } from "@/lib/files/types"
+import { formatBytes, formatRelativeDate } from "../file-utils"
+import { useFiles } from "../store"
+import type { FileLocation, FileNode } from "../types"
 
 export function FilesGrid({
   files,

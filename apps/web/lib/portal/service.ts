@@ -12,8 +12,7 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@workspace/core/errors"
-import { fileService } from "@/lib/files"
-import { orgQuotaBytes, orgUsedBytes } from "@/lib/files/storage"
+import { fileService, orgQuotaBytes, orgUsedBytes } from "@/lib/files"
 import { MaxBytesExceededError, uploadLargeObject } from "@/lib/large-object"
 import { notificationService } from "@/lib/notifications"
 import { roleRank } from "@workspace/organization/roles"

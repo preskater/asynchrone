@@ -17,8 +17,8 @@ import {
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 
-import { FileIcon } from "@/components/files/file-icon"
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { FileIcon } from "./file-icon"
+import { MemberAvatar } from "./member-avatar"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,10 +47,10 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 
-import { formatBytes, formatRelativeDate } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
+import { formatBytes, formatRelativeDate } from "../file-utils"
+import { useFiles } from "../store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import type { FileNode } from "@/lib/files/types"
+import type { FileNode } from "../types"
 
 function DetailRow({
   icon: Icon,

@@ -9,6 +9,7 @@ import type { RequestContext } from "@workspace/core/context"
 import { requirePermission } from "@/lib/core/auth-context"
 import { ConflictError } from "@workspace/core/errors"
 import { sendDataExportReadyEmail } from "@/lib/email"
+import { listForExport } from "@/lib/files"
 import {
   openLargeObjectStream,
   unlinkLargeObject,
@@ -227,19 +228,7 @@ async function writeArchive(organizationId: string) {
       await addText(`data/${table}.json`, toJson(rows))
     }
 
-    const files = await prisma.fileNode.findMany({
-      where: { organizationId, oid: { not: null } },
-      select: { id: true, name: true, oid: true },
-    })
-    const versions = await prisma.fileVersion.findMany({
-      where: { file: { organizationId }, oid: { not: null } },
-      select: {
-        id: true,
-        fileId: true,
-        oid: true,
-        file: { select: { name: true } },
-      },
-    })
+    const { files, versions } = await listForExport(organizationId)
     const attachments = await prisma.messageAttachment.findMany({
       where: {
         message: { conversation: { organizationId } },
@@ -260,7 +249,7 @@ async function writeArchive(organizationId: string) {
       if (seen.has(version.oid!)) continue
       seen.add(version.oid!)
       await addLargeObject(
-        `files/versions/${version.fileId}/${version.id}-${safeName(version.file.name)}`,
+        `files/versions/${version.fileId}/${version.id}-${safeName(version.name)}`,
         version.oid!
       )
       fileCount++

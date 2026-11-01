@@ -16,8 +16,8 @@ import {
 import { Field, FieldLabel } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 
-import { useFiles } from "@/lib/files/store"
-import type { FileNode } from "@/lib/files/types"
+import { useFiles } from "../store"
+import type { FileNode } from "../types"
 
 /**
  * Confirmation dialog for permanently deleting a node. Rendered outside the

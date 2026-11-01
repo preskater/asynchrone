@@ -28,7 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 
 import { useMessaging } from "@/lib/messaging/store"
 import { useErrorTranslator } from "@workspace/i18n/errors"
-import { uploadAttachment } from "@/lib/files/upload-client"
+import { uploadAttachment } from "@workspace/files/upload-client"
 import type { Attachment } from "@/lib/messaging/types"
 
 const EMOJI = [

@@ -22,11 +22,10 @@ import {
 } from "@workspace/ui/components/collapsible"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { formatBytes } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
+import { formatBytes } from "../file-utils"
+import { useFiles, useFilesNav } from "../store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { useWorkspaceNav } from "@/lib/workspace-nav/store"
-import type { FileLocation, FileNode } from "@/lib/files/types"
+import type { FileLocation, FileNode } from "../types"
 
 const LOCATIONS: {
   value: FileLocation
@@ -114,10 +113,8 @@ export function FilesSidebar() {
   const { files, locationCounts, storageQuotaBytes } = useFiles()
   const t = useTranslations("Files")
   const L = useEnumLabel()
-  const { filesLocation, filesFolderId, selectFileLocation, openFileFolder } =
-    useWorkspaceNav()
-  const location = filesLocation
-  const activeFolderId = filesFolderId
+  const { location, folderId: activeFolderId, selectLocation, openFolder } =
+    useFilesNav()
 
   const rootFolders = files.filter(
     (node) => node.kind === "folder" && !node.trashed && node.parentId === null
@@ -142,7 +139,7 @@ export function FilesSidebar() {
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => selectFileLocation(item.value)}
+                  onClick={() => selectLocation(item.value)}
                   className={cn(
                     "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors",
                     active ? "bg-muted text-foreground" : "hover:bg-muted/60"
@@ -171,7 +168,7 @@ export function FilesSidebar() {
                 key={folder.id}
                 folder={folder}
                 activeFolderId={activeFolderId}
-                onOpen={openFileFolder}
+                onOpen={openFolder}
                 depth={0}
               />
             ))}

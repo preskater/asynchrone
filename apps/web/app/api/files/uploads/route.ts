@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { getRequestContext } from "@/lib/core/auth-context"
 import { toAppError } from "@workspace/core/errors"
 import { jsonError, rejectCrossOrigin } from "@workspace/core/http"
-import { createUploadSession } from "@/lib/files/upload-session"
+import { filesRuntime } from "@/lib/files"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -24,12 +24,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     if (!name || name.length > MAX_NAME) {
       return NextResponse.json(
-        { error: { code: "bad_request", message: "A valid file name is required." } },
+        {
+          error: {
+            code: "bad_request",
+            message: "A valid file name is required.",
+          },
+        },
         { status: 400 }
       )
     }
 
-    const expectedSize = expectedSizeParam ? Number(expectedSizeParam) : undefined
+    const expectedSize = expectedSizeParam
+      ? Number(expectedSizeParam)
+      : undefined
     if (
       expectedSize === undefined ||
       !Number.isInteger(expectedSize) ||
@@ -46,7 +53,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       )
     }
 
-    const session = await createUploadSession(ctx, {
+    const session = await filesRuntime.uploads.createUploadSession(ctx, {
       name,
       parentId: parentId || null,
       mimeType,

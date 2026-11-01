@@ -11,8 +11,8 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { FolderDialog } from "@/components/files/folder-dialog"
-import { FileUploadDialog } from "@/components/files/file-upload-dialog"
+import { FolderDialog } from "./folder-dialog"
+import { FileUploadDialog } from "./file-upload-dialog"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -43,7 +43,7 @@ import {
 } from "@workspace/ui/components/select"
 import { ToggleGroup, ToggleGroupItem } from "@workspace/ui/components/toggle-group"
 
-import type { FileLocation, FileNode } from "@/lib/files/types"
+import type { FileLocation, FileNode } from "../types"
 
 export type SortOption = "name" | "owner" | "modifiedAt" | "sizeBytes"
 export type ViewMode = "list" | "grid"

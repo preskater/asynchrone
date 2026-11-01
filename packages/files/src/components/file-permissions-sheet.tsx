@@ -4,8 +4,8 @@ import * as React from "react"
 import { LockIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { PlanUpgradePrompt } from "./plan-upgrade-prompt"
+import { MemberAvatar } from "./member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
@@ -33,10 +33,10 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 
-import { useFiles } from "@/lib/files/store"
+import { useFiles } from "../store"
 import { useEnumLabel } from "@workspace/i18n/labels"
-import { useEntitlements } from "@/lib/organization/use-entitlements"
-import type { FileNode, SharePermission } from "@/lib/files/types"
+import { useEntitlements } from "@workspace/organization/use-entitlements"
+import type { FileNode, SharePermission } from "../types"
 
 export function FilePermissionsSheet({
   file,

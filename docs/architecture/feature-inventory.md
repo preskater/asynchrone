@@ -43,12 +43,12 @@ Today only `apps/web` and `apps/control-tower` exist. `apps/web` is the future
 
 Target: `apps/landing`, stateless. No session, no database, no internal API.
 
-| Surface         | Current location                                                                                                | Notes                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Marketing pages | `apps/landing/app/[locale]/(marketing)/*`                                                                           | home, about, blog, blog/[slug], careers, contact, FAQ, features, legal/[slug], pricing |
-| Content         | `apps/landing/content/blog/<locale>`                                                                            | MDX mirrored in `en` and `fr`                                                          |
+| Surface         | Current location                                                                                                        | Notes                                                                                  |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Marketing pages | `apps/landing/app/[locale]/(marketing)/*`                                                                               | home, about, blog, blog/[slug], careers, contact, FAQ, features, legal/[slug], pricing |
+| Content         | `apps/landing/content/blog/<locale>`                                                                                    | MDX mirrored in `en` and `fr`                                                          |
 | Legal copy/PDFs | `apps/landing/lib/landing/legal.ts`, `packages/i18n/messages/{en,fr}/legal.json`, `apps/landing/public/downloads/legal` | `verify:legal-copy`, `legal:pdfs`                                                      |
-| Layout/metadata | `apps/landing/app/[locale]/(marketing)/layout.tsx`, `apps/landing/mdx-components.tsx`                           |                                                                                        |
+| Layout/metadata | `apps/landing/app/[locale]/(marketing)/layout.tsx`, `apps/landing/mdx-components.tsx`                                   |                                                                                        |
 
 No server actions, API routes, cron jobs, MCP tools, Prisma models or audit
 actions. Keeping the landing database-free is an acceptance criterion of #176
@@ -167,15 +167,15 @@ These packages are shared services over a port, not a second database client.
 The owning app binds the pool, repository, provider or notifier in a thin
 adapter; every other app goes through the internal contract.
 
-| Package                   | Ships                                                                       | Bound by                                             |
-| ------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `@workspace/storage`      | PostgreSQL large-object engine for file bytes                               | Files app (`apps/web/lib/large-object.ts` today)     |
-| `@workspace/notifications` | Inbox types, schemas and the notification service over a repository port    | Copilot's identity repository; domain apps use `NotificationClient` |
-| `@workspace/integrations` | Provider protocol, GitHub/GitLab clients and the token cipher               | The app that owns the connection; tokens stay in its database |
-| `@workspace/ai`           | Chat parts, model pricing, agent factory and the quota ledger over a store  | Copilot's `AiUsageEvent`; tools call domain APIs (#190) |
-| `@workspace/appearance`   | Organization appearance types, schemas and service over a metadata store    | Copilot's `Organization.metadata`                     |
-| `@workspace/billing`      | Plans, types, webhook payloads and the subscription state machine           | Copilot's Prisma repository + Stripe provider         |
-| `@workspace/audit`        | Audit writer/reader, retention, HTTP handlers and cross-app fan-out         | Each app's own `AuditLog`; Copilot aggregates         |
+| Package                    | Ships                                                                      | Bound by                                                            |
+| -------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `@workspace/storage`       | PostgreSQL large-object engine for file bytes                              | Files app (`apps/web/lib/large-object.ts` today)                    |
+| `@workspace/notifications` | Inbox types, schemas and the notification service over a repository port   | Copilot's identity repository; domain apps use `NotificationClient` |
+| `@workspace/integrations`  | Provider protocol, GitHub/GitLab clients and the token cipher              | The app that owns the connection; tokens stay in its database       |
+| `@workspace/ai`            | Chat parts, model pricing, agent factory and the quota ledger over a store | Copilot's `AiUsageEvent`; tools call domain APIs (#190)             |
+| `@workspace/appearance`    | Organization appearance types, schemas and service over a metadata store   | Copilot's `Organization.metadata`                                   |
+| `@workspace/billing`       | Plans, types, webhook payloads and the subscription state machine          | Copilot's Prisma repository + Stripe provider                       |
+| `@workspace/audit`         | Audit writer/reader, retention, HTTP handlers and cross-app fan-out        | Each app's own `AuditLog`; Copilot aggregates                       |
 
 ## Projects
 
@@ -275,20 +275,31 @@ client. Unit tests use the repository ports.
 
 ## Files
 
-Target: `apps/files` / `@workspace/files`.
+Target: `apps/files` / `@workspace/files`. The package landed in #155; the
+routes still run in `apps/web` (Copilot) and bind the package through
+`apps/web/lib/files.ts` and `apps/web/components/files-provider.tsx`.
 
-| Surface            | Inventory                                                                                                                                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pages              | `/[orgSlug]/files`                                                                                                                                                                                                             |
-| Server actions     | `actions/files.ts` (folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk operations, shares, restricted access)                                                                                     |
-| API                | `POST/GET /api/files/uploads`, `GET/PUT/DELETE /api/files/uploads/[uploadId]`, `POST/GET /api/files/uploads/[uploadId]/complete`, `GET /api/files/[fileId]/download`, `GET /api/files/uploads/sweep`, `/api/health`            |
-| Cron               | `uploads-sweep` (`/api/files/uploads/sweep`, daily 03:00)                                                                                                                                                                      |
-| MCP tools          | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                                                                                                                                        |
-| Prisma models      | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `AuditLog`                                                                                                                                            |
-| Storage            | PostgreSQL large objects in the files database; resumable upload protocol; shared pool from `@workspace/db-core`                                                                                                               |
-| Audit actions      | `file.created`, `file.folder.created`, `file.renamed`, `file.moved`, `file.duplicated`, `file.trashed`, `file.restored`, `file.deleted`, `file.access.updated`, `file.share.added`, `file.share.updated`, `file.share.removed` |
-| Audit entities     | `file`                                                                                                                                                                                                                         |
-| Internal endpoints | search / export / delete as above; large-object deletion must run inside the files app                                                                                                                                         |
+| Surface                                       | Location                                                                                                                                                                                                                       | Notes                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Page                                          | `apps/web/app/[locale]/(app)/[orgSlug]/files/page.tsx`                                                                                                                                                                         | renders `@workspace/files/components/files-workspace`                                                      |
+| `POST /api/files/uploads`                     | `apps/web/app/api/files/uploads/route.ts`                                                                                                                                                                                      | starts a chunked upload session (`createUploadSession`)                                                    |
+| `GET /api/files/uploads`                      | `apps/web/app/api/files/uploads/route.ts`                                                                                                                                                                                      | 405; the session is resumable through the uploadId routes                                                  |
+| `GET /api/files/uploads/[uploadId]`           | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | resumable session state                                                                                    |
+| `PUT /api/files/uploads/[uploadId]`           | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | one ordered chunk (`x-chunk-offset`)                                                                       |
+| `DELETE /api/files/uploads/[uploadId]`        | `apps/web/app/api/files/uploads/[uploadId]/route.ts`                                                                                                                                                                           | aborts and unlinks the partial large object                                                                |
+| `POST /api/files/uploads/[uploadId]/complete` | `apps/web/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | validates bytes and creates the file (or returns the attachment oid)                                       |
+| `GET /api/files/uploads/[uploadId]/complete`  | `apps/web/app/api/files/uploads/[uploadId]/complete/route.ts`                                                                                                                                                                  | 405                                                                                                        |
+| `GET /api/files/[fileId]/download`            | `apps/web/app/api/files/[fileId]/download/route.ts`                                                                                                                                                                            | streams the file’s large object after an access check                                                      |
+| `GET /api/files/uploads/sweep`                | `apps/web/app/api/files/uploads/sweep/route.ts`                                                                                                                                                                                | unlinks expired upload sessions (`CRON_SECRET`-guarded)                                                    |
+| `GET /api/portal/files/[fileId]/download`     | `apps/web/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; streams a client-visible document                                                            |
+| Server actions                                | `apps/web/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
+| Cron                                          | `uploads-sweep` (`/api/files/uploads/sweep`, daily 03:00)                                                                                                                                                                      |                                                                                                            |
+| MCP tools                                     | `apps/web/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
+| Prisma models                                 | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `AuditLog`                                                                                                                                            |                                                                                                            |
+| Storage                                       | `packages/files/src/objects.ts` + `@workspace/storage`                                                                                                                                                                         | PostgreSQL large objects; resumable uploads; the app binds its own pool                                    |
+| Audit actions                                 | `file.created`, `file.folder.created`, `file.renamed`, `file.moved`, `file.duplicated`, `file.trashed`, `file.restored`, `file.deleted`, `file.access.updated`, `file.share.added`, `file.share.updated`, `file.share.removed` |                                                                                                            |
+| Audit entities                                | `file`                                                                                                                                                                                                                         |                                                                                                            |
+| Internal endpoints                            | search / export / delete as above                                                                                                                                                                                              | large-object deletion (`snapshotForOrganization`) must run inside the files app                            |
 
 ## Messages
 
@@ -440,7 +451,7 @@ Never bake secrets into an image.
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit — Copilot shell      | `apps/web/lib/{account,admin,audit,auth,billing,email,identity,oauth,organization,search}*.unit.test.ts`                                     |
 | Unit — Projects           | `packages/projects/src/{service,sync}.unit.test.ts` (task authorization, repository sync primitives); e2e and scripts cover the rest              |
-| Unit — Files              | `apps/web/lib/files/duplicate.unit.test.ts`                                                                                                  |
+| Unit — Files              | `packages/files/src/{service,upload-session}.unit.test.ts`                                                                                                  |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts` |
 | E2E                       | `apps/web/e2e/{a11y,audit-log,member-rbac,password-reset,upload}.spec.ts`                                                                    |

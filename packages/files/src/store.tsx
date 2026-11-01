@@ -4,46 +4,55 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import {
-  addShareAction,
-  bulkDeleteAction,
-  bulkRestoreAction,
-  bulkTrashAction,
-  createFolderAction,
-  deleteFileAction,
-  duplicateFileAction,
-  listFilesAction,
-  moveFileAction,
-  removeShareAction,
-  renameFileAction,
-  restoreFileAction,
-  setFileRestrictedAction,
-  toggleStarAction,
-  trashFileAction,
-  updateShareAction,
-} from "@/actions/files"
-import { unwrapActionResult } from "@workspace/core/action"
+import { unwrapActionResult, type ActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
-import { uploadFile } from "@/lib/files/upload-client"
-import type { Member } from "@workspace/projects/types"
-import { useProjectStore } from "@workspace/projects/store"
+import { uploadFile } from "./upload-client"
 
 import { kindFromName } from "./file-utils"
 import type {
   FileLocation,
   FileNode,
   FilesData,
+  FilesMember,
+  FilesNavigation,
   ShareEntry,
   SharePermission,
   UploadItem,
 } from "./types"
+
+/**
+ * The server actions the files screens call. Copilot passes its
+ * `actions/files.ts` exports; a domain app passes its own. Every action
+ * returns an `ActionResult` so optimistic updates can roll back on failure.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FilesAction = (...args: any[]) => Promise<ActionResult<unknown>>
+
+export interface FilesActions {
+  listFilesAction: FilesAction
+  createFolderAction: FilesAction
+  renameFileAction: FilesAction
+  moveFileAction: FilesAction
+  duplicateFileAction: FilesAction
+  toggleStarAction: FilesAction
+  trashFileAction: FilesAction
+  restoreFileAction: FilesAction
+  deleteFileAction: FilesAction
+  bulkTrashAction: FilesAction
+  bulkRestoreAction: FilesAction
+  bulkDeleteAction: FilesAction
+  addShareAction: FilesAction
+  updateShareAction: FilesAction
+  removeShareAction: FilesAction
+  setFileRestrictedAction: FilesAction
+}
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`
 }
 
 interface FilesStore extends FilesData {
-  members: Member[]
+  members: FilesMember[]
   currentUserId: string
   organizationId: string
   storageQuotaBytes: number
@@ -51,7 +60,7 @@ interface FilesStore extends FilesData {
   filesLoaded: boolean
   /** Load the file tree the first time a files screen is opened. */
   ensureFilesLoaded: () => void
-  getMember: (id?: string) => Member | undefined
+  getMember: (id?: string) => FilesMember | undefined
   getFile: (id?: string) => FileNode | undefined
   breadcrumbFor: (folderId: string | null) => FileNode[]
   childrenOf: (
@@ -87,24 +96,27 @@ interface FilesStore extends FilesData {
 
 const FilesContext = React.createContext<FilesStore | null>(null)
 
+const FilesNavContext = React.createContext<FilesNavigation | null>(null)
+
 export function FilesProvider({
   children,
+  actions,
   initialData,
   currentUserId,
   organizationId,
   storageQuotaBytes,
-  members: initialMembers = [],
+  members = [],
+  navigation,
 }: {
   children: React.ReactNode
+  actions: FilesActions
   initialData: FilesData
   currentUserId: string
   organizationId: string
   storageQuotaBytes: number
-  members?: Member[]
+  members?: FilesMember[]
+  navigation: FilesNavigation
 }) {
-  const projectMembers = useProjectStore().members
-  const members = initialMembers.length > 0 ? initialMembers : projectMembers
-
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [files, setFiles] = React.useState<FileNode[]>(initialData.files)
@@ -135,9 +147,10 @@ export function FilesProvider({
     if (filesLoadedRef.current) return
     filesLoadedRef.current = true
     setFilesLoaded(true)
-    void listFilesAction()
+    void actions
+      .listFilesAction()
       .then((result) => {
-        const data = unwrapActionResult(result)
+        const data = unwrapActionResult(result) as FilesData
         setFiles(data.files)
         setShares(data.shares)
         setVersions(data.versions)
@@ -147,7 +160,7 @@ export function FilesProvider({
         filesLoadedRef.current = false
         setFilesLoaded(false)
       })
-  }, [])
+  }, [actions])
 
   const store = React.useMemo<FilesStore>(() => {
     const getMember = (id?: string) =>
@@ -315,9 +328,10 @@ export function FilesProvider({
           restricted: false,
         }
         setFiles((prev) => [...prev, optimistic])
-        void createFolderAction({ parentId, name })
+        void actions
+          .createFolderAction({ parentId, name })
           .then((result) => {
-            const folder = unwrapActionResult(result)
+            const folder = unwrapActionResult(result) as FileNode
             setFiles((prev) =>
               prev.map((item) => (item.id === optimistic.id ? folder : item))
             )
@@ -341,7 +355,8 @@ export function FilesProvider({
           )
         )
         logActivity(id, "renamedThisFile")
-        void renameFileAction(id, { name })
+        void actions
+          .renameFileAction(id, { name })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileRenamed"))
@@ -356,7 +371,8 @@ export function FilesProvider({
               : file
           )
         )
-        void moveFileAction(id, { parentId })
+        void actions
+          .moveFileAction(id, { parentId })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileMoved"))
@@ -381,9 +397,10 @@ export function FilesProvider({
           trashed: false,
         }
         setFiles((prev) => [...prev, optimistic])
-        void duplicateFileAction(id)
+        void actions
+          .duplicateFileAction(id)
           .then((result) => {
-            const file = unwrapActionResult(result)
+            const file = unwrapActionResult(result) as FileNode
             setFiles((prev) =>
               prev.map((item) => (item.id === optimistic.id ? file : item))
             )
@@ -403,7 +420,8 @@ export function FilesProvider({
             return { ...file, starred }
           })
         )
-        void toggleStarAction(id)
+        void actions
+          .toggleStarAction(id)
           .then((result) => {
             unwrapActionResult(result)
             toast.success(starred ? t("favoriteAdded") : t("favoriteRemoved"))
@@ -413,7 +431,8 @@ export function FilesProvider({
       trashFile: (id) => {
         trashIds([id])
         logActivity(id, "movedThisFileToTrash")
-        void trashFileAction(id)
+        void actions
+          .trashFileAction(id)
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("movedToTrash"))
@@ -428,7 +447,8 @@ export function FilesProvider({
               : file
           )
         )
-        void restoreFileAction(id)
+        void actions
+          .restoreFileAction(id)
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileRestored"))
@@ -437,7 +457,8 @@ export function FilesProvider({
       },
       deleteForever: (id) => {
         setFiles((prev) => prev.filter((file) => file.id !== id))
-        void deleteFileAction(id)
+        void actions
+          .deleteFileAction(id)
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileDeleted"))
@@ -446,7 +467,8 @@ export function FilesProvider({
       },
       moveToTrashMany: (ids) => {
         trashIds(ids)
-        void bulkTrashAction({ ids })
+        void actions
+          .bulkTrashAction({ ids })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("movedToTrash"))
@@ -462,7 +484,8 @@ export function FilesProvider({
               : file
           )
         )
-        void bulkRestoreAction({ ids })
+        void actions
+          .bulkRestoreAction({ ids })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileRestored"))
@@ -472,7 +495,8 @@ export function FilesProvider({
       deleteMany: (ids) => {
         const set = new Set(ids)
         setFiles((prev) => prev.filter((file) => !set.has(file.id)))
-        void bulkDeleteAction({ ids })
+        void actions
+          .bulkDeleteAction({ ids })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("fileDeleted"))
@@ -492,7 +516,8 @@ export function FilesProvider({
             file.id === id ? { ...file, shared: true } : file
           )
         )
-        void addShareAction(id, { memberId, permission })
+        void actions
+          .addShareAction(id, { memberId, permission })
           .then((result) => unwrapActionResult(result))
           .catch((error) => toast.error(te(error, "shareFailed")))
       },
@@ -503,7 +528,8 @@ export function FilesProvider({
             entry.memberId === memberId ? { ...entry, permission } : entry
           ),
         }))
-        void updateShareAction(id, { memberId, permission })
+        void actions
+          .updateShareAction(id, { memberId, permission })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("permissionUpdated"))
@@ -515,7 +541,8 @@ export function FilesProvider({
           ...prev,
           [id]: (prev[id] ?? []).filter((entry) => entry.memberId !== memberId),
         }))
-        void removeShareAction(id, { memberId })
+        void actions
+          .removeShareAction(id, { memberId })
           .then((result) => {
             unwrapActionResult(result)
             toast.success(t("accessRemoved"))
@@ -526,7 +553,8 @@ export function FilesProvider({
         setFiles((prev) =>
           prev.map((file) => (file.id === id ? { ...file, restricted } : file))
         )
-        void setFileRestrictedAction(id, { restricted })
+        void actions
+          .setFileRestrictedAction(id, { restricted })
           .then((result) => unwrapActionResult(result))
           .catch((error) => toast.error(te(error, "updateFailed")))
       },
@@ -567,15 +595,28 @@ export function FilesProvider({
     storageQuotaBytes,
     filesLoaded,
     ensureFilesLoaded,
+    actions,
   ])
 
-  return <FilesContext.Provider value={store}>{children}</FilesContext.Provider>
+  return (
+    <FilesNavContext.Provider value={navigation}>
+      <FilesContext.Provider value={store}>{children}</FilesContext.Provider>
+    </FilesNavContext.Provider>
+  )
 }
 
 export function useFiles() {
   const context = React.useContext(FilesContext)
   if (!context) {
     throw new Error("useFiles must be used within a FilesProvider")
+  }
+  return context
+}
+
+export function useFilesNav() {
+  const context = React.useContext(FilesNavContext)
+  if (!context) {
+    throw new Error("useFilesNav must be used within a FilesProvider")
   }
   return context
 }

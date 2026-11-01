@@ -10,6 +10,7 @@ import { resolveWorkspace } from "@workspace/app-shell/resolve-workspace"
 import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { TrialBanner } from "@workspace/app-shell/trial-banner"
 import { AppSidebar } from "@/components/app-sidebar"
+import { FilesShellProvider } from "@/components/files-provider"
 import { SiteHeader } from "@/components/site-header"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
@@ -53,8 +54,7 @@ import {
   postProjectMessageAction,
 } from "@/actions/project-messages"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
-import { FilesProvider } from "@/lib/files/store"
-import type { FilesData } from "@/lib/files/types"
+import type { FilesData } from "@workspace/files/types"
 import { MessagingProvider } from "@/lib/messaging/store"
 import type { MessagingData } from "@/lib/messaging/types"
 import { notificationService } from "@/lib/notifications"
@@ -190,13 +190,13 @@ export default async function AppLayout({
                   initialData={EMPTY_CALENDAR_DATA}
                   currentUserId={ctx.userId}
                 >
-                  <FilesProvider
-                    initialData={EMPTY_FILES_DATA}
-                    currentUserId={ctx.userId}
-                    organizationId={organization.id}
-                    storageQuotaBytes={storageQuotaBytes}
-                  >
-                    <WorkspaceNavProvider>
+                  <WorkspaceNavProvider>
+                    <FilesShellProvider
+                      initialData={EMPTY_FILES_DATA}
+                      currentUserId={ctx.userId}
+                      organizationId={organization.id}
+                      storageQuotaBytes={storageQuotaBytes}
+                    >
                       <AssistantProvider>
                         <WorkspaceShell
                           skipLabel={t("skipToContent")}
@@ -234,8 +234,8 @@ export default async function AppLayout({
                           {children}
                         </WorkspaceShell>
                       </AssistantProvider>
-                    </WorkspaceNavProvider>
-                  </FilesProvider>
+                    </FilesShellProvider>
+                  </WorkspaceNavProvider>
                 </CalendarsProvider>
               </MessagingProvider>
             </ProjectStoreProvider>

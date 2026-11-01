@@ -11,7 +11,7 @@ import {
 } from "@workspace/ui/components/card"
 
 import { getOptionalRequestContext } from "@/lib/core/auth-context"
-import { formatBytes } from "@/lib/files/file-utils"
+import { formatBytes } from "@workspace/files/file-utils"
 import { EXPORT_TTL_DAYS, listExports } from "@/lib/organization/export-service"
 
 /** Owner-only: request an archive of the organization and download it. */

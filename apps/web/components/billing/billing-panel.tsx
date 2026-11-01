@@ -45,7 +45,7 @@ import type {
   InvoiceSummaryData,
   SubscriptionStatus,
 } from "@/lib/billing/types"
-import { formatBytes } from "@/lib/files/file-utils"
+import { formatBytes } from "@workspace/files/file-utils"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 

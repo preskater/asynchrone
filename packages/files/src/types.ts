@@ -11,7 +11,8 @@ export type FileKind =
   | "code"
   | "other"
 
-export type FileLocation = "my-files" | "shared" | "recent" | "favorites" | "trash"
+export type FileLocation =
+  "my-files" | "shared" | "recent" | "favorites" | "trash"
 
 export type SharePermission = "view" | "comment" | "edit"
 
@@ -68,6 +69,26 @@ export interface FilesData {
   shares: Record<string, ShareEntry[]>
   versions: Record<string, FileVersion[]>
   activities: Record<string, FileActivity[]>
+}
+
+/**
+ * The member fields files screens render. The workspace shell supplies the
+ * organization directory; the shape matches the projects `Member` so an app
+ * can pass its existing list without mapping.
+ */
+export interface FilesMember {
+  id: string
+  name: string
+  email?: string
+  avatarUrl?: string
+}
+
+/** Folder/location navigation the files screens share with the app shell. */
+export interface FilesNavigation {
+  location: FileLocation
+  folderId: string | null
+  selectLocation: (location: FileLocation) => void
+  openFolder: (folderId: string | null) => void
 }
 
 export const SHARE_PERMISSIONS: { value: SharePermission; label: string }[] = [

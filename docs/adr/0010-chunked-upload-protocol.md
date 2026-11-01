@@ -32,7 +32,7 @@ Chosen option: "A chunked upload protocol backed by an `UploadSession` record",
 because it fits the serverless body cap, is retry-safe, and verifies integrity
 before finalizing.
 
-`lib/files/upload-config.ts` sets `UPLOAD_CHUNK_SIZE` to 3 MiB (a multiple of
+`packages/files/src/upload-config.ts` sets `UPLOAD_CHUNK_SIZE` to 3 MiB (a multiple of
 `LOBLKSIZE`) with a 1-hour session TTL and a 3-attempt in-memory chunk retry
 budget. The flow is: `POST /api/files/uploads` (authz + quota, create large
 object and session), `PUT /api/files/uploads/[uploadId]` (append one chunk; the
@@ -82,9 +82,9 @@ sessions past their lease and also runs opportunistically on init.
 
 ## Links
 
-- `apps/web/lib/files/upload-config.ts`
-- `apps/web/lib/files/upload-session.ts`
-- `apps/web/lib/files/upload-client.ts`
+- `packages/files/src/upload-config.ts`
+- `packages/files/src/upload-session.ts`
+- `packages/files/src/upload-client.ts`
 - `apps/web/app/api/files/uploads/**`
 - `README.md` — "File storage"
 - [ADR-0005](0005-store-files-as-postgresql-large-objects.md) — the storage layer

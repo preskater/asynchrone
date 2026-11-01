@@ -6,7 +6,7 @@ import {
   createFolderSchema,
   moveFileSchema,
   renameFileSchema,
-} from "@/lib/files/schemas"
+} from "@workspace/files/schemas"
 
 import type { McpTool } from "./projects"
 

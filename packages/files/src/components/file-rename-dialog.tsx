@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { FolderPlusIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Button } from "@workspace/ui/components/button"
@@ -17,50 +16,58 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 
-import { useFiles } from "@/lib/files/store"
+import { useFiles } from "../store"
+import type { FileNode } from "../types"
 
-export function FolderDialog({
-  parentId,
+export function FileRenameDialog({
+  file,
   children,
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  parentId: string | null
-  children: React.ReactElement
+  file: FileNode
+  children?: React.ReactElement
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const { createFolder } = useFiles()
+  const { renameFile } = useFiles()
   const t = useTranslations("Files")
-  const [open, setOpen] = React.useState(false)
-  const [name, setName] = React.useState("")
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
+  const [name, setName] = React.useState(file.name)
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (next) setName("")
+        if (next) setName(file.name)
       }}
     >
-      <DialogTrigger render={children} />
+      {children ? <DialogTrigger render={children} /> : null}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("newFolder")}</DialogTitle>
+          <DialogTitle>
+            {file.kind === "folder" ? t("renameFolder") : t("renameFile")}
+          </DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault()
             if (!name.trim()) return
-            createFolder(parentId, name)
+            renameFile(file.id, name)
             setOpen(false)
           }}
         >
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="folder-name">{t("folderName")}</FieldLabel>
+              <FieldLabel htmlFor={`rename-${file.id}`}>{t("name")}</FieldLabel>
               <Input
-                id="folder-name"
+                id={`rename-${file.id}`}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={t("folderNamePlaceholder")}
                 autoFocus
               />
             </Field>
@@ -69,10 +76,7 @@ export function FolderDialog({
             <DialogClose render={<Button variant="outline" type="button" />}>
               {t("cancel")}
             </DialogClose>
-            <Button type="submit">
-              <FolderPlusIcon data-icon="inline-start" />
-              {t("createFolder")}
-            </Button>
+            <Button type="submit">{t("save")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

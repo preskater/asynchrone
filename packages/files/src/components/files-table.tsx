@@ -12,9 +12,9 @@ import {
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { FileIcon } from "@/components/files/file-icon"
-import { FileMenuItems } from "@/components/files/file-actions"
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { FileIcon } from "./file-icon"
+import { FileMenuItems } from "./file-actions"
+import { MemberAvatar } from "./member-avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -48,10 +48,10 @@ import {
 } from "@workspace/ui/components/table"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { formatBytes, formatRelativeDate } from "@/lib/files/file-utils"
-import { useFiles } from "@/lib/files/store"
-import type { FileLocation, FileNode } from "@/lib/files/types"
-import type { SortOption } from "@/components/files/files-toolbar"
+import { formatBytes, formatRelativeDate } from "../file-utils"
+import { useFiles } from "../store"
+import type { FileLocation, FileNode } from "../types"
+import type { SortOption } from "./files-toolbar"
 
 type SortDir = "asc" | "desc"
 

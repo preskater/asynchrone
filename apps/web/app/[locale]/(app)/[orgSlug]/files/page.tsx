@@ -1,4 +1,4 @@
-import { FilesWorkspace } from "@/components/files/files-workspace"
+import { FilesWorkspace } from "@workspace/files/components/files-workspace"
 
 export default function FilesPage() {
   return (

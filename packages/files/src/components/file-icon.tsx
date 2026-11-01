@@ -1,7 +1,7 @@
 "use client"
 
-import { FILE_KIND_COLOR, FILE_KIND_ICON } from "@/lib/files/file-utils"
-import type { FileKind } from "@/lib/files/types"
+import { FILE_KIND_COLOR, FILE_KIND_ICON } from "../file-utils"
+import type { FileKind } from "../types"
 import { cn } from "@workspace/ui/lib/utils"
 
 export function FileIcon({
