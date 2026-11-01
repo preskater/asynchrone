@@ -11,7 +11,7 @@ import {
   moveEventSchema,
   setAttendeeResponseSchema,
   updateEventSchema,
-} from "@/lib/calendars/schemas"
+} from "@workspace/calendars/schemas"
 
 export const listCalendarDataAction = withAction(async () => {
   const ctx = await getRequestContext()
@@ -44,13 +44,15 @@ export const updateEventAction = withAction(
   }
 )
 
-export const moveEventAction = withAction(async (id: string, input: unknown) => {
-  const ctx = await getRequestContext()
-  const parsed = await parseLocalized(moveEventSchema, input)
-  const event = await calendarService.moveEvent(ctx, id, parsed)
-  await revalidateOrgPath(ctx.organizationId, "/calendars")
-  return event
-})
+export const moveEventAction = withAction(
+  async (id: string, input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(moveEventSchema, input)
+    const event = await calendarService.moveEvent(ctx, id, parsed)
+    await revalidateOrgPath(ctx.organizationId, "/calendars")
+    return event
+  }
+)
 
 export const deleteEventAction = withAction(async (id: string) => {
   const ctx = await getRequestContext()
@@ -80,7 +82,11 @@ export const respondToEventAction = withAction(
   async (eventId: string, input: unknown) => {
     const ctx = await getRequestContext()
     const parsed = await parseLocalized(setAttendeeResponseSchema, input)
-    const event = await calendarService.setAttendeeResponse(ctx, eventId, parsed)
+    const event = await calendarService.setAttendeeResponse(
+      ctx,
+      eventId,
+      parsed
+    )
     await revalidateOrgPath(ctx.organizationId, "/calendars")
     return event
   }

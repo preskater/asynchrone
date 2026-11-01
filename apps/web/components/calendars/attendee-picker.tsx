@@ -109,7 +109,11 @@ export function AttendeePicker({
             const member = getMember(attendee.memberId)
             if (!member) return null
             return (
-              <Badge key={attendee.memberId} variant="secondary" className="gap-1.5">
+              <Badge
+                key={attendee.memberId}
+                variant="secondary"
+                className="gap-1.5"
+              >
                 <MemberAvatar member={member} size="sm" />
                 {member.name}
                 <button

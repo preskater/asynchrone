@@ -5,12 +5,15 @@ import {
   NotFoundError,
   ValidationError,
 } from "@workspace/core/errors"
-import { notificationService } from "@/lib/notifications"
 import { roleRank } from "@workspace/organization/roles"
-import type { PortalContext } from "@/lib/portal/context"
 
 import { resolveMeetingProvider } from "./providers"
-import { MeetingRepository } from "./repository"
+import type {
+  MeetingRepositoryPort,
+  MeetingRequestRow,
+  MeetingSettingsRow,
+  MeetingSlotRow,
+} from "./repository"
 import type {
   AcceptMeetingRequestInput,
   CreateMeetingRequestInput,
@@ -37,17 +40,34 @@ import {
 const HOUR_MS = 60 * 60 * 1000
 const DAY_MS = 24 * HOUR_MS
 
-type MeetingRow = NonNullable<
-  Awaited<ReturnType<MeetingRepository["findRequest"]>>
->
-type SlotRow = MeetingRow["slots"][number]
+type MeetingRow = MeetingRequestRow
+type SlotRow = MeetingSlotRow
 
-function overlaps(
-  aStart: Date,
-  aEnd: Date,
-  bStart: Date,
-  bEnd: Date
-): boolean {
+/**
+ * The portal identity a meeting-request call is made with. Copilot passes its
+ * own `PortalContext`; the shape is narrowed here so the package stays free of
+ * the auth/session runtime.
+ */
+export interface MeetingPortalContext {
+  userId: string
+  userName: string
+  organizationId: string
+  clientId: string
+  clientName: string
+}
+
+/** Notification side effect emitted when a client requests a meeting. */
+export interface MeetingNotifier {
+  notify(args: {
+    organizationId: string
+    userId: string
+    actorId: string
+    type: "meeting.requested"
+    data: Record<string, unknown>
+  }): Promise<unknown>
+}
+
+function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime()
 }
 
@@ -70,7 +90,10 @@ function requireStaff(ctx: RequestContext, minRank: number) {
 }
 
 export class MeetingService {
-  constructor(private readonly repo: MeetingRepository) {}
+  constructor(
+    private readonly repo: MeetingRepositoryPort,
+    private readonly notifier: MeetingNotifier
+  ) {}
 
   // ---------------------------------------------------------------------------
   // Settings
@@ -122,7 +145,9 @@ export class MeetingService {
   // ---------------------------------------------------------------------------
 
   /** Requests of the signed-in client's company, with the booking rules. */
-  async getPortalMeetings(ctx: PortalContext): Promise<PortalMeetingsData> {
+  async getPortalMeetings(
+    ctx: MeetingPortalContext
+  ): Promise<PortalMeetingsData> {
     const [row, requests] = await Promise.all([
       this.repo.getSettings(ctx.organizationId),
       this.repo.listClientRequests(ctx.organizationId, ctx.clientId),
@@ -139,7 +164,7 @@ export class MeetingService {
 
   /** Create a multi-slot proposal inside the allowed timeline. */
   async createRequest(
-    ctx: PortalContext,
+    ctx: MeetingPortalContext,
     input: CreateMeetingRequestInput
   ): Promise<MeetingRequestData> {
     const settings = this.mapSettings(
@@ -178,7 +203,10 @@ export class MeetingService {
         undefined,
         {
           code: "meeting_duration_invalid",
-          params: { min: MIN_MEETING_MINUTES, max: settings.maxDurationMinutes },
+          params: {
+            min: MIN_MEETING_MINUTES,
+            max: settings.maxDurationMinutes,
+          },
         }
       )
     }
@@ -222,10 +250,14 @@ export class MeetingService {
     const now = Date.now()
     for (const slot of slots) {
       if (slot.startAt.getTime() < now + settings.minNoticeHours * HOUR_MS) {
-        throw new ValidationError("The requested slot is too soon.", undefined, {
-          code: "meeting_slot_too_soon",
-          params: { hours: settings.minNoticeHours },
-        })
+        throw new ValidationError(
+          "The requested slot is too soon.",
+          undefined,
+          {
+            code: "meeting_slot_too_soon",
+            params: { hours: settings.minNoticeHours },
+          }
+        )
       }
       if (slot.startAt.getTime() > now + settings.bookingWindowDays * DAY_MS) {
         throw new ValidationError(
@@ -281,7 +313,7 @@ export class MeetingService {
 
   /** A client withdraws one of their pending requests. */
   async cancelRequest(
-    ctx: PortalContext,
+    ctx: MeetingPortalContext,
     id: string
   ): Promise<MeetingRequestData> {
     const row = await this.repo.findClientRequest(
@@ -291,9 +323,13 @@ export class MeetingService {
     )
     if (!row) throw new NotFoundError("meetingRequest")
     if (row.status !== "pending") {
-      throw new ValidationError("This request is no longer pending.", undefined, {
-        code: "meeting_not_pending",
-      })
+      throw new ValidationError(
+        "This request is no longer pending.",
+        undefined,
+        {
+          code: "meeting_not_pending",
+        }
+      )
     }
     const updated = await this.repo.updateRequest(row.id, {
       status: "cancelled",
@@ -340,9 +376,13 @@ export class MeetingService {
     const row = await this.repo.findRequest(ctx.organizationId, input.id)
     if (!row) throw new NotFoundError("meetingRequest")
     if (row.status !== "pending") {
-      throw new ValidationError("This request is no longer pending.", undefined, {
-        code: "meeting_not_pending",
-      })
+      throw new ValidationError(
+        "This request is no longer pending.",
+        undefined,
+        {
+          code: "meeting_not_pending",
+        }
+      )
     }
 
     const slot = row.slots.find((entry) => entry.id === input.slotId)
@@ -386,10 +426,7 @@ export class MeetingService {
     })
 
     const meetingUrl =
-      input.meetingUrl?.trim() ||
-      result.joinUrl ||
-      row.meetingUrl ||
-      undefined
+      input.meetingUrl?.trim() || result.joinUrl || row.meetingUrl || undefined
     const meetingPassword =
       input.meetingPassword?.trim() ||
       result.password ||
@@ -458,9 +495,13 @@ export class MeetingService {
     const row = await this.repo.findRequest(ctx.organizationId, input.id)
     if (!row) throw new NotFoundError("meetingRequest")
     if (row.status !== "pending") {
-      throw new ValidationError("This request is no longer pending.", undefined, {
-        code: "meeting_not_pending",
-      })
+      throw new ValidationError(
+        "This request is no longer pending.",
+        undefined,
+        {
+          code: "meeting_not_pending",
+        }
+      )
     }
 
     const updated = await this.repo.updateRequest(row.id, {
@@ -480,13 +521,13 @@ export class MeetingService {
   // Internals
   // ---------------------------------------------------------------------------
 
-  private async notifyManagers(ctx: PortalContext, row: MeetingRow) {
+  private async notifyManagers(ctx: MeetingPortalContext, row: MeetingRow) {
     const members = await this.repo.listManagers(ctx.organizationId)
     await Promise.all(
       members
         .filter((member) => roleRank(member.role) >= 2)
         .map((member) =>
-          notificationService.notify({
+          this.notifier.notify({
             organizationId: ctx.organizationId,
             userId: member.userId,
             actorId: ctx.userId,
@@ -605,9 +646,7 @@ export class MeetingService {
     }
   }
 
-  private mapSettings(
-    row: Awaited<ReturnType<MeetingRepository["getSettings"]>>
-  ): MeetingSettingsData {
+  private mapSettings(row: MeetingSettingsRow | null): MeetingSettingsData {
     if (!row) return { ...DEFAULT_MEETING_SETTINGS }
     return {
       clientRequestsEnabled: row.clientRequestsEnabled,

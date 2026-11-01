@@ -9,8 +9,8 @@ import {
   SNAP_MINUTES,
   clamp,
   snapMinutes,
-} from "@/lib/calendars/date-utils"
-import type { CalendarEvent } from "@/lib/calendars/types"
+} from "@workspace/calendars/date-utils"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 export interface DraftRange {
   start: number

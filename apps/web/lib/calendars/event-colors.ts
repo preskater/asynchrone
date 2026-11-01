@@ -1,4 +1,4 @@
-import type { EventColor } from "./types"
+import type { EventColor } from "@workspace/calendars/types"
 
 export const EVENT_COLOR_VAR: Record<EventColor, string> = {
   blue: "var(--chart-3)",

@@ -14,11 +14,14 @@ import {
   CommandList,
 } from "@workspace/ui/components/command"
 
-import { formatDayLabel, formatEventRange } from "@/lib/calendars/date-utils"
+import {
+  formatDayLabel,
+  formatEventRange,
+} from "@workspace/calendars/date-utils"
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
 import { useCalendars } from "@/lib/calendars/store"
 import { cn } from "@workspace/ui/lib/utils"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 export function CalendarsSearchCommand({
   open,

@@ -38,7 +38,7 @@ import type {
   MeetingRequestData,
   MeetingRequestsData,
   MeetingStatus,
-} from "@/lib/meetings/types"
+} from "@workspace/meetings/types"
 import { roleRank } from "@workspace/organization/roles"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 
@@ -231,9 +231,7 @@ export function MeetingRequestsDialog() {
                         >
                           {formatWhen(slot.startAt, slot.endAt)}
                         </span>
-                        {slot.selected ? (
-                          <Badge>{t("confirmed")}</Badge>
-                        ) : null}
+                        {slot.selected ? <Badge>{t("confirmed")}</Badge> : null}
                         {!slot.selected &&
                         request.status === "pending" &&
                         slot.hasConflict ? (
@@ -328,7 +326,9 @@ export function MeetingRequestsDialog() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {decision?.type === "accept" ? t("acceptTitle") : t("declineTitle")}
+              {decision?.type === "accept"
+                ? t("acceptTitle")
+                : t("declineTitle")}
             </DialogTitle>
             <DialogDescription>
               {decision?.type === "accept"

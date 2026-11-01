@@ -47,7 +47,7 @@ import {
   EVENT_COLORS,
   type CalendarKind,
   type EventColor,
-} from "@/lib/calendars/types"
+} from "@workspace/calendars/types"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 
 function SectionLabel({ children }: { children: React.ReactNode }) {

@@ -2,7 +2,11 @@ import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
 import { roleRank } from "@workspace/organization/roles"
 
-import { CalendarRepository } from "./repository"
+import type {
+  CalendarEventRow,
+  CalendarRepositoryPort,
+  CalendarRow,
+} from "./repository"
 import type {
   CreateCalendarInput,
   CreateEventInput,
@@ -19,13 +23,8 @@ function canWrite(ctx: RequestContext) {
   })
 }
 
-type CalendarRow = Awaited<
-  ReturnType<CalendarRepository["listCalendars"]>
->[number]
-type EventRow = Awaited<ReturnType<CalendarRepository["listEvents"]>>[number]
-
 export class CalendarService {
-  constructor(private readonly repo: CalendarRepository) {}
+  constructor(private readonly repo: CalendarRepositoryPort) {}
 
   private mapCalendar(row: CalendarRow): CalendarSource {
     return {
@@ -38,7 +37,7 @@ export class CalendarService {
     }
   }
 
-  private mapEvent(row: EventRow): CalendarEvent {
+  private mapEvent(row: CalendarEventRow): CalendarEvent {
     return {
       id: row.id,
       title: row.title,

@@ -9,7 +9,7 @@ import {
   formatDayLabel,
   formatEventRange,
   isSameDay,
-} from "@/lib/calendars/date-utils"
+} from "@workspace/calendars/date-utils"
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
 import { tasksOnDay } from "@/lib/calendars/tasks"
 import { TaskChip } from "@/components/calendars/task-chip"
@@ -22,13 +22,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty"
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
 import { useProjectStore } from "@/lib/projects/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 function EventRow({
   event,
@@ -115,9 +121,7 @@ export function AgendaView({
             <CalendarX2Icon />
           </EmptyMedia>
           <EmptyTitle>{t("noEventsScheduled")}</EmptyTitle>
-          <EmptyDescription>
-            {t("nothingNextTwoWeeks")}
-          </EmptyDescription>
+          <EmptyDescription>{t("nothingNextTwoWeeks")}</EmptyDescription>
         </EmptyHeader>
       </Empty>
     )

@@ -11,7 +11,7 @@ import {
   createMeetingRequestSchema,
   declineMeetingRequestSchema,
   updateMeetingSettingsSchema,
-} from "@/lib/meetings/schemas"
+} from "@workspace/meetings/schemas"
 import { revalidateOrgPath } from "@/lib/organization/paths"
 import { getPortalContext } from "@/lib/portal/context"
 

@@ -53,7 +53,10 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { ToggleGroup, ToggleGroupItem } from "@workspace/ui/components/toggle-group"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@workspace/ui/components/toggle-group"
 
 import { unwrapActionResult } from "@workspace/core/action"
 import { useRouter } from "@workspace/i18n/navigation"
@@ -68,7 +71,7 @@ import {
   type MeetingRequestData,
   type MeetingStatus,
   type PortalMeetingsData,
-} from "@/lib/meetings/types"
+} from "@workspace/meetings/types"
 
 const STATUS_VARIANT: Record<
   MeetingStatus,
@@ -243,7 +246,11 @@ function RequestCard({
                 key={slot.id}
                 className="flex flex-wrap items-center gap-2 text-muted-foreground"
               >
-                <span className={slot.selected ? "font-medium text-foreground" : undefined}>
+                <span
+                  className={
+                    slot.selected ? "font-medium text-foreground" : undefined
+                  }
+                >
                   {formatWhen(slot.startAt, slot.endAt)}
                 </span>
                 {slot.selected ? <Badge>{t("confirmed")}</Badge> : null}
@@ -358,8 +365,7 @@ function RequestMeetingDialog({
     mode === "online" &&
     settings.requiresMeetingUrl &&
     !meetingUrl.trim()
-  const addressInvalid =
-    submitted && mode === "in_person" && !address.trim()
+  const addressInvalid = submitted && mode === "in_person" && !address.trim()
 
   function reset() {
     setSubmitted(false)
@@ -375,9 +381,7 @@ function RequestMeetingDialog({
 
   function updateSlot(key: string, patch: Partial<DraftSlot>) {
     setSlots((previous) =>
-      previous.map((slot) =>
-        slot.key === key ? { ...slot, ...patch } : slot
-      )
+      previous.map((slot) => (slot.key === key ? { ...slot, ...patch } : slot))
     )
   }
 
@@ -436,7 +440,8 @@ function RequestMeetingDialog({
             mode === "online" ? meetingUrl.trim() || undefined : undefined,
           meetingPassword:
             mode === "online" ? meetingPassword.trim() || undefined : undefined,
-          address: mode === "in_person" ? address.trim() || undefined : undefined,
+          address:
+            mode === "in_person" ? address.trim() || undefined : undefined,
         })
       )
       toast.success(t("requestSent"))
@@ -535,10 +540,12 @@ function RequestMeetingDialog({
                   key={slot.key}
                   className="grid grid-cols-[1fr_7rem_2.25rem] items-center gap-2"
                 >
-                  <div data-invalid={submitted && !slot.date || undefined}>
+                  <div data-invalid={(submitted && !slot.date) || undefined}>
                     <DatePicker
                       value={slot.date}
-                      onChange={(value) => updateSlot(slot.key, { date: value })}
+                      onChange={(value) =>
+                        updateSlot(slot.key, { date: value })
+                      }
                       placeholder={t("slotDatePlaceholder", {
                         number: index + 1,
                       })}
@@ -569,9 +576,7 @@ function RequestMeetingDialog({
                 </div>
               ))}
               {dateInvalid ? (
-                <p className="text-sm text-destructive">
-                  {t("requiredSlots")}
-                </p>
+                <p className="text-sm text-destructive">{t("requiredSlots")}</p>
               ) : null}
             </div>
 

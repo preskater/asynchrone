@@ -12,13 +12,17 @@ import {
   eventsOnDay,
   startOfEventDay,
   startOfWeek,
-} from "@/lib/calendars/date-utils"
+} from "@workspace/calendars/date-utils"
 import { EVENT_COLOR_CLASSES } from "@/lib/calendars/event-colors"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
 const HOURS = Array.from(
   { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
@@ -38,7 +42,9 @@ export function AvailabilityView({
   const t = useTranslations("Calendars")
   const { getMember, eventsOnDay } = useCalendars()
   const weekStart = startOfWeek(focusDate)
-  const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+  const days = Array.from({ length: 7 }, (_, index) =>
+    addDays(weekStart, index)
+  )
   const slotCount = HOURS.length - 1
 
   return (

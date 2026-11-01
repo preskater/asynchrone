@@ -1,4 +1,4 @@
-import { isSameDay } from "@/lib/calendars/date-utils"
+import { isSameDay } from "@workspace/calendars/date-utils"
 import type { Task } from "@/lib/projects/types"
 
 /**

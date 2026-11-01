@@ -10,24 +10,20 @@ import {
   buildMonthGrid,
   isSameDay,
   isSameMonth,
-} from "@/lib/calendars/date-utils"
+} from "@workspace/calendars/date-utils"
 import { tasksOnDay } from "@/lib/calendars/tasks"
 import { cn } from "@workspace/ui/lib/utils"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 
 import { useCalendars } from "@/lib/calendars/store"
 import { useProjectStore } from "@/lib/projects/store"
-import type { CalendarEvent } from "@/lib/calendars/types"
+import type { CalendarEvent } from "@workspace/calendars/types"
 
-const WEEKDAY_KEYS = [
-  "mon",
-  "tue",
-  "wed",
-  "thu",
-  "fri",
-  "sat",
-  "sun",
-] as const
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
 const MAX_VISIBLE = 3
 
 export function MonthView({
@@ -59,7 +55,10 @@ export function MonthView({
       </div>
       <div className="grid min-h-0 flex-1 grid-rows-6">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 border-b last:border-b-0">
+          <div
+            key={weekIndex}
+            className="grid grid-cols-7 border-b last:border-b-0"
+          >
             {week.map((day) => {
               const dayEvents = eventsOnDay(day)
               const dayTasks = showTasks ? tasksOnDay(tasks, day) : []
@@ -83,7 +82,7 @@ export function MonthView({
                       className={cn(
                         "flex size-6 items-center justify-center rounded-full text-xs tabular-nums",
                         isToday
-                          ? "bg-primary text-primary-foreground font-semibold"
+                          ? "bg-primary font-semibold text-primary-foreground"
                           : inMonth
                             ? "text-foreground"
                             : "text-muted-foreground"
@@ -98,17 +97,20 @@ export function MonthView({
                         <TooltipTrigger render={<span className="block" />}>
                           <EventChip event={event} onClick={onOpenEvent} />
                         </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          className="max-w-56 p-2"
-                        >
+                        <TooltipContent side="right" className="max-w-56 p-2">
                           <EventTooltipContent event={event} />
                         </TooltipContent>
                       </Tooltip>
                     ))}
-                    {dayTasks.slice(0, Math.max(0, MAX_VISIBLE - visibleEvents.length)).map((task) => (
-                      <TaskChip key={task.id} task={task} className="text-primary" />
-                    ))}
+                    {dayTasks
+                      .slice(0, Math.max(0, MAX_VISIBLE - visibleEvents.length))
+                      .map((task) => (
+                        <TaskChip
+                          key={task.id}
+                          task={task}
+                          className="text-primary"
+                        />
+                      ))}
                     {overflow > 0 ? (
                       <button
                         type="button"
