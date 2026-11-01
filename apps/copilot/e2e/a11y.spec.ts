@@ -8,9 +8,10 @@ test("core routes have no serious accessibility violations", async ({
 }) => {
   const slug = await signUp(page)
 
+  // Projects moved to its own host in #160; the Copilot shell no longer renders
+  // it (the old path 308-redirects).
   const routes = [
     `/${slug}`,
-    `/${slug}/projects`,
     `/${slug}/files`,
     `/${slug}/messages`,
     `/${slug}/calendars`,

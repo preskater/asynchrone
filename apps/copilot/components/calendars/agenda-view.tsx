@@ -33,7 +33,7 @@ import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@workspace/projects/store"
+import { useCalendarTasks } from "@/lib/calendars/task-overlay"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 function EventRow({
@@ -104,7 +104,7 @@ export function AgendaView({
   const t = useTranslations("Calendars")
   const tc = useTranslations("Common")
   const { eventsOnDay, showTasks } = useCalendars()
-  const { tasks } = useProjectStore()
+  const { tasks } = useCalendarTasks()
   const days = eachDay(focusDate, new Date(focusDate.getTime() + 13 * 86400000))
   const groups = days
     .map((day) => ({

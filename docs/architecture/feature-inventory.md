@@ -1,6 +1,6 @@
 # Feature inventory and parity checklist
 
-Last audited: 2026-11-01 (issues #146–#158).
+Last audited: 2026-11-01 (issues #146–#160).
 
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
@@ -37,9 +37,10 @@ See also:
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
-Only `apps/copilot` and `apps/control-tower` exist today. Copilot still hosts the
-domain routes until #160 moves them to their own apps; the portal stays inside
-Copilot (there is no `apps/portal`).
+`apps/landing`, `apps/copilot`, `apps/projects` and `apps/control-tower` exist
+today. Copilot still hosts the calendars, files, messages, clients and employees
+routes until #161–#164 move them; the portal stays inside Copilot (there is no
+`apps/portal`).
 
 ## Landing
 
@@ -183,14 +184,23 @@ adapter; every other app goes through the internal contract.
 
 Target: `apps/projects` / `@workspace/projects`.
 
-Extracted in #153. The domain package owns the repository, service, schemas,
-types, project/task UI and the GitHub/GitLab repository sync. Server actions,
-pages and app wiring stay in Copilot until #160 moves them with the app.
+Extracted in #153, moved to its own app in #160: pages, actions, shell, OIDC
+session and deployment live in `apps/projects`, which serves
+`projects.copilot.asynchrone.space/{locale}/{orgSlug}/projects`. Copilot keeps
+only a redirect (`apps/copilot/proxy.ts`) and the in-process adapters the
+assistant, MCP and portal still use until #190.
+
+Transitional gap: `@workspace/projects` reads `member`, `user` and `account`
+(member list, invitations/roles, personal repository tokens), so `apps/projects`
+binds the shared client (`@workspace/db`) until #190/#171 move those reads behind
+the identity internal API. It is the only app with this exception.
 
 | Surface            | Inventory                                                                                                                                                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Server actions     | `actions/projects.ts`, `actions/project-messages.ts`, `actions/integrations.ts` (projects, tasks, members, labels, templates, comments, project discussion thread, repository connections)                                                                          |
-| API                | `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync`, `/api/health`                                                                                                                                                                    |
+| Server actions     | `apps/projects/actions/{projects,project-messages,integrations}.ts` (projects, tasks, members, labels, templates, comments, project discussion thread, repository connections)                                                                                      |
+| Pages              | `apps/projects/app/[locale]/[orgSlug]/projects[/\[projectId\]]` (list, workspace, loading, not-found); Copilot 308-redirects the old paths                                                                                                                         |
+| Auth               | `apps/projects/app/api/auth/{sign-in,callback,logout,backchannel-logout,switch}`, `lib/auth/workspace.ts` (2FA gate, organization binding)                                                                                                                           |
+| API                | Copilot: `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync` (until #190); projects: `/api/health`                                                                                                                                     |
 | MCP tools          | `list_projects`, `get_project`, `list_tasks`, `create_project`, `create_task`, `update_task`, `move_task`                                                                                                                                                           |
 | Prisma models      | `Project`, `ProjectMember`, `Label`, `ProjectLabel`, `Task`, `TaskIdentifierCounter`, `TaskTemplate`, `TaskLabel`, `Subtask`, `TaskComment`, `ProjectActivity`, `ProjectMessage`, `RepositoryConnection`, `UserRepositoryToken`, `AuditLog`                         |
 | Audit actions      | `project.created`, `project.updated`, `project.deleted`, `project.client_settings.updated`, `project.member.*`, `project.label.*`, `project.template.*`, `task.created`, `task.updated`, `task.moved`, `task.deleted`, `task.subtask.toggled`, `task.comment.added` |
@@ -212,9 +222,12 @@ pages and app wiring stay in Copilot until #160 moves them with the app.
 | `packages/projects/src/ui/store.tsx`              | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`           |
 | `packages/projects/src/ui/actions.tsx`            | `ProjectActions` contract + `useProjectActions()`                                                                             |
 | `packages/projects/src/components/*`              | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)         |
-| `apps/copilot/lib/projects/index.ts`                  | Adapter: binds the Prisma client, `recordUserAudit`, `notificationService` and `repositoryIntegrationService`                 |
-| `apps/copilot/lib/projects/{thread,task-comments}.ts` | Adapters for the portal: bind the db client + notifier                                                                        |
-| `apps/copilot/lib/integrations/index.ts`              | Adapter: binds the client and `BETTER_AUTH_URL` (webhook URLs) for the repository sync                                        |
+| `apps/copilot/lib/projects/index.ts`                  | Copilot adapter (assistant, MCP, portal, search): binds the shared client, audit, notifications and repository integration   |
+| `apps/copilot/lib/projects/{thread,task-comments}.ts` | Copilot adapters for the portal: bind the db client + notifier                                                                |
+| `apps/copilot/lib/integrations/index.ts`              | Copilot adapter: webhook handler and `repository-sync` cron (webhook URLs stay on Copilot until #190)                         |
+| `apps/projects/lib/{projects,integrations}`           | App adapters: bind the db client, audit writer, notification inbox and repository sync                                        |
+| `apps/projects/lib/auth/*`                            | OIDC session, return-to cookie, workspace gates and request context                                                           |
+| `apps/projects/lib/project-actions.ts`                | Binds the app's server actions to the package's `ProjectActions` port                                                         |
 
 App-only imports are forbidden in the package (`npm run check:boundaries`).
 `member`, `user` and `account` remain in the `ProjectDb` port because the
@@ -567,7 +580,7 @@ Never bake secrets into an image.
 | Unit — Portal             | `packages/portal/src/service.unit.test.ts` (client-member scope, cross-org reads, access management, document upload/download)                                                                                                                                |
 | Unit — Calendars/Meetings | `packages/calendars/src/service.unit.test.ts` (personal calendar creation, membership mapping, attendee response, role/cross-org guards); `packages/meetings/src/service.unit.test.ts` (request rules, conflict flags, notification fan-out, booking, decline) |
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
-| E2E                       | `apps/copilot/e2e/{a11y,audit-log,member-rbac,password-reset,portal,upload}.spec.ts`                                                                                                                                                                          |
+| E2E                       | `apps/copilot/e2e/{a11y,audit-log,password-reset,portal,upload}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160)                                                                                                                  |
 | Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
 | Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
@@ -610,11 +623,18 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [x] Repository, service, schemas, types, project/task UI and repository sync
       live in `@workspace/projects`; app adapters bind db, auth, audit,
       notifications and env (#153).
-- [ ] Pages, actions, MCP tools, repository webhooks and `repository-sync` cron.
-- [ ] `Project`/`Task`/`ProjectMessage`/repository models live in
-      `asynchrone_projects`.
-- [ ] Audit rows are written in the projects database and served by
-      `/internal/v1/audit`.
+- [x] Pages and actions live in `apps/projects`; Copilot redirects the old paths
+      and no longer loads project data in its shell (#160).
+- [x] Host-only OIDC session, 2FA page gate and organization switch on the
+      projects host (#160).
+- [x] Own image (`APP=projects`), Helm subchart, compose service and CI jobs
+      (#160).
+- [x] Audit rows are written by the projects app (`apps/projects/lib/audit.ts`)
+      into the shared `auditLog` table; the fan-out endpoint is #187's.
+- [ ] `Project`/`Task`/`ProjectMessage`/repository models are read from
+      `asynchrone_projects` (pilot still binds the shared client, #190).
+- [ ] MCP tools, repository webhooks and the `repository-sync` cron move to the
+      projects app (#190).
 - [ ] Search, export and deletion endpoints are wired.
 - [ ] Assistant, MCP and portal reach it through internal clients.
 

@@ -30,6 +30,11 @@ export {
   type RetentionPlanSource,
 } from "./retention"
 export {
+  EMPTY_REQUEST_META,
+  ipFromHeaders,
+  requestMetaFromHeaders,
+} from "./request-meta"
+export {
   recordAudit,
   recordAuditMany,
   recordSystemAudit,

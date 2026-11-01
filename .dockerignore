@@ -1,19 +1,33 @@
-# Dependencies (installed inside the image)
+# Dependencies (installed inside the image). The nested patterns matter: a bare
+# `node_modules` only matches the context root, and every workspace has its own.
 node_modules
+**/node_modules
 .pnp
 .pnp.*
 
 # Build output (generated during the image build)
 .next
+**/.next
 out
+**/out
 dist
+**/dist
 build
+**/build
 
 # Turbo
 .turbo
+**/.turbo
 
 # Testing
 coverage
+**/coverage
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+blob-report
+**/blob-report
 
 # Environment files (any depth, so local secrets never enter the image)
 .env

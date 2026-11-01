@@ -3,8 +3,8 @@
 import * as filesActions from "@/actions/files"
 import { FilesProvider } from "@workspace/files/store"
 import type { FilesData } from "@workspace/files/types"
+import type { FilesMember } from "@workspace/files/types"
 
-import { useProjectStore } from "@workspace/projects/store"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 
 /**
@@ -18,14 +18,15 @@ export function FilesShellProvider({
   currentUserId,
   organizationId,
   storageQuotaBytes,
+  members,
 }: {
   children: React.ReactNode
   initialData: FilesData
   currentUserId: string
   organizationId: string
   storageQuotaBytes: number
+  members: FilesMember[]
 }) {
-  const { members } = useProjectStore()
   const navigation = useWorkspaceNav()
 
   return (

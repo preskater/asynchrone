@@ -8,7 +8,7 @@ import { Calendar } from "@workspace/ui/components/calendar"
 
 import { useCalendars } from "@/lib/calendars/store"
 import { tasksOnDay } from "@/lib/calendars/tasks"
-import { useProjectStore } from "@workspace/projects/store"
+import { useCalendarTasks } from "@/lib/calendars/task-overlay"
 
 const DAY_PICKER_LOCALES = { en: enUS, fr }
 
@@ -21,7 +21,7 @@ export function MiniCalendar({
 }) {
   const locale = useLocale()
   const { eventsOnDay, showTasks } = useCalendars()
-  const { tasks } = useProjectStore()
+  const { tasks } = useCalendarTasks()
   const eventDates = React.useMemo(() => {
     const dates: Date[] = []
     const cursor = new Date(focusDate)

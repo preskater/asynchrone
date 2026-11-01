@@ -16,7 +16,6 @@ import { SidebarTrigger } from "@workspace/ui/components/sidebar"
 
 import { usePathname } from "@workspace/i18n/navigation"
 import type { NotificationsData } from "@/lib/notifications/types"
-import { useProjectStore } from "@workspace/projects/store"
 
 const titleKeys = {
   "": "assistant",
@@ -33,7 +32,6 @@ const titleKeys = {
 
 function usePageTitle(orgSlug: string, pathname: string) {
   const t = useTranslations("Sidebar")
-  const { getProject } = useProjectStore()
 
   const prefix = `/${orgSlug}`
   const relative = pathname.startsWith(prefix)
@@ -41,23 +39,19 @@ function usePageTitle(orgSlug: string, pathname: string) {
     : pathname
 
   const titleKey = titleKeys[relative as keyof typeof titleKeys]
-  if (titleKey !== undefined) return t(titleKey)
-  if (relative.startsWith("/projects/")) {
-    const projectId = relative.split("/")[2]
-    return projectId
-      ? (getProject(projectId)?.name ?? t("projects"))
-      : t("projects")
-  }
-  return t("assistant")
+  return titleKey === undefined ? t("assistant") : t(titleKey)
 }
 
 export function SiteHeader({
   orgSlug,
+  projectsUrl,
   user,
   activeOrganizationId,
   notifications,
 }: {
   orgSlug: string
+  /** Origin of the projects app (its own image and chart since #160). */
+  projectsUrl: string
   user: {
     name: string
     email: string
@@ -100,7 +94,7 @@ export function SiteHeader({
           orientation="vertical"
           className="mx-2 h-4 data-vertical:self-auto"
         />
-        <AppSwitcher orgSlug={orgSlug} />
+        <AppSwitcher orgSlug={orgSlug} projectsUrl={projectsUrl} />
         <Separator
           orientation="vertical"
           className="mx-2 hidden h-4 sm:block data-vertical:self-auto"
@@ -133,6 +127,7 @@ export function SiteHeader({
       </div>
       <CommandMenu
         orgSlug={orgSlug}
+        projectsUrl={projectsUrl}
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
       />

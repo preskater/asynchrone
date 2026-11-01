@@ -16,10 +16,16 @@ import {
 
 import { Link, usePathname } from "@workspace/i18n/navigation"
 
-export function AppSwitcher({ orgSlug }: { orgSlug: string }) {
+export function AppSwitcher({
+  orgSlug,
+  projectsUrl,
+}: {
+  orgSlug: string
+  projectsUrl: string
+}) {
   const t = useTranslations("Sidebar")
   const pathname = usePathname()
-  const items = useNavMain(orgSlug)
+  const items = useNavMain(orgSlug, projectsUrl)
 
   const current =
     [...items]

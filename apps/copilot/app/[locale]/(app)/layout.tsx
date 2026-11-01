@@ -21,39 +21,6 @@ import { getOrganizationAppearance } from "@/lib/appearance/service"
 import { AssistantProvider } from "@workspace/ai/use-assistant"
 import { CalendarsProvider } from "@/lib/calendars/store"
 import type { CalendarData } from "@workspace/calendars/types"
-import {
-  addCommentAction,
-  addLabelAction,
-  addMemberAction,
-  createProjectAction,
-  createTaskAction,
-  createTaskTemplateAction,
-  deleteProjectAction,
-  deleteTaskAction,
-  listProjectShellAction,
-  loadProjectWorkspaceAction,
-  moveTaskAction,
-  removeLabelAction,
-  removeMemberAction,
-  removeTaskTemplateAction,
-  toggleSubtaskAction,
-  updateMemberRoleAction,
-  updateProjectAction,
-  updateProjectClientSettingsAction,
-  updateTaskAction,
-  updateTaskTemplateAction,
-} from "@/actions/projects"
-import {
-  connectRepositoryAction,
-  disconnectRepositoryAction,
-  getRepositoryConnectionAction,
-  listUserRepositoryTokensAction,
-  syncRepositoryAction,
-} from "@/actions/integrations"
-import {
-  listProjectMessagesAction,
-  postProjectMessageAction,
-} from "@/actions/project-messages"
 import { getRequestContextForOrganization } from "@/lib/core/auth-context"
 import type { FilesData } from "@workspace/files/types"
 import type { MessagingData } from "@workspace/messaging/types"
@@ -61,59 +28,13 @@ import { notificationService } from "@/lib/notifications"
 import { mustEnrollTwoFactor } from "@/lib/organization/two-factor-policy"
 import { getOrganizationShell } from "@/lib/organization/shell"
 import { getTrialStatus } from "@/lib/organization/trial-service"
-import { roleRank } from "@workspace/organization/roles"
 import { EntitlementsProvider } from "@/lib/organization/use-entitlements"
 import { isPortalMember } from "@/lib/portal/context"
-import {
-  ProjectStoreProvider,
-  type ProjectActions,
-} from "@workspace/projects/store"
-import type { ProjectData } from "@workspace/projects/types"
 import { WorkspaceNavProvider } from "@/lib/workspace-nav/store"
-
-/**
- * Server actions stay in the app until `apps/projects` exists (#160); the
- * package receives them as a port so no component imports `@/actions/*`.
- */
-const PROJECT_ACTIONS: ProjectActions = {
-  listShell: listProjectShellAction,
-  loadWorkspace: loadProjectWorkspaceAction,
-  createProject: createProjectAction,
-  updateProject: updateProjectAction,
-  deleteProject: deleteProjectAction,
-  updateClientSettings: updateProjectClientSettingsAction,
-  createTask: createTaskAction,
-  updateTask: updateTaskAction,
-  moveTask: moveTaskAction,
-  deleteTask: deleteTaskAction,
-  toggleSubtask: toggleSubtaskAction,
-  addComment: addCommentAction,
-  addMember: addMemberAction,
-  updateMemberRole: updateMemberRoleAction,
-  removeMember: removeMemberAction,
-  addLabel: addLabelAction,
-  removeLabel: removeLabelAction,
-  createTemplate: createTaskTemplateAction,
-  updateTemplate: updateTaskTemplateAction,
-  removeTemplate: removeTaskTemplateAction,
-  listMessages: listProjectMessagesAction,
-  postMessage: postProjectMessageAction,
-  getRepositoryConnection: getRepositoryConnectionAction,
-  connectRepository: connectRepositoryAction,
-  disconnectRepository: disconnectRepositoryAction,
-  syncRepository: syncRepositoryAction,
-  listUserRepositoryTokens: listUserRepositoryTokensAction,
-}
+import { toMemberDirectoryEntry } from "@workspace/organization/directory"
+import { appOrigin } from "@workspace/contracts/server"
 
 /** Domain screens hydrate their own data; the shell starts empty. */
-const EMPTY_PROJECT_DATA: ProjectData = {
-  projects: [],
-  tasks: [],
-  members: [],
-  labels: [],
-  templates: [],
-  activities: [],
-}
 const EMPTY_CALENDAR_DATA: CalendarData = { calendars: [], events: [] }
 const EMPTY_MESSAGING_DATA: MessagingData = {
   teams: [],
@@ -129,6 +50,14 @@ const EMPTY_FILES_DATA: FilesData = {
   activities: {},
 }
 
+/**
+ * The Copilot workspace shell.
+ *
+ * The project screens, their actions and the project store moved to
+ * `apps/projects` (#160): this shell renders no project data. The member
+ * directory comes from the identity database Copilot owns and feeds the files,
+ * messaging and calendar providers.
+ */
 export default async function AppLayout({
   children,
 }: Readonly<{
@@ -149,13 +78,20 @@ export default async function AppLayout({
   const { session, organization } = workspace
   const ctx = await getRequestContextForOrganization(organization.id)
   const t = await getTranslations("Common")
+  const projectsUrl = appOrigin("projects")
 
-  const [notificationData, appearance, trial, shell] = await Promise.all([
-    notificationService.list(ctx),
-    getOrganizationAppearance(organization.id),
-    getTrialStatus(organization.id),
-    getOrganizationShell(organization.id),
-  ])
+  const [notificationData, appearance, trial, shell, memberRows] =
+    await Promise.all([
+      notificationService.list(ctx),
+      getOrganizationAppearance(organization.id),
+      getTrialStatus(organization.id),
+      getOrganizationShell(organization.id),
+      prisma.member.findMany({
+        where: { organizationId: organization.id, clientId: null },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      }),
+    ])
   if (!shell) redirect("/onboarding")
 
   const { entitlements, storageQuotaBytes, deletionScheduledAt } = shell
@@ -170,75 +106,84 @@ export default async function AppLayout({
     redirect("/two-factor/setup")
   }
 
+  // Organization members never carry the client role; the directory type keeps
+  // it for portal rows, so normalize it for the workspace providers.
+  const members = memberRows.map(toMemberDirectoryEntry).map((member) => ({
+    id: member.id,
+    name: member.name,
+    email: member.email,
+    avatarUrl: member.avatarUrl,
+    role: (member.role === "client" ? "member" : member.role) as
+      "owner" | "admin" | "member" | "viewer",
+  }))
+
   return (
     <TooltipProvider>
       <EntitlementsProvider entitlements={entitlements}>
         <AppearanceProvider initialAppearance={appearance} userId={ctx.userId}>
           <RecentsProvider organizationId={organization.id}>
-            <ProjectStoreProvider
-              initialData={EMPTY_PROJECT_DATA}
+            <MessagingShellProvider
+              initialData={EMPTY_MESSAGING_DATA}
               currentUserId={ctx.userId}
-              actions={PROJECT_ACTIONS}
-              canManageMembers={roleRank(ctx.role) >= 3}
+              organizationId={organization.id}
+              members={members}
             >
-              <MessagingShellProvider
-                initialData={EMPTY_MESSAGING_DATA}
+              <CalendarsProvider
+                initialData={EMPTY_CALENDAR_DATA}
                 currentUserId={ctx.userId}
-                organizationId={organization.id}
+                members={members}
               >
-                <CalendarsProvider
-                  initialData={EMPTY_CALENDAR_DATA}
-                  currentUserId={ctx.userId}
-                >
-                  <WorkspaceNavProvider>
-                    <FilesShellProvider
-                      initialData={EMPTY_FILES_DATA}
-                      currentUserId={ctx.userId}
-                      organizationId={organization.id}
-                      storageQuotaBytes={storageQuotaBytes}
-                    >
-                      <AssistantProvider>
-                        <WorkspaceShell
-                          skipLabel={t("skipToContent")}
-                          sidebar={
-                            <AppSidebar
-                              variant="inset"
-                              orgSlug={organization.slug}
-                            />
-                          }
-                          banners={
-                            <>
-                              {session.session.impersonatedBy ? (
-                                <ImpersonationBanner name={session.user.name} />
-                              ) : null}
-                              {deletionScheduledAt ? (
-                                <DeletionBanner
-                                  scheduledAt={deletionScheduledAt}
-                                  orgSlug={organization.slug}
-                                />
-                              ) : null}
-                              {trial?.state === "active" ? (
-                                <TrialBanner daysLeft={trial.daysLeft} />
-                              ) : null}
-                            </>
-                          }
-                          header={
-                            <SiteHeader
-                              orgSlug={organization.slug}
-                              user={session.user}
-                              activeOrganizationId={organization.id}
-                              notifications={notificationData}
-                            />
-                          }
-                        >
-                          {children}
-                        </WorkspaceShell>
-                      </AssistantProvider>
-                    </FilesShellProvider>
-                  </WorkspaceNavProvider>
-                </CalendarsProvider>
-              </MessagingShellProvider>
-            </ProjectStoreProvider>
+                <WorkspaceNavProvider>
+                  <FilesShellProvider
+                    initialData={EMPTY_FILES_DATA}
+                    currentUserId={ctx.userId}
+                    organizationId={organization.id}
+                    storageQuotaBytes={storageQuotaBytes}
+                    members={members}
+                  >
+                    <AssistantProvider>
+                      <WorkspaceShell
+                        skipLabel={t("skipToContent")}
+                        sidebar={
+                          <AppSidebar
+                            variant="inset"
+                            orgSlug={organization.slug}
+                            projectsUrl={projectsUrl}
+                          />
+                        }
+                        banners={
+                          <>
+                            {session.session.impersonatedBy ? (
+                              <ImpersonationBanner name={session.user.name} />
+                            ) : null}
+                            {deletionScheduledAt ? (
+                              <DeletionBanner
+                                scheduledAt={deletionScheduledAt}
+                                orgSlug={organization.slug}
+                              />
+                            ) : null}
+                            {trial?.state === "active" ? (
+                              <TrialBanner daysLeft={trial.daysLeft} />
+                            ) : null}
+                          </>
+                        }
+                        header={
+                          <SiteHeader
+                            orgSlug={organization.slug}
+                            projectsUrl={projectsUrl}
+                            user={session.user}
+                            activeOrganizationId={organization.id}
+                            notifications={notificationData}
+                          />
+                        }
+                      >
+                        {children}
+                      </WorkspaceShell>
+                    </AssistantProvider>
+                  </FilesShellProvider>
+                </WorkspaceNavProvider>
+              </CalendarsProvider>
+            </MessagingShellProvider>
           </RecentsProvider>
         </AppearanceProvider>
       </EntitlementsProvider>
