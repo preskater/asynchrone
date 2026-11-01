@@ -14,8 +14,8 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
-import { PresenceDot } from "@/components/messaging/presence-dot"
+import { MemberAvatar } from "./member-avatar"
+import { PresenceDot } from "./presence-dot"
 import { AvatarGroup } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -34,8 +34,8 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
 
-import { useMessaging } from "@/lib/messaging/store"
-import type { Conversation } from "@/lib/messaging/types"
+import { useMessaging } from "../store"
+import type { Conversation } from "../types"
 
 export function ChatHeader({
   conversation,

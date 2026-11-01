@@ -4,15 +4,15 @@ import * as React from "react"
 import { ChevronRightIcon, MessageCircleIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { ConversationItem } from "@/components/messaging/conversation-item"
+import { ConversationItem } from "./conversation-item"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@workspace/ui/components/collapsible"
 
-import { useMessaging } from "@/lib/messaging/store"
-import type { Conversation } from "@/lib/messaging/types"
+import { useMessaging } from "../store"
+import type { Conversation } from "../types"
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -76,7 +76,9 @@ export function ConversationList({
 
   const pinned = conversations.filter(
     (conversation) =>
-      conversation.pinned && conversation.kind === "channel" && matches(conversation)
+      conversation.pinned &&
+      conversation.kind === "channel" &&
+      matches(conversation)
   )
   const dms = conversations.filter(
     (conversation) => conversation.kind === "dm" && matches(conversation)

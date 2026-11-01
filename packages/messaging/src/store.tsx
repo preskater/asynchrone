@@ -4,25 +4,9 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import {
-  addThreadReplyAction,
-  createChannelAction,
-  deleteMessageAction,
-  editMessageAction,
-  listMessagesAction,
-  listMessagingAction,
-  markReadAction,
-  sendMessageAction,
-  startDmAction,
-  toggleMuteAction,
-  togglePinAction,
-  toggleReactionAction,
-  touchPresenceAction,
-} from "@/actions/messaging"
-import { unwrapActionResult } from "@workspace/core/action"
+import { unwrapActionResult, type ActionResult } from "@workspace/core/action"
+import type { Page } from "@workspace/core/pagination"
 import { useErrorTranslator } from "@workspace/i18n/errors"
-import type { Member } from "@workspace/projects/types"
-import { useProjectStore } from "@workspace/projects/store"
 
 import type {
   Attachment,
@@ -30,10 +14,56 @@ import type {
   MeetingMeta,
   Message,
   MessagingData,
+  MessagingMember,
   Presence,
   Reaction,
   Team,
 } from "./types"
+
+/**
+ * The server actions the messaging screens call. Copilot passes its
+ * `actions/messaging.ts` exports; a domain app passes its own. Every action
+ * returns an `ActionResult` so optimistic updates can roll back on failure.
+ */
+export interface MessagingActions {
+  listMessagingAction: () => Promise<ActionResult<MessagingData>>
+  listMessagesAction: (
+    conversationId: string,
+    cursor?: string | null
+  ) => Promise<ActionResult<Page<Message>>>
+  touchPresenceAction: () => Promise<ActionResult<{ ok: boolean }>>
+  sendMessageAction: (input: SendMessageInput) => Promise<ActionResult<Message>>
+  editMessageAction: (
+    id: string,
+    body: string
+  ) => Promise<ActionResult<Message>>
+  deleteMessageAction: (id: string) => Promise<ActionResult<{ id: string }>>
+  toggleReactionAction: (
+    messageId: string,
+    input: { emoji: string }
+  ) => Promise<ActionResult<Message>>
+  addThreadReplyAction: (
+    parentId: string,
+    body: string
+  ) => Promise<ActionResult<Message>>
+  markReadAction: (
+    conversationId: string
+  ) => Promise<ActionResult<Conversation | null>>
+  startDmAction: (memberId: string) => Promise<ActionResult<Conversation>>
+  createChannelAction: (input: {
+    teamId: string
+    name: string
+    topic?: string
+  }) => Promise<ActionResult<Conversation>>
+  toggleMuteAction: (
+    conversationId: string,
+    muted?: boolean
+  ) => Promise<ActionResult<Conversation>>
+  togglePinAction: (
+    conversationId: string,
+    pinned?: boolean
+  ) => Promise<ActionResult<Conversation>>
+}
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`
@@ -50,10 +80,10 @@ export interface SendMessageInput {
 }
 
 interface MessagingStore extends MessagingData {
-  members: Member[]
+  members: MessagingMember[]
   currentUserId: string
   organizationId: string
-  getMember: (id?: string) => Member | undefined
+  getMember: (id?: string) => MessagingMember | undefined
   getTeam: (id?: string) => Team | undefined
   getConversation: (id?: string) => Conversation | undefined
   messagesFor: (conversationId: string) => Message[]
@@ -86,20 +116,19 @@ const MessagingContext = React.createContext<MessagingStore | null>(null)
 
 export function MessagingProvider({
   children,
+  actions,
   initialData,
   currentUserId,
   organizationId,
-  members: initialMembers = [],
+  members = [],
 }: {
   children: React.ReactNode
+  actions: MessagingActions
   initialData: MessagingData
   currentUserId: string
   organizationId: string
-  members?: Member[]
+  members?: MessagingMember[]
 }) {
-  const projectMembers = useProjectStore().members
-  const members = initialMembers.length > 0 ? initialMembers : projectMembers
-
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [conversations, setConversations] = React.useState<Conversation[]>(
@@ -173,7 +202,8 @@ export function MessagingProvider({
         return
       }
       setMessagesLoading((prev) => ({ ...prev, [conversationId]: true }))
-      void listMessagesAction(conversationId)
+      void actions
+        .listMessagesAction(conversationId)
         .then((result) => {
           const page = unwrap(result)
           mergeConversation(conversationId, page.items)
@@ -190,7 +220,7 @@ export function MessagingProvider({
           }))
         )
     },
-    [cursors, messagesLoading, mergeConversation]
+    [actions, cursors, messagesLoading, mergeConversation]
   )
 
   const loadOlderMessages = React.useCallback(
@@ -198,7 +228,8 @@ export function MessagingProvider({
       const cursor = cursors[conversationId]
       if (!cursor || messagesLoading[conversationId]) return
       setMessagesLoading((prev) => ({ ...prev, [conversationId]: true }))
-      void listMessagesAction(conversationId, cursor)
+      void actions
+        .listMessagesAction(conversationId, cursor)
         .then((result) => {
           const page = unwrap(result)
           setMessages((prev) => {
@@ -225,13 +256,14 @@ export function MessagingProvider({
           }))
         )
     },
-    [cursors, messagesLoading]
+    [actions, cursors, messagesLoading]
   )
 
   React.useEffect(() => {
     let active = true
     const refetch = () => {
-      void listMessagingAction()
+      void actions
+        .listMessagingAction()
         .then((result) => {
           if (!active) return
           const data = unwrap(result)
@@ -243,7 +275,8 @@ export function MessagingProvider({
         .catch(() => {})
       const conversationId = activeConversationRef.current
       if (conversationId) {
-        void listMessagesAction(conversationId)
+        void actions
+          .listMessagesAction(conversationId)
           .then((result) => {
             if (!active) return
             const page = unwrap(result)
@@ -263,9 +296,10 @@ export function MessagingProvider({
     }, 5000)
     // Presence is coarse: write at most once every 30s, not on every poll.
     const presence = window.setInterval(() => {
-      if (document.visibilityState === "visible") void touchPresenceAction()
+      if (document.visibilityState === "visible")
+        void actions.touchPresenceAction()
     }, 30000)
-    void touchPresenceAction()
+    void actions.touchPresenceAction()
 
     return () => {
       active = false
@@ -274,7 +308,7 @@ export function MessagingProvider({
       window.removeEventListener("focus", onVisible)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [])
+  }, [actions, mergeConversation])
 
   const store = React.useMemo<MessagingStore>(() => {
     const getMember = (id?: string) =>
@@ -357,7 +391,8 @@ export function MessagingProvider({
           )
         )
       }
-      void sendMessageAction(input)
+      void actions
+        .sendMessageAction(input)
         .then((result) => {
           const message = unwrap(result)
           setMessages((prev) =>
@@ -403,7 +438,8 @@ export function MessagingProvider({
             message.id === id ? { ...message, body, edited: true } : message
           )
         )
-        void editMessageAction(id, body)
+        void actions
+          .editMessageAction(id, body)
           .then((result) => {
             unwrap(result)
             toast.success(t("messageEdited"))
@@ -414,7 +450,8 @@ export function MessagingProvider({
         setMessages((prev) =>
           prev.filter((message) => message.id !== id && message.parentId !== id)
         )
-        void deleteMessageAction(id)
+        void actions
+          .deleteMessageAction(id)
           .then((result) => {
             unwrap(result)
             toast.success(t("messageDeleted"))
@@ -435,7 +472,8 @@ export function MessagingProvider({
             }
           })
         )
-        void toggleReactionAction(messageId, { emoji })
+        void actions
+          .toggleReactionAction(messageId, { emoji })
           .then((result) => unwrap(result))
           .catch((error) => toast.error(te(error, "reactionFailed")))
       },
@@ -455,7 +493,8 @@ export function MessagingProvider({
           parentId,
         }
         setMessages((prev) => [...prev, optimistic])
-        void addThreadReplyAction(parentId, body)
+        void actions
+          .addThreadReplyAction(parentId, body)
           .then((result) => {
             const message = unwrap(result)
             setMessages((prev) =>
@@ -474,7 +513,7 @@ export function MessagingProvider({
               : conversation
           )
         )
-        void markReadAction(conversationId).catch(() => undefined)
+        void actions.markReadAction(conversationId).catch(() => undefined)
       },
       startDirectMessage: (memberId) => {
         const existing = conversations.find(
@@ -496,7 +535,8 @@ export function MessagingProvider({
           },
           ...prev,
         ])
-        void startDmAction(memberId)
+        void actions
+          .startDmAction(memberId)
           .then((result) => {
             const conversation = unwrap(result)
             setConversations((prev) =>
@@ -534,7 +574,8 @@ export function MessagingProvider({
               : team
           )
         )
-        void createChannelAction({ teamId, name, topic })
+        void actions
+          .createChannelAction({ teamId, name, topic })
           .then((result) => {
             const conversation = unwrap(result)
             setConversations((prev) =>
@@ -561,7 +602,8 @@ export function MessagingProvider({
             return { ...conversation, muted }
           })
         )
-        void toggleMuteAction(conversationId, muted)
+        void actions
+          .toggleMuteAction(conversationId, muted)
           .then((result) => unwrap(result))
           .catch((error) => toast.error(te(error, "updateFailed")))
       },
@@ -574,7 +616,8 @@ export function MessagingProvider({
             return { ...conversation, pinned }
           })
         )
-        void togglePinAction(conversationId, pinned)
+        void actions
+          .togglePinAction(conversationId, pinned)
           .then((result) => unwrap(result))
           .catch((error) => toast.error(te(error, "updateFailed")))
       },
@@ -592,6 +635,7 @@ export function MessagingProvider({
     messagesLoading,
     ensureMessages,
     loadOlderMessages,
+    actions,
   ])
 
   return (

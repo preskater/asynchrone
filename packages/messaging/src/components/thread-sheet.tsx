@@ -3,8 +3,8 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
-import { MessageItem } from "@/components/messaging/message-item"
-import { MessageComposer } from "@/components/messaging/message-composer"
+import { MessageItem } from "./message-item"
+import { MessageComposer } from "./message-composer"
 import { Button } from "@workspace/ui/components/button"
 import {
   Sheet,
@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet"
 
-import { useMessaging } from "@/lib/messaging/store"
+import { useMessaging } from "../store"
 
 export function ThreadSheet({
   messageId,
@@ -49,10 +49,18 @@ export function ThreadSheet({
             {t("replyCount", { count: replies.length })}
           </div>
           {replies.map((reply) => (
-            <MessageItem key={reply.id} message={reply} onReply={() => {}} compact />
+            <MessageItem
+              key={reply.id}
+              message={reply}
+              onReply={() => {}}
+              compact
+            />
           ))}
         </div>
-        <MessageComposer conversationId={parent.conversationId} parentId={parent.id} />
+        <MessageComposer
+          conversationId={parent.conversationId}
+          parentId={parent.id}
+        />
       </SheetContent>
     </Sheet>
   )

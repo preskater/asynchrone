@@ -14,8 +14,8 @@ import {
   CommandList,
 } from "@workspace/ui/components/command"
 
-import { formatRelative } from "@/lib/messaging/format"
-import { useMessaging } from "@/lib/messaging/store"
+import { formatRelative } from "../format"
+import { useMessaging } from "../store"
 
 export function SearchCommand({
   open,
@@ -74,32 +74,37 @@ export function SearchCommand({
             ))}
           </CommandGroup>
           <CommandGroup heading={t("messages")}>
-            {messages.slice(-30).reverse().map((message) => {
-              const author = getMember(message.authorId)
-              const conversation = getConversation(message.conversationId)
-              if (!message.body) return null
-              return (
-                <CommandItem
-                  key={message.id}
-                  value={`msg ${message.body} ${author?.name ?? ""}`}
-                  onSelect={() => {
-                    onSelectConversation(message.conversationId)
-                    onOpenChange(false)
-                  }}
-                >
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate">{message.body}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {t("authorInConversation", {
-                        author: author?.name ?? "",
-                        conversation: conversation ? labelFor(conversation) : "",
-                      })}{" "}
-                      · {formatRelative(message.createdAt, locale, tc)}
+            {messages
+              .slice(-30)
+              .reverse()
+              .map((message) => {
+                const author = getMember(message.authorId)
+                const conversation = getConversation(message.conversationId)
+                if (!message.body) return null
+                return (
+                  <CommandItem
+                    key={message.id}
+                    value={`msg ${message.body} ${author?.name ?? ""}`}
+                    onSelect={() => {
+                      onSelectConversation(message.conversationId)
+                      onOpenChange(false)
+                    }}
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{message.body}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {t("authorInConversation", {
+                          author: author?.name ?? "",
+                          conversation: conversation
+                            ? labelFor(conversation)
+                            : "",
+                        })}{" "}
+                        · {formatRelative(message.createdAt, locale, tc)}
+                      </span>
                     </span>
-                  </span>
-                </CommandItem>
-              )
-            })}
+                  </CommandItem>
+                )
+              })}
           </CommandGroup>
         </CommandList>
       </Command>

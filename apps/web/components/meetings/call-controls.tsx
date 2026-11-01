@@ -14,7 +14,7 @@ import {
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import { MemberAvatar } from "@workspace/projects/components/task/member-avatar"
+import { MemberAvatar } from "@workspace/messaging/components/member-avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -29,8 +29,8 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
 
-import { formatTime } from "@/lib/messaging/format"
-import type { Member } from "@workspace/projects/types"
+import { formatTime } from "@workspace/messaging/format"
+import type { MessagingMember } from "@workspace/messaging/types"
 
 export function CallControls({
   kind,
@@ -39,7 +39,7 @@ export function CallControls({
   onLeave,
 }: {
   kind: "audio" | "video"
-  participants: Member[]
+  participants: MessagingMember[]
   startedAt: string
   onLeave: () => void
 }) {

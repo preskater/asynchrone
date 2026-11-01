@@ -2,9 +2,13 @@
 
 import * as React from "react"
 
-import { ReactionBar } from "@/components/messaging/reaction-bar"
-import { PresenceDot } from "@/components/messaging/presence-dot"
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
+import { ReactionBar } from "./reaction-bar"
+import { PresenceDot } from "./presence-dot"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   ContextMenu,
@@ -50,9 +54,9 @@ import {
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import { formatTime, initials } from "@/lib/messaging/format"
-import { useMessaging } from "@/lib/messaging/store"
-import type { Message } from "@/lib/messaging/types"
+import { formatTime, initials } from "../format"
+import { useMessaging } from "../store"
+import type { Message } from "../types"
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🙏"]
 
@@ -113,7 +117,9 @@ export function MessageItem({
           ) : null}
         </div>
 
-        <div className={cn("min-w-0 flex-1", isOwn && "flex flex-col items-end")}>
+        <div
+          className={cn("min-w-0 flex-1", isOwn && "flex flex-col items-end")}
+        >
           <div
             className={cn(
               "flex items-baseline gap-2",
@@ -135,10 +141,7 @@ export function MessageItem({
 
           {message.body ? (
             <p
-              className={cn(
-                "text-sm whitespace-pre-wrap",
-                isOwn && "text-end"
-              )}
+              className={cn("text-sm whitespace-pre-wrap", isOwn && "text-end")}
             >
               {message.body}
             </p>
@@ -290,7 +293,9 @@ export function MessageItem({
             />
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{t("deleteMessageQuestion")}</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {t("deleteMessageQuestion")}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   {t("deleteMessageDescription")}
                 </AlertDialogDescription>
@@ -354,7 +359,9 @@ function EditMessageDialog({
         >
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor={`edit-${message.id}`}>{t("message")}</FieldLabel>
+              <FieldLabel htmlFor={`edit-${message.id}`}>
+                {t("message")}
+              </FieldLabel>
               <Textarea
                 id={`edit-${message.id}`}
                 value={body}

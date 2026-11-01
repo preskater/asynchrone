@@ -6,7 +6,7 @@ import { createEventSchema } from "@workspace/calendars/schemas"
 import type { RequestContext } from "@workspace/core/context"
 import { fileService } from "@/lib/files"
 import { messagingService } from "@/lib/messaging"
-import { sendMessageSchema } from "@/lib/messaging/schemas"
+import { sendMessageSchema } from "@workspace/messaging/schemas"
 import { projectService } from "@/lib/projects"
 import {
   createProjectSchema,

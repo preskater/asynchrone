@@ -10,6 +10,7 @@ import { requirePermission } from "@/lib/core/auth-context"
 import { ConflictError } from "@workspace/core/errors"
 import { sendDataExportReadyEmail } from "@/lib/email"
 import { listForExport } from "@/lib/files"
+import { listAttachmentsForExport } from "@/lib/messaging"
 import {
   openLargeObjectStream,
   unlinkLargeObject,
@@ -229,13 +230,7 @@ async function writeArchive(organizationId: string) {
     }
 
     const { files, versions } = await listForExport(organizationId)
-    const attachments = await prisma.messageAttachment.findMany({
-      where: {
-        message: { conversation: { organizationId } },
-        oid: { not: null },
-      },
-      select: { id: true, name: true, oid: true },
-    })
+    const attachments = await listAttachmentsForExport(organizationId)
 
     // Versions often share the current bytes; each large object goes in once.
     const seen = new Set<bigint>()
