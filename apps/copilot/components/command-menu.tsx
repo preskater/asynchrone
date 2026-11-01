@@ -16,20 +16,27 @@ import { useRouter } from "@workspace/i18n/navigation"
 
 export function CommandMenu({
   orgSlug,
+  projectsUrl,
   open,
   onOpenChange,
 }: {
   orgSlug: string
+  /** Origin of the projects app (its own image and chart since #160). */
+  projectsUrl: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("Sidebar")
   const router = useRouter()
-  const apps = useNavMain(orgSlug)
+  const apps = useNavMain(orgSlug, projectsUrl)
   const secondary = useNavSecondary(orgSlug)
 
-  function go(url: string) {
+  function go(url: string, external?: boolean) {
     onOpenChange(false)
+    if (external) {
+      window.location.href = url
+      return
+    }
     router.push(url)
   }
 
@@ -48,7 +55,7 @@ export function CommandMenu({
             <CommandItem
               key={item.url}
               value={item.title}
-              onSelect={() => go(item.url)}
+              onSelect={() => go(item.url, item.external)}
             >
               {item.icon}
               <span>{item.title}</span>

@@ -20,7 +20,7 @@ import {
 } from "@workspace/ui/components/tooltip"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@workspace/projects/store"
+import { useCalendarTasks } from "@/lib/calendars/task-overlay"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
@@ -37,7 +37,7 @@ export function MonthView({
 }) {
   const t = useTranslations("Calendars")
   const { eventsOnDay, showTasks } = useCalendars()
-  const { tasks } = useProjectStore()
+  const { tasks } = useCalendarTasks()
   const weeks = buildMonthGrid(focusDate)
   const today = new Date()
 

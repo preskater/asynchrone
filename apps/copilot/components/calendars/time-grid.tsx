@@ -18,7 +18,7 @@ import { tasksOnDay } from "@/lib/calendars/tasks"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@workspace/projects/store"
+import { useCalendarTasks } from "@/lib/calendars/task-overlay"
 import type { CalendarEvent } from "@workspace/calendars/types"
 
 const HOURS = Array.from(
@@ -142,7 +142,7 @@ export function TimeGrid({
   const locale = useLocale()
   const t = useTranslations("Calendars")
   const { visibleEvents, showTasks } = useCalendars()
-  const { tasks } = useProjectStore()
+  const { tasks } = useCalendarTasks()
   const today = new Date()
   const multiDay = days.length > 1
 

@@ -82,6 +82,27 @@ model Account {
   @@map("account")
 }
 
+/// App-local relying-party session for `@workspace/oidc` (ADR 0029).
+///
+/// One row per domain-app session: never a shared cookie, never a shared table.
+/// It records the Copilot `sid` so back-channel logout can delete every local
+/// session of the same Copilot sign-in. Each domain database owns its copy.
+model OidcSession {
+  id                   String   @id
+  userId               String
+  organizationId       String
+  sid                  String
+  accessToken          String
+  refreshToken         String?
+  accessTokenExpiresAt DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([sid])
+  @@index([userId])
+  @@map("oidcSession")
+}
+
 model Verification {
   id         String   @id
   identifier String

@@ -1,10 +1,13 @@
 # Production values for the Asynchrone Space umbrella chart.
 #
-# Secrets are never stored here. Create the two Secrets first:
+# Secrets are never stored here. Create the three Secrets first:
 #
 #   asynchrone-space-copilot-secrets:           DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET,
 #                                           optional OPENAI_API_KEY, RESEND_API_KEY,
 #                                           GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET
+#   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as
+#                                           Copilot until #190), PROJECTS_OAUTH_CLIENT_ID,
+#                                           PROJECTS_OAUTH_CLIENT_SECRET
 #   asynchrone-space-control-tower-secrets: DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET
 #
 # Install with an immutable image tag shared by all images:
@@ -85,6 +88,8 @@ asynchrone-space-copilot:
   config:
     BETTER_AUTH_URL: https://copilot.asynchrone.space
     NEXT_PUBLIC_APP_URL: https://copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "10"
@@ -138,6 +143,44 @@ asynchrone-space-copilot:
       enabled: true
       schedule: "*/15 * * * *"
       path: /api/cron/data-exports
+
+# ---------------------------------------------------------------------------
+# Domain app: projects (#160). Own image, own chart, host-only OIDC session.
+# ---------------------------------------------------------------------------
+asynchrone-space-projects:
+  enabled: true
+
+  # Release `asynchrone-space` yields the resources `asynchrone-space-projects-*`.
+  nameOverride: projects
+  image:
+    repository: ghcr.io/preskater/asynchrone-space-projects
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: projects.copilot.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: projects-copilot-asynchrone-space-tls
+      #   hosts:
+      #     - projects.copilot.asynchrone.space
+
+  config:
+    PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
+    COPILOT_APP_URL: https://copilot.asynchrone.space
+    DATABASE_POOL_MAX: "10"
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    DEPLOY_ENV: production
+
+  secret:
+    existingSecret: asynchrone-space-projects-secrets
 
 # ---------------------------------------------------------------------------
 # Internal control tower

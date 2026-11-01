@@ -38,6 +38,9 @@ const DATABASES = {
       "Notification",
       "PortalInvite",
       "Jwks",
+      // Transitional home of the projects app's OIDC sessions (#160): the pilot
+      // still binds the shared client until #190 moves the domain data.
+      "OidcSession",
       "OauthClient",
       "OauthResource",
       "OauthClientResource",
@@ -79,6 +82,8 @@ const DATABASES = {
       "ProjectMessage",
       "RepositoryConnection",
       "UserRepositoryToken",
+      // The app-local relying-party session (#160).
+      "OidcSession",
     ],
   },
   calendars: {

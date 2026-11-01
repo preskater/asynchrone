@@ -262,6 +262,22 @@ model Jwks {
   @@map("jwks")
 }
 
+model OidcSession {
+  id                   String   @id
+  userId               String
+  organizationId       String
+  sid                  String
+  accessToken          String
+  refreshToken         String?
+  accessTokenExpiresAt DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([sid])
+  @@index([userId])
+  @@map("oidcSession")
+}
+
 model OauthClient {
   id                               String    @id
   clientId                         String    @unique

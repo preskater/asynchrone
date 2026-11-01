@@ -1,10 +1,11 @@
 # Deploying Asynchrone Space with Helm
 
-Asynchrone Space runs as three Next.js apps: the stateless public landing site,
-Copilot (the customer app and identity/OAuth server) and the control tower, the
-latter two backed by eight PostgreSQL databases (one per app; Copilot owns
-identity). This guide installs all of them from the umbrella chart in
-`charts/asynchrone-space`. Secrets, network policy, backups,
+Asynchrone Space runs as four Next.js apps today: the stateless public landing
+site, Copilot (the customer app and identity/OAuth server), the projects domain
+app and the control tower. Copilot and the control tower are backed by their own
+PostgreSQL databases (eight are reserved, one per app; Copilot owns identity).
+Until #190 the projects app connects to the same database as Copilot. This guide
+installs all of them from the umbrella chart in `charts/asynchrone-space`. Secrets, network policy, backups,
 restore order and the connection budget are covered in
 [Database operations](database-operations.md).
 
@@ -13,6 +14,7 @@ charts/
   asynchrone-space/                   # umbrella: dependencies, migration hook, values
   asynchrone-space-landing/           # public site, ingress (asynchrone.space + www redirect)
   asynchrone-space-copilot/           # Copilot: ingress, CronJobs
+  asynchrone-space-projects/          # domain app: ingress, host-only OIDC session
   asynchrone-space-control-tower/     # internal platform app, ingress
 ```
 
@@ -43,12 +45,13 @@ charts/
 
 ## Images
 
-`.github/workflows/docker.yml` publishes four images for every push to `main`
+`.github/workflows/docker.yml` publishes five images for every push to `main`
 and every `v*` tag:
 
 | Image                                                      | Built from                             | Purpose                                       |
 | ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
 | `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` stage, `APP=copilot`          | Copilot (`copilot.asynchrone.space`)          |
+| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` stage, `APP=projects`         | Projects (`projects.copilot.asynchrone.space`)|
 | `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` stage, `APP=control-tower`    | Control tower                                 |
 | `ghcr.io/preskater/asynchrone-space-landing`               | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
 | `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
@@ -69,6 +72,21 @@ per-subchart `image.tag` overrides it if the apps must roll separately.
 The chart references existing Secrets and never renders secret values. Create
 them before installing; the migration Job and the pods fail fast if a required
 key is missing.
+
+The projects app has its own secret with the provisioned client credentials:
+
+```bash
+kubectl -n asynchrone-space create secret generic asynchrone-space-projects-secrets \
+  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+  --from-literal=PROJECTS_OAUTH_CLIENT_ID="$(grep ^PROJECTS_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
+  --from-literal=PROJECTS_OAUTH_CLIENT_SECRET="$(grep ^PROJECTS_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
+```
+
+`DATABASE_URL` is the same database Copilot uses until #190 (the projects domain
+package still reads identity tables). Generate the client credentials with
+`npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth`;
+its registered redirect URI is
+`https://projects.copilot.asynchrone.space/api/auth/callback`.
 
 ```bash
 kubectl create namespace asynchrone-space

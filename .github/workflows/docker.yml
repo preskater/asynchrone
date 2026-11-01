@@ -19,6 +19,10 @@ jobs:
             suffix: "-copilot"
             target: runner
             cacheScope: copilot
+          - app: projects
+            suffix: "-projects"
+            target: runner
+            cacheScope: projects
           - app: control-tower
             suffix: "-control-tower"
             target: runner

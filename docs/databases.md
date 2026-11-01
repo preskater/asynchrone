@@ -9,7 +9,7 @@ orchestration is #184.
 
 | Database                   | Package                       | Owner                                                                                                                    |
 | -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `asynchrone_identity`      | `@workspace/db-identity`      | Copilot: users, sessions, organizations, members, OAuth, billing, notifications, assistant, portal, rate limits, exports |
+| `asynchrone_identity`      | `@workspace/db-identity`      | Copilot: users, sessions, organizations, members, OAuth, billing, notifications, assistant, portal, rate limits, exports, the projects app's OIDC sessions until #190 |
 | `asynchrone_projects`      | `@workspace/db-projects`      | Projects, tasks, templates, comments, activity, repository sync                                                          |
 | `asynchrone_calendars`     | `@workspace/db-calendars`     | Calendars, events, meeting requests/settings                                                                             |
 | `asynchrone_files`         | `@workspace/db-files`         | File nodes, versions, shares, upload sessions, large objects                                                             |
@@ -19,7 +19,9 @@ orchestration is #184.
 | `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff copy (see [control-tower-database.md](./control-tower-database.md))            |
 
 `@workspace/db-core` owns the shared pool factory and `DATABASE_POOL_MAX`
-validation. `@workspace/db` remains the monolith database until #185.
+validation. `@workspace/db` remains the monolith database until #185, and the
+projects app binds it until #190 (its domain package still reads identity
+tables).
 
 Every package declares its own `DATABASE_URL` env:
 
@@ -100,6 +102,12 @@ local/CI where every target lives on one server.
 Shadow databases are derived by appending `_shadow` to the database name, or
 set explicitly with `IDENTITY_SHADOW_DATABASE_URL`, … They are used by
 `verify:migrations` and are created by `db:create`.
+
+The shared `OidcSession` model (an app's relying-party session, see
+[oidc-client.md](./oidc-client.md)) ships in the identity and projects
+databases: every app needs one row per local sign-in. The other domain schemas
+add `OidcSession` to their model list and their migration history when their app
+is created (#161–#164).
 
 Each database currently has one `20261031120000_init` baseline. The Docker
 `migrate` stage runs the monolith migration and then the orchestrator. The Helm

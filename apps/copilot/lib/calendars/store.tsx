@@ -18,7 +18,6 @@ import {
 import { unwrapActionResult } from "@workspace/core/action"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import type { Member } from "@workspace/projects/types"
-import { useProjectStore } from "@workspace/projects/store"
 
 import type {
   CalendarData,
@@ -79,16 +78,13 @@ export function CalendarsProvider({
   children,
   initialData,
   currentUserId,
-  members: initialMembers = [],
+  members = [],
 }: {
   children: React.ReactNode
   initialData: CalendarData
   currentUserId: string
   members?: Member[]
 }) {
-  const projectMembers = useProjectStore().members
-  const members = initialMembers.length > 0 ? initialMembers : projectMembers
-
   const t = useTranslations("Toasts")
   const te = useErrorTranslator()
   const [calendars, setCalendars] = React.useState<CalendarSource[]>(

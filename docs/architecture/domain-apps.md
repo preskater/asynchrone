@@ -23,6 +23,11 @@ inventory in [#146](./feature-inventory.md).
 | `apps/employees`     | `employees.copilot.asynchrone.space` | `asynchrone_employees`     | `urn:asynchrone:app:employees`     | `EMPLOYEES_OAUTH_CLIENT_*`     |
 | `apps/control-tower` | `control-tower.asynchrone.space`     | `asynchrone_control_tower` | `urn:asynchrone:app:control-tower` | `CONTROL_TOWER_OAUTH_CLIENT_*` |
 
+`apps/projects` is live: it serves `projects.copilot.asynchrone.space` from its
+own image and chart with a host-only OIDC session (#160). The remaining domain
+apps follow the same template — see
+[domain-app-template.md](../domain-app-template.md).
+
 The registry lives in `@workspace/contracts`:
 
 - `apps.ts` — keys, hosts, development ports, database names, audiences and
@@ -36,7 +41,10 @@ baked into an image or committed.
 ## Ownership rules
 
 1. A workspace owns its database and its Prisma client. A domain may only import
-   its own `@workspace/db-<domain>` package.
+   its own `@workspace/db-<domain>` package. The one exception is the projects
+   pilot, which binds the shared client (`@workspace/db`) until #190 moves its
+   identity reads behind the internal API; it still imports exactly one database
+   package and the exception is documented rather than copied.
 2. A package never imports an app. An app never imports another app.
 3. Relative imports never escape their workspace.
 4. Every `@workspace/*` import is declared in the importer's `package.json`.
@@ -110,6 +118,24 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
   app binds the pool, database client, provider or notifier in a thin adapter
   (`apps/copilot/lib/*`); the package never opens a second app's database.
 
+## Sessions and request flow
+
+A domain app is an OIDC relying party (`@workspace/oidc`): it stores an
+`OidcSession` row in its own database through `PrismaOidcSessionStore`, keeps a
+host-only session cookie, refreshes with the refresh token and deletes its rows
+on back-channel logout. Copilot issues every token; there is no shared cookie.
+
+`requireWorkspace()` (app-side, composed from
+`@workspace/app-shell/resolve-workspace`) enforces the relying-party rules: a
+live Copilot session, a token bound to the route's organization, and the
+organization's 2FA policy. Organization switching is a handoff to Copilot's
+`select-organization` page plus a fresh authorization — never a token that
+changes organization.
+
+Copilot redirects the moved workspace paths to their new host
+(`apps/copilot/proxy.ts`, 308 with the same path). A domain app redirects paths
+it does not own back to Copilot.
+
 ## Validation
 
 ```bash
@@ -163,4 +189,7 @@ also catches imports in files that are not currently reachable from a route.
       internal accounts (#164)
 - [x] Customer app renamed to `apps/copilot`; it owns identity and serves
       `copilot.asynchrone.space` (#175)
+- [x] App template and the projects pilot at
+      `projects.copilot.asynchrone.space` (#160)
 - [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)
+- [ ] Calendars, files, messages, clients and employees apps (#161–#164)

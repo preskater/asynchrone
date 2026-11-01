@@ -63,6 +63,10 @@ const gitlabOauth = oauthApp(
 export const auth = createAuth({
   database: prisma,
   rateLimit,
+  // The e2e suite creates many accounts from one IP; only the test server sets
+  // this. Production keeps Better Auth's built-in endpoint limits.
+  rateLimitEnabled:
+    process.env.E2E_AUTH_RATE_LIMIT_DISABLED === "1" ? false : undefined,
   email: { sendResetPasswordEmail, sendVerificationEmail },
   audit: {
     recordAuthAuditEvent,

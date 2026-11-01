@@ -28,6 +28,11 @@ export interface NavApp {
   icon: React.ReactNode
   /** Extra routes that should keep this item active (e.g. module tabs). */
   match?: string[]
+  /**
+   * The item lives on another host (after the domain-app split). Render a plain
+   * anchor: next-intl's `Link` would prefix the local locale onto the URL.
+   */
+  external?: boolean
 }
 
 export function NavMain({
@@ -83,12 +88,17 @@ export function NavMain({
                 (route) =>
                   pathname === route || pathname.startsWith(`${route}/`)
               )
+            const link = item.external ? (
+              <a href={item.url} />
+            ) : (
+              <Link href={item.url} prefetch={false} />
+            )
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={active}
-                  render={<Link href={item.url} prefetch={false} />}
+                  render={link}
                 >
                   {item.icon}
                   <span>{item.title}</span>

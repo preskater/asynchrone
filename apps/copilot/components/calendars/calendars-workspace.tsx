@@ -20,7 +20,7 @@ import {
   addDays,
 } from "@workspace/calendars/date-utils"
 import { useCalendars } from "@/lib/calendars/store"
-import { useProjectStore } from "@workspace/projects/store"
+import { useCalendarTasks } from "@/lib/calendars/task-overlay"
 import { useRecents } from "@workspace/app-shell/recents"
 import { useWorkspaceNav } from "@/lib/workspace-nav/store"
 import type { CalendarEvent, CalendarView } from "@workspace/calendars/types"
@@ -32,7 +32,7 @@ export function CalendarsWorkspace() {
   const t = useTranslations("Calendars")
   const { moveEvent, showTasks, toggleShowTasks, ensureEventsLoaded } =
     useCalendars()
-  const { ensureProjectData } = useProjectStore()
+  const { ensureTasksLoaded } = useCalendarTasks()
   const { record, active, hydrated } = useRecents()
 
   React.useEffect(() => {
@@ -138,7 +138,7 @@ export function CalendarsWorkspace() {
             onSearch={() => setSearchOpen(true)}
             showTasks={showTasks}
             onToggleTasks={() => {
-              if (!showTasks) ensureProjectData()
+              if (!showTasks) ensureTasksLoaded()
               toggleShowTasks()
             }}
           />

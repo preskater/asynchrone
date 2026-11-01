@@ -1,6 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
 
-import { ensureOrigin, oidcEndpoint, type OidcConfig } from "./config"
+import {
+  ensureOrigin,
+  OIDC_BASE_PATH,
+  oidcEndpoint,
+  type OidcConfig,
+} from "./config"
 
 export interface AccessTokenClaims {
   sub: string
@@ -29,6 +34,17 @@ export function jwksUri(config: OidcConfig): string {
 }
 
 /**
+ * The `iss` claim of every token the authorization server issues.
+ *
+ * Better Auth mounts the OAuth endpoints under `/api/auth` and uses that mount
+ * as the issuer, while `OidcConfig.issuer` is the plain origin the endpoints
+ * are built from. Token verification must expect the full issuer value.
+ */
+export function oidcIssuer(config: OidcConfig): string {
+  return `${ensureOrigin(config.issuer)}${OIDC_BASE_PATH}`
+}
+
+/**
  * Verify an access token against Copilot's JWKS. The issuer is the Copilot
  * origin and the audience is the app's own resource, so a token minted for
  * another app is rejected.
@@ -39,7 +55,7 @@ export async function verifyAccessToken(
 ): Promise<AccessTokenClaims> {
   const jwks = createRemoteJWKSet(new URL(jwksUri(config)))
   const { payload } = await jwtVerify(token, jwks, {
-    issuer: ensureOrigin(config.issuer),
+    issuer: oidcIssuer(config),
     audience: config.resource,
   })
   if (typeof payload.sub !== "string") {
@@ -55,7 +71,7 @@ export async function verifyIdToken(
 ): Promise<AccessTokenClaims> {
   const jwks = createRemoteJWKSet(new URL(jwksUri(config)))
   const { payload } = await jwtVerify(token, jwks, {
-    issuer: ensureOrigin(config.issuer),
+    issuer: oidcIssuer(config),
     audience: config.clientId,
   })
   if (typeof payload.sub !== "string") {
@@ -74,7 +90,7 @@ export async function verifyLogoutToken(
 ): Promise<LogoutTokenClaims> {
   const jwks = createRemoteJWKSet(new URL(jwksUri(config)))
   const { payload } = await jwtVerify(token, jwks, {
-    issuer: ensureOrigin(config.issuer),
+    issuer: oidcIssuer(config),
     audience: config.clientId,
   })
   const events = payload.events

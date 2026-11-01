@@ -26,6 +26,12 @@ jobs:
       CONTROL_TOWER_BETTER_AUTH_SECRET: ci-control-tower-placeholder-secret-not-used
       PLATFORM_APP_URL: http://localhost:3000
       CONTROL_TOWER_URL: http://localhost:3001
+      # The projects app validates its OAuth client at boot; the build only needs
+      # non-empty placeholders (real values are injected at runtime).
+      PROJECTS_APP_URL: http://localhost:3004
+      COPILOT_APP_URL: http://localhost:3000
+      PROJECTS_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      PROJECTS_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
 
     steps:
       - name: Checkout
@@ -67,7 +73,9 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        run: npm run test:unit --workspace=copilot
+        run: |
+          npm run test:unit --workspace=copilot
+          npm run test:unit --workspace=projects
 
   # Cross-domain contracts: package exports, member directory, notifications,
   # per-organization recents, search, export/deletion sagas and the
@@ -213,8 +221,17 @@ jobs:
       - name: Create per-app databases
         run: npm run db:create
 
-      - name: Generate Prisma client
-        run: npm run generate --workspace=@workspace/db
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+          npm run generate --workspace=@workspace/db-projects
+          npm run generate --workspace=@workspace/db-calendars
+          npm run generate --workspace=@workspace/db-files
+          npm run generate --workspace=@workspace/db-messages
+          npm run generate --workspace=@workspace/db-clients
+          npm run generate --workspace=@workspace/db-employees
+          npm run generate --workspace=@workspace/db-control-tower
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -232,3 +249,82 @@ jobs:
 
       - name: E2E + accessibility
         run: npm run test:e2e --workspace=copilot
+
+  # The first domain app (#160): it signs in through Copilot, so the suite runs
+  # both apps. The job provisions the first-party OAuth client itself
+  # (`apps/projects/e2e/bootstrap.ts`) instead of requiring an admin session.
+  e2e-projects:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: asynchrone
+          POSTGRES_PASSWORD: asynchrone
+          POSTGRES_DB: asynchrone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asynchrone"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_identity?schema=public
+      PROJECTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_projects?schema=public
+      CALENDARS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_calendars?schema=public
+      FILES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_files?schema=public
+      MESSAGES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_messages?schema=public
+      CLIENTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_clients?schema=public
+      EMPLOYEES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_employees?schema=public
+      CONTROL_TOWER_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_control_tower?schema=public
+      BETTER_AUTH_SECRET: ci-projects-e2e-secret-placeholder-value
+      # Both apps run from the suite's webServer config; these keep the
+      # bootstrap and the server-side validation in agreement.
+      BETTER_AUTH_URL: http://localhost:3010
+      COPILOT_APP_URL: http://localhost:3010
+      PROJECTS_APP_URL: http://localhost:3004
+      PROJECTS_OAUTH_CLIENT_ID: asynchrone-projects
+      PROJECTS_OAUTH_CLIENT_SECRET: e2e-projects-oauth-client-secret
+      CONTROL_TOWER_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create per-app databases
+        run: npm run db:create
+
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+          npm run generate --workspace=@workspace/db-projects
+
+      - name: Apply monolith migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/db
+
+      - name: Apply per-app migrations
+        run: npm run migrate:deploy
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/projects
+
+      - name: Projects e2e
+        run: npm run test:e2e --workspace=projects

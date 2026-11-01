@@ -4,7 +4,6 @@ import {
   BriefcaseIcon,
   CalendarIcon,
   CircleHelpIcon,
-  CirclePlusIcon,
   CommandIcon,
   FileIcon,
   FolderIcon,
@@ -15,9 +14,8 @@ import {
   Settings2Icon,
   SparklesIcon,
 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
-import { ProjectFormDialog } from "@workspace/projects/components/project/project-dialog"
 import { CalendarsSidebar } from "@/components/calendars/calendars-sidebar"
 import { ConversationSidebar } from "@workspace/messaging/components/conversation-sidebar"
 import { FilesSidebar } from "@workspace/files/components/files-sidebar"
@@ -36,8 +34,9 @@ import {
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
-export function useNavMain(orgSlug: string): NavApp[] {
+export function useNavMain(orgSlug: string, projectsUrl: string): NavApp[] {
   const t = useTranslations("Sidebar")
+  const locale = useLocale()
   return [
     {
       title: t("assistant"),
@@ -47,8 +46,10 @@ export function useNavMain(orgSlug: string): NavApp[] {
     {
       key: "projects",
       title: t("projects"),
-      url: `/${orgSlug}/projects`,
+      // Projects is its own app since #160; link to its host.
+      url: `${projectsUrl}/${locale}/${orgSlug}/projects`,
       icon: <FolderIcon />,
+      external: true,
     },
     {
       key: "messages",
@@ -110,12 +111,14 @@ export function useNavSecondary(orgSlug: string) {
 
 export function AppSidebar({
   orgSlug,
+  projectsUrl,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   orgSlug: string
+  /** Origin of the projects app (its own image and chart since #160). */
+  projectsUrl: string
 }) {
   const pathname = usePathname()
-  const t = useTranslations("Sidebar")
   const { unreadTotal } = useMessaging()
   const {
     messagesActiveId,
@@ -123,7 +126,7 @@ export function AppSidebar({
     messagesSearchOpen,
     setMessagesSearchOpen,
   } = useWorkspaceNav()
-  const navMain = useNavMain(orgSlug)
+  const navMain = useNavMain(orgSlug, projectsUrl)
   const navSecondary = useNavSecondary(orgSlug)
 
   const prefix = `/${orgSlug}`
@@ -172,24 +175,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain
-          items={navMain}
-          orgSlug={orgSlug}
-          unreadTotal={unreadTotal}
-          quickCreate={
-            <ProjectFormDialog
-              trigger={
-                <SidebarMenuButton
-                  tooltip={t("quickCreate")}
-                  className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-                >
-                  <CirclePlusIcon />
-                  <span>{t("quickCreate")}</span>
-                </SidebarMenuButton>
-              }
-            />
-          }
-        />
+        <NavMain items={navMain} orgSlug={orgSlug} unreadTotal={unreadTotal} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

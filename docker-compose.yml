@@ -86,8 +86,38 @@ services:
       # through the compose network, not localhost.
       - IDENTITY_DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/asynchrone_identity?schema=public
       - BETTER_AUTH_URL=http://localhost:3003
+      - COPILOT_APP_URL=http://localhost:3003
+      - PROJECTS_APP_URL=http://localhost:3004
       - MCP_RESOURCE_URL=http://localhost:3003/mcp
       - CONTROL_TOWER_URL=http://localhost:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      copilot-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+
+  # The first domain app (#160): its own image and chart, same database client
+  # as Copilot until #190 moves projects behind the identity internal API.
+  projects:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: projects
+    ports:
+      - "3004:3000"
+    # Own env file: the provisioned PROJECTS_OAUTH_CLIENT_* credentials and the
+    # audit/trusted header settings.
+    env_file:
+      - path: apps/projects/.env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-asynchrone}:${POSTGRES_PASSWORD:-asynchrone}@postgres:5432/${POSTGRES_DB:-asynchrone}?schema=public
+      - PROJECTS_APP_URL=http://localhost:3004
+      - COPILOT_APP_URL=http://localhost:3003
     depends_on:
       postgres:
         condition: service_healthy

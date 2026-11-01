@@ -36,13 +36,15 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | Path                         | Description                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
+| `apps/projects`              | Projects: the first domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
 | `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
 | `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
 | `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
 | `packages/ui`                | Shared UI component library.                                                        |
 | `packages/eslint-config`     | Shared ESLint configuration.                                                        |
 | `packages/typescript-config` | Shared TypeScript configuration.                                                    |
-| `charts/asynchrone-space`    | Helm umbrella chart for deploying all three apps.                                    |
+| `charts/asynchrone-space`    | Helm umbrella chart for deploying every app.                                         |
+| `docs/domain-app-template.md`| How the domain apps are built, tested and deployed (start here for a new app).       |
 
 ## Getting started
 
@@ -93,10 +95,28 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 
 > Prefer containers? `docker compose up --build` runs PostgreSQL, applies
 > migrations, serves the public landing site on port **3002**, the Copilot app
-> on port **3003** and the control tower on port **3001**. Each container loads
-> its app's `.env` (then overrides `DATABASE_URL` and the public URLs), so local
-> dev and Docker share the same secrets. The image is parameterised with
-> `--build-arg APP=copilot|control-tower|landing`.
+> on port **3003**, the projects app on port **3004** and the control tower on
+> port **3001**. Each container loads its app's `.env` (then overrides
+> `DATABASE_URL` and the public URLs), so local dev and Docker share the same
+> secrets. The image is parameterised with
+> `--build-arg APP=copilot|projects|control-tower|landing`.
+
+### Domain apps
+
+`apps/projects` is the first domain app: it serves
+http://localhost:3004/`{locale}/{orgSlug}/projects` and signs in through Copilot
+(host-only session, no credential form). It needs its own environment file and
+the provisioned OAuth client credentials:
+
+```bash
+cp apps/projects/.env.example apps/projects/.env
+# then copy the PROJECTS_OAUTH_CLIENT_ID/SECRET pair written by:
+npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
+```
+
+Start Copilot and the projects app together (`npm run dev` starts both). The
+next apps copy the template in
+[`docs/domain-app-template.md`](./docs/domain-app-template.md).
 
 ### Control tower
 
@@ -164,8 +184,10 @@ nofollow` and disallow `/` in `robots.txt`.
 ## Environment variables
 
 Copilot variables live in `apps/copilot/.env` (see
-[`apps/copilot/.env.example`](./apps/copilot/.env.example)); the control tower reads
-`apps/control-tower/.env` (see
+[`apps/copilot/.env.example`](./apps/copilot/.env.example)); the projects app reads
+`apps/projects/.env` (see
+[`apps/projects/.env.example`](./apps/projects/.env.example)); the control tower
+reads `apps/control-tower/.env` (see
 [`apps/control-tower/.env.example`](./apps/control-tower/.env.example)); the
 stateless landing reads only `apps/landing/.env` (see
 [`apps/landing/.env.example`](./apps/landing/.env.example) for

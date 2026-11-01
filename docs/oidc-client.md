@@ -48,11 +48,33 @@ const config = {
 authentication, verifies the access token against Copilot's JWKS, requires the
 `sid` and organization claims, and creates the local session.
 
+`OidcConfig.issuer` is the Copilot origin, but the tokens carry the value Better
+Auth publishes in its discovery document: `${origin}/api/auth`. `oidcIssuer()`
+computes it, and every verifier (`verifyAccessToken`, `verifyIdToken`,
+`verifyLogoutToken`) compares against it. Compare against the bare origin and
+every real token is rejected.
+
 ## Sessions
 
-`OidcSessionRecord` stores the Copilot `sid`, user, organization, encrypted
-access/refresh tokens and expiry. `OidcSessionStore` is the storage contract;
-`MemorySessionStore` is for tests. #183 provides the per-app Prisma adapter.
+`OidcSessionRecord` stores the Copilot `sid`, user, organization and the
+access/refresh tokens with their expiry. `OidcSessionStore` is the storage
+contract; `MemorySessionStore` is for tests.
+
+`PrismaOidcSessionStore` is the production adapter. It takes the app's Prisma
+`oidcSession` delegate, so `@workspace/oidc` never imports a database package
+and every app stores its sessions in its own database (see the model in
+`packages/db/prisma/schema.prisma`):
+
+```ts
+import { PrismaOidcSessionStore } from "@workspace/oidc"
+
+const store = new PrismaOidcSessionStore(prisma.oidcSession)
+```
+
+`apps/projects` is the reference binding (`apps/projects/lib/oidc.ts`). Add the
+`OidcSession` model to the app's schema (the split script shares it) and keep one
+local session per Copilot `sid`: a new authorization for the same sign-in
+replaces the previous row.
 
 `resolveSession` returns a valid session or refreshes an expiring one. A failed
 refresh deletes the local session; the caller redirects to Copilot.
@@ -69,6 +91,15 @@ refresh deletes the local session; the caller redirects to Copilot.
 - `buildEndSessionUrl(config, { idToken, postLogoutRedirectUri, state })`
   starts RP-initiated logout.
 
+## Organization switching
+
+The token is bound to one organization, so switching is a new authorization, not
+a session mutation. `apps/projects/app/api/auth/switch/route.ts` sends the
+browser to Copilot's `/{locale}/select-organization?redirectTo=<app>/api/auth/sign-in?returnTo=…`;
+Copilot updates the session's active organization and returns into the app's
+sign-in flow. Copilot only accepts a registered customer origin and only its
+`/api/auth/sign-in` path as the return target.
+
 ## Verification
 
 ```bash
@@ -77,12 +108,12 @@ npm run typecheck --workspace=@workspace/oidc
 npm run lint --workspace=@workspace/oidc
 ```
 
-The package is covered by 24 tests: PKCE, authorization URL, cookie flags,
-token exchange/refresh, session refresh/failure, callback state and claims, and
-back-channel logout.
+The package is covered by 33 tests: PKCE, authorization URL, cookie flags,
+token exchange/refresh, session refresh/failure, callback state and claims,
+back-channel logout, the token issuer, and the Prisma session store.
 
 ## Follow-up
 
 - #182 registers the client, redirect URIs, secrets and back-channel logout URI.
-- #183 adds the Prisma session store per app.
+- #160 binds the store in `apps/projects`; #161–#164 do the same per app.
 - #169 adds the full logout and token-revocation hardening at the fleet level.

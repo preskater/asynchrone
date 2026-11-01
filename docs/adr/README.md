@@ -59,3 +59,4 @@ collection.
 | [0033](0033-keep-audit-export-and-deletion-consistent-across-databases.md) | accepted | Keep audit, export and deletion consistent across databases               |
 | [0034](0034-cut-the-control-tower-over-to-its-own-database.md)              | accepted | Cut the control tower over to its own database                            |
 | [0035](0035-rename-web-app-to-copilot.md)                                  | accepted | Rename `apps/web` to `apps/copilot` and its deployment artefacts          |
+| [0036](0036-use-a-per-domain-app-template.md)                              | accepted | Move the domain apps with one documented template                         |
