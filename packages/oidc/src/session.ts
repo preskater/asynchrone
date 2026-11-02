@@ -186,6 +186,11 @@ export interface ResolveSessionOptions {
  * session and returns null; the caller redirects to Copilot. Verification
  * fails closed: if Copilot's JWKS is unreachable, the local session is not
  * trusted.
+ *
+ * Concurrent requests for the same session are tolerated: when one request
+ * wins the refresh-token rotation the others keep its token instead of signing
+ * the user out, and a delete that another request already performed is not an
+ * error.
  */
 export async function resolveSession(
   store: OidcSessionStore,
@@ -205,7 +210,7 @@ export async function resolveSession(
   let current = record
   if (record.accessTokenExpiresAt <= now + refreshSkewMs) {
     if (!record.refreshToken) {
-      await store.delete(record.id)
+      await dropSession(store, record.id)
       return null
     }
 
@@ -224,8 +229,23 @@ export async function resolveSession(
       await store.update(record.id, updated)
       current = { ...record, ...updated }
     } catch {
-      await store.delete(record.id)
-      return null
+      // Two requests of the same page (the router's prefetch plus the
+      // navigation, or two tabs) can race here. Copilot rotates the refresh
+      // token, so the loser's grant fails while the winner may still be
+      // writing. Give the winner a moment to commit and continue with its
+      // token instead of signing the user out.
+      const latest = await awaitedConcurrentRefresh(
+        store,
+        record.id,
+        now,
+        refreshSkewMs
+      )
+      if (latest) {
+        current = latest
+      } else {
+        await dropSession(store, record.id)
+        return null
+      }
     }
   }
 
@@ -235,16 +255,57 @@ export async function resolveSession(
   try {
     claims = await verify(current.accessToken)
   } catch {
-    await store.delete(current.id)
+    await dropSession(store, current.id)
     return null
   }
 
   if (sessionClaimMismatch(claims, current)) {
-    await store.delete(current.id)
+    await dropSession(store, current.id)
     return null
   }
 
   return { ...current, claims }
+}
+
+/**
+ * Delete a rejected session, tolerating a concurrent request that already did.
+ * The failure is deliberate (never trust the session), not an error to surface
+ * as a 500.
+ */
+async function dropSession(
+  store: OidcSessionStore,
+  sessionId: string
+): Promise<void> {
+  try {
+    await store.delete(sessionId)
+  } catch {
+    // Already gone: another request resolved the same session first.
+  }
+}
+
+/** Backoff between re-reads when a concurrent refresh is probably landing. */
+const CONCURRENT_REFRESH_DELAYS_MS = [0, 50, 150]
+
+/**
+ * Re-read the session after a failed refresh, waiting briefly for a concurrent
+ * request that won the rotation to store its token.
+ */
+async function awaitedConcurrentRefresh(
+  store: OidcSessionStore,
+  sessionId: string,
+  now: number,
+  refreshSkewMs: number
+): Promise<OidcSessionRecord | null> {
+  for (const delay of CONCURRENT_REFRESH_DELAYS_MS) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+    const latest = await store.get(sessionId).catch(() => null)
+    if (latest && latest.accessTokenExpiresAt > now + refreshSkewMs) {
+      return latest
+    }
+  }
+  return null
 }
 
 /** Remove every local session bound to a Copilot session id. */

@@ -181,6 +181,12 @@ notifications, recents, search, export/deletion and the assistant/MCP tools)
 and replays the issue #40 authorization attacks against the package
 entrypoints. See [contract tests](../contract-tests.md).
 
+The browser side — one Copilot session with two relying parties, back-channel
+logout, organization-switch revocation, the impersonation handoff, token
+audience binding and failure injection — lives in the cross-app Playwright suite
+(`npm run test:e2e --workspace=@workspace/e2e`, port 3020–3022). See
+[cross-app end-to-end](../cross-app-e2e.md).
+
 The boundary checker is intentionally independent of TypeScript resolution: it
 also catches imports in files that are not currently reachable from a route.
 
@@ -234,3 +240,7 @@ also catches imports in files that are not currently reachable from a route.
       `employees.copilot.asynchrone.space` (#163)
 - [x] One generic Helm app chart instantiated per app, per-app images, wildcard
       DNS/TLS, per-app secrets and single-owner crons (#168)
+- [x] Cross-app OIDC and domain end-to-end coverage: sign-in, token refresh,
+      organization-switch revocation, back-channel logout, impersonation
+      handoff and TTL, audience binding and failure injection
+      (`packages/e2e`, #210)

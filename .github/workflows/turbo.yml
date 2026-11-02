@@ -778,3 +778,124 @@ jobs:
 
       - name: Employees e2e
         run: npm run test:e2e --workspace=employees
+
+  # Cross-app OIDC and domain coverage (#210): one Copilot session, two
+  # relying parties on separate hosts, the control-tower handoff and the
+  # failure-injection cases. `packages/e2e` owns the Playwright suite; its
+  # bootstrap spawns the apps' own e2e bootstraps (no duplicated clients) and
+  # `apps/copilot/scripts/provision-cross-app-clients.ts` adds the control
+  # tower's service client. Ports 3020–3022 keep it clear of every other job.
+  e2e-cross-app:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: asynchrone
+          POSTGRES_PASSWORD: asynchrone
+          POSTGRES_DB: asynchrone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asynchrone"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      # The identity tables still live in the monolith database until the split
+      # (#185/#171), so Copilot's admin and saga stores must resolve the same
+      # rows its Better Auth session writes. Every other e2e job leaves this
+      # pointing at the unused asynchrone_identity database.
+      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      PROJECTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_projects?schema=public
+      CALENDARS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_calendars?schema=public
+      FILES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_files?schema=public
+      MESSAGES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_messages?schema=public
+      CLIENTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_clients?schema=public
+      EMPLOYEES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_employees?schema=public
+      CONTROL_TOWER_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_control_tower?schema=public
+      BETTER_AUTH_SECRET: ci-cross-app-e2e-secret-placeholder-value
+      # The origins the suite's webServer array uses. The per-app OAuth
+      # clients are provisioned with these redirect URIs by the bootstrap; the
+      # build validates the same client ids/secrets.
+      BETTER_AUTH_URL: http://localhost:3020
+      COPILOT_APP_URL: http://localhost:3020
+      PROJECTS_APP_URL: http://localhost:3021
+      CALENDARS_APP_URL: http://127.0.0.1:3022
+      PROJECTS_OAUTH_CLIENT_ID: asynchrone-projects
+      PROJECTS_OAUTH_CLIENT_SECRET: e2e-projects-oauth-client-secret
+      CALENDARS_OAUTH_CLIENT_ID: asynchrone-calendars
+      CALENDARS_OAUTH_CLIENT_SECRET: e2e-calendars-oauth-client-secret
+      PLATFORM_APP_URL: http://localhost:3020
+      CONTROL_TOWER_URL: http://127.0.0.1:3098
+      CRON_SECRET: e2e-cross-app-cron-secret
+      # Build-time placeholders for the other apps the shared packages import.
+      MESSAGES_APP_URL: http://localhost:3007
+      MESSAGES_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      MESSAGES_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      FILES_APP_URL: http://localhost:3006
+      FILES_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      FILES_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      CLIENTS_APP_URL: http://localhost:3008
+      CLIENTS_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      CLIENTS_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      EMPLOYEES_APP_URL: http://localhost:3009
+      EMPLOYEES_OAUTH_CLIENT_ID: ci-build-placeholder-client-id
+      EMPLOYEES_OAUTH_CLIENT_SECRET: ci-build-placeholder-client-secret
+      CONTROL_TOWER_BETTER_AUTH_SECRET: ci-control-tower-placeholder-secret-not-used
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create per-app databases
+        run: npm run db:create
+
+      - name: Generate Prisma clients
+        run: |
+          npm run generate --workspace=@workspace/db
+          npm run generate --workspace=@workspace/db-identity
+          npm run generate --workspace=@workspace/db-projects
+          npm run generate --workspace=@workspace/db-calendars
+          npm run generate --workspace=@workspace/db-files
+          npm run generate --workspace=@workspace/db-messages
+          npm run generate --workspace=@workspace/db-clients
+          npm run generate --workspace=@workspace/db-employees
+          npm run generate --workspace=@workspace/db-control-tower
+
+      - name: Apply monolith migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/db
+
+      - name: Apply per-app migrations
+        run: npm run migrate:deploy
+
+      # The suite starts every app with `next start` in CI (see the clients
+      # job for the rationale); the probe and the bootstrap run the same
+      # generated clients, so the build is the only extra step.
+      - name: Build Copilot, projects and calendars
+        run: |
+          npm run build --workspace=copilot
+          npm run build --workspace=projects
+          npm run build --workspace=calendars
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: packages/e2e
+
+      - name: Cross-app e2e
+        run: npm run test:e2e --workspace=@workspace/e2e

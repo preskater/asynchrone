@@ -147,6 +147,76 @@ describe("OIDC sessions", () => {
     expect(await store.get("session_1")).toBeNull()
   })
 
+  it("keeps the token a concurrent request refreshed", async () => {
+    const store = new MemorySessionStore()
+    const record = sessionRecordFromTokens({
+      tokens,
+      userId: "user_1",
+      organizationId: "org_1",
+      sid: "sid_1",
+      id: "session_1",
+    })
+    record.accessTokenExpiresAt = 1_000
+    await store.create(record)
+
+    // Copilot rotates the refresh token: the second of two racing requests is
+    // rejected, but the winner has already stored a fresh token.
+    const fetchImpl = vi.fn(async () => {
+      await store.update("session_1", {
+        accessToken: "access_2",
+        refreshToken: "refresh_2",
+        accessTokenExpiresAt: 902_000,
+        updatedAt: 2_000,
+      })
+      return new Response(JSON.stringify({ error: "invalid_grant" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      })
+    })
+
+    const resolved = await resolveSession(store, config, "session_1", {
+      fetchImpl: fetchImpl as typeof fetch,
+      now: 2_000,
+      verify: async () => claims(),
+    })
+    expect(resolved?.accessToken).toBe("access_2")
+    expect(resolved?.refreshToken).toBe("refresh_2")
+    expect(await store.get("session_1")).not.toBeNull()
+  })
+
+  it("tolerates a concurrent request that already deleted the session", async () => {
+    const memory = new MemorySessionStore()
+    const record = sessionRecordFromTokens({
+      tokens,
+      userId: "user_1",
+      organizationId: "org_1",
+      sid: "sid_1",
+      id: "session_1",
+    })
+    record.accessTokenExpiresAt = 100_000
+    await memory.create(record)
+
+    // A second request resolved (and deleted) the same row first.
+    const store = {
+      create: memory.create.bind(memory),
+      get: memory.get.bind(memory),
+      update: memory.update.bind(memory),
+      deleteBySid: memory.deleteBySid.bind(memory),
+      delete: async (id: string) => {
+        throw new Error(`No record was found for a delete: ${id}`)
+      },
+    }
+
+    await expect(
+      resolveSession(store, config, "session_1", {
+        now: 1_000,
+        verify: async () => {
+          throw new Error("expired")
+        },
+      })
+    ).resolves.toBeNull()
+  })
+
   it("deletes the session when the access token was minted for another app", async () => {
     const store = new MemorySessionStore()
     const record = sessionRecordFromTokens({
