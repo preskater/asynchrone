@@ -64,7 +64,7 @@ const CROSS_DOMAIN_CALLS: Record<
   files: { audiences: [], write: false },
   messages: { audiences: [], write: false },
   clients: { audiences: ["projects", "files"], write: true },
-  employees: { audiences: ["projects"], write: true },
+  employees: { audiences: ["projects", "clients"], write: true },
 }
 
 function clientId(key: AppKey): string {

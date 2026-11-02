@@ -31,7 +31,7 @@ function hashClientSecret(secret: string): string {
 const employeesResource = internalAudience("employees")
 const copilotResource = internalAudience("copilot")
 
-const crossAudiences = ["projects"] as const
+const crossAudiences = ["projects", "clients"] as const
 
 const resources = [
   {
