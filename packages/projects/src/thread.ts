@@ -1,9 +1,12 @@
+import type { MemberDirectoryPort } from "@workspace/organization/directory"
+
 import type { ProjectDb } from "./db"
 import type { ProjectNotify } from "./ports"
 
 export interface ProjectThreadDependencies {
   db: ProjectDb
   notify: ProjectNotify
+  directory: MemberDirectoryPort
 }
 
 export const PROJECT_MESSAGE_MAX_LENGTH = 4000
@@ -40,22 +43,23 @@ function mapMessage(
 }
 
 async function namesByIds(
-  db: ProjectDb,
+  directory: MemberDirectoryPort,
+  organizationId: string,
   ids: string[]
 ): Promise<Map<string, string>> {
   const nameById = new Map<string, string>()
   if (ids.length === 0) return nameById
-  const users = await db.user.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true },
-  })
-  for (const user of users) nameById.set(user.id, user.name)
+  const members = await directory.list(organizationId)
+  const wanted = new Set(ids)
+  for (const member of members) {
+    if (wanted.has(member.userId)) nameById.set(member.userId, member.name)
+  }
   return nameById
 }
 
 /** The shared project thread, oldest first. Visible to the team and the client. */
 export async function listProjectMessages(
-  { db }: ProjectThreadDependencies,
+  { db, directory }: ProjectThreadDependencies,
   organizationId: string,
   projectId: string,
   limit = 200
@@ -65,7 +69,7 @@ export async function listProjectMessages(
     orderBy: { createdAt: "asc" },
     take: limit,
   })
-  const nameById = await namesByIds(db, [
+  const nameById = await namesByIds(directory, organizationId, [
     ...new Set(rows.map((row) => row.authorId)),
   ])
   return rows.map((row) => mapMessage(row, nameById))
@@ -76,7 +80,7 @@ export async function listProjectMessages(
  * internal project members so the team sees replies in the header bell.
  */
 export async function createProjectMessage(
-  { db, notify }: ProjectThreadDependencies,
+  { db, notify, directory }: ProjectThreadDependencies,
   input: {
     organizationId: string
     projectId: string
@@ -95,10 +99,12 @@ export async function createProjectMessage(
     },
   })
 
-  const nameById = await namesByIds(db, [row.authorId])
+  const nameById = await namesByIds(directory, input.organizationId, [
+    row.authorId,
+  ])
   if (input.authorKind === "client") {
     await notifyTeamOfClientMessage(
-      { db, notify },
+      { db, notify, directory },
       input.organizationId,
       input.projectId,
       row,
@@ -110,7 +116,7 @@ export async function createProjectMessage(
 }
 
 async function notifyTeamOfClientMessage(
-  { db, notify }: ProjectThreadDependencies,
+  { db, notify, directory }: ProjectThreadDependencies,
   organizationId: string,
   projectId: string,
   row: MessageRow,
@@ -129,14 +135,12 @@ async function notifyTeamOfClientMessage(
   if (memberIds.length === 0) return
 
   // Only internal members: portal users of the same company don't need the bell.
-  const internalMembers = await db.member.findMany({
-    where: {
-      organizationId,
-      userId: { in: memberIds },
-      clientId: null,
-    },
-    select: { userId: true },
-  })
+  const wanted = new Set(memberIds)
+  const internalMembers = (await directory.list(organizationId))
+    .filter(
+      (member) => member.clientId == null && wanted.has(member.userId)
+    )
+    .map((member) => ({ userId: member.userId }))
 
   const preview =
     row.body.length > 120 ? `${row.body.slice(0, 117)}...` : row.body

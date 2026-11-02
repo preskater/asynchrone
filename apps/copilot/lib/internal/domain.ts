@@ -3,6 +3,7 @@ import type { z } from "zod"
 import {
   APPS,
   DomainClient,
+  internalAudience,
   type DelegatedContext,
   type DomainAppKey,
   type DomainOperation,
@@ -103,5 +104,34 @@ export async function callDomain<T>(
   return requireDomainClient(app).call(operation, context, input, schema, {
     ...options,
     correlationId,
+  })
+}
+
+/**
+ * Raw internal request to another app. Used for byte streams (portal document
+ * upload/download) where a JSON contract would force buffering.
+ */
+export async function domainServiceFetch(
+  app: DomainAppKey,
+  path: string,
+  init: RequestInit & { scope: "internal:domain:read" | "internal:domain:write" | "internal:export:read" }
+): Promise<Response> {
+  const service = tokenClient()
+  const baseUrl = process.env[APPS[app].hostEnv]
+  if (!service || !baseUrl) {
+    throw new Error(`The ${app} internal API is not configured`)
+  }
+  const { scope, ...requestInit } = init
+  const token = await service.getToken({
+    audience: internalAudience(app),
+    scopes: [scope],
+  })
+  return fetch(new URL(path, baseUrl), {
+    ...requestInit,
+    headers: {
+      ...(requestInit.headers ?? {}),
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
   })
 }

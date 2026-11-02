@@ -4,12 +4,10 @@ Last audited: 2026-11-02 (issues #146–#163).
 This document is the surface inventory for the domain-app split. Every route,
 server action, API handler, cron job, MCP tool, Prisma model, audit action,
 portal surface, internal endpoint, environment variable and test is assigned to
-exactly one app. It is a snapshot of the domain-app split: Copilot
-(`apps/copilot`, renamed from `apps/web` in #175) still serves every customer
-surface from one runtime and one database, while
-the per-app database packages and the shared kernel (`@workspace/core`,
-`@workspace/auth`, `@workspace/organization`, `@workspace/app-shell`,
-`@workspace/i18n`, `@workspace/next-config`) already exist.
+exactly one app. It is a snapshot of the finished split: every customer app
+runs on its own host with its own database, Copilot owns identity and the
+portal, and cross-domain reads go through the versioned internal APIs in
+`@workspace/contracts`.
 
 Keep this document current in the same pull request that moves a surface. A
 surface may only move when its target app owns the database, internal contract
@@ -150,15 +148,14 @@ organization 2FA policy.
   server, renders the streaming transcript and tool cards, and exposes new chat,
   reopen and delete with the same organization/user isolation. Copilot is the
   home; there is no separate shell redirect, and `/mcp` stays here.
-- Assistant tools currently call the domain services in-process:
+- Assistant tools call `/internal/v1/domain/:operation` through `DomainClient`:
   `list_projects`, `get_project`, `list_tasks`, `create_project`,
   `create_task`, `update_task`, `move_task`, `list_calendar`, `create_event`,
-  `list_files`, `list_conversations`, `send_message`. Calendar tools call
-  `@workspace/calendars` through the app adapter.
+  `list_files`, `list_conversations`, `send_message`.
 - MCP transport: `apps/copilot/app/mcp/route.ts`, `apps/copilot/lib/mcp/*`.
 - MCP tools (44) live in `apps/copilot/lib/mcp/tools/*` and are listed per domain
   below.
-- #190 replaces the in-process calls with typed internal clients; the MCP
+- #190/#171 moved every tool onto the typed internal clients; the MCP
   transport and assistant stay in Copilot.
 
 ### Prisma models (identity database)
@@ -203,7 +200,7 @@ adapter; every other app goes through the internal contract.
 
 | Package                    | Ships                                                                      | Bound by                                                            |
 | -------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `@workspace/storage`       | PostgreSQL large-object engine for file bytes                              | Files app (`apps/copilot/lib/large-object.ts` today)                    |
+| `@workspace/storage`       | PostgreSQL large-object engine for file bytes                              | Files and messages apps, each bound to its own pool                    |
 | `@workspace/notifications` | Inbox types, schemas and the notification service over a repository port   | Copilot's identity repository; domain apps use `NotificationClient` |
 | `@workspace/integrations`  | Provider protocol, GitHub/GitLab clients and the token cipher              | The app that owns the connection; tokens stay in its database       |
 | `@workspace/ai`            | Chat parts, model pricing, agent factory and the quota ledger over a store | Copilot's `AiUsageEvent`; tools call domain APIs (#190)             |
@@ -221,22 +218,20 @@ session and deployment live in `apps/projects`, which serves
 only a redirect (`apps/copilot/proxy.ts`); the assistant, MCP and portal call
 its `/internal/v1/domain/:operation` API (#190).
 
-Transitional gap: `@workspace/projects` reads `member`, `user` and `account`
-(member list, invitations/roles, personal repository tokens), so `apps/projects`
-binds the shared client (`@workspace/db`) until #190/#171 move those reads behind
-the identity internal API. It is the only app with this exception.
+Identity reads (member list, invitations/roles, personal repository tokens) go
+through `IdentityClient`; the app binds only `@workspace/db-projects`.
 
 | Surface            | Inventory                                                                                                                                                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Server actions     | `apps/projects/actions/{projects,project-messages,integrations}.ts` (projects, tasks, members, labels, templates, comments, project discussion thread, repository connections)                                                                                      |
 | Pages              | `apps/projects/app/[locale]/[orgSlug]/projects[/\[projectId\]]` (list, workspace, loading, not-found); Copilot 308-redirects the old paths                                                                                                                         |
 | Auth               | `apps/projects/app/api/auth/{sign-in,callback,logout,backchannel-logout,switch}`, `lib/auth/workspace.ts` (2FA gate, organization binding)                                                                                                                           |
-| API                | Copilot: `POST /api/webhooks/repositories/[connectionId]` (until #190); projects: `GET /api/cron/repository-sync` (hourly since #168), `/api/health`                                                                                                                |
+| API                | Projects: `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync` (hourly since #168), `/api/health`; the webhook moved here in #171 |
 | MCP tools          | `list_projects`, `get_project`, `list_tasks`, `create_project`, `create_task`, `update_task`, `move_task`                                                                                                                                                           |
 | Prisma models      | `Project`, `ProjectMember`, `Label`, `ProjectLabel`, `Task`, `TaskIdentifierCounter`, `TaskTemplate`, `TaskLabel`, `Subtask`, `TaskComment`, `ProjectActivity`, `ProjectMessage`, `RepositoryConnection`, `UserRepositoryToken`, `AuditLog`                         |
 | Audit actions      | `project.created`, `project.updated`, `project.deleted`, `project.client_settings.updated`, `project.member.*`, `project.label.*`, `project.template.*`, `task.created`, `task.updated`, `task.moved`, `task.deleted`, `task.subtask.toggled`, `task.comment.added` |
 | Audit entities     | `project`, `task`, `label`, `taskTemplate`                                                                                                                                                                                                                          |
-| Internal endpoints | `GET /internal/v1/search`, `GET /organizations/:id/export`, `DELETE /organizations/:id`, `DELETE /users/:id` (shared handlers in `@workspace/search` / `@workspace/sagas`; not wired yet)                                                                           |
+| Internal endpoints | `GET /internal/v1/search`, `GET /organizations/:id/export`, `DELETE /organizations/:id`, `DELETE /users/:id`, the audit routes and the file content stream                                                             |
 
 ### Package layout (#153)
 
@@ -253,17 +248,13 @@ the identity internal API. It is the only app with this exception.
 | `packages/projects/src/ui/store.tsx`              | `ProjectStoreProvider` / `useProjectStore`; takes the app's server actions as a port and exposes `canManageMembers`           |
 | `packages/projects/src/ui/actions.tsx`            | `ProjectActions` contract + `useProjectActions()`                                                                             |
 | `packages/projects/src/components/*`              | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)         |
-| `apps/copilot/lib/projects/index.ts`                  | Copilot adapter (assistant, MCP, portal, search): binds the shared client, audit, notifications and repository integration   |
-| `apps/copilot/lib/projects/{thread,task-comments}.ts` | Copilot adapters for the portal: bind the db client + notifier                                                                |
-| `apps/copilot/lib/integrations/index.ts`              | Copilot adapter: webhook handler and in-process repository service (webhook URLs stay on Copilot until #190; the cron moved to projects in #168) |
-| `apps/projects/lib/{projects,integrations}`           | App adapters: bind the db client, audit writer, notification inbox and repository sync                                        |
+| `apps/projects/lib/{projects,integrations}`           | App adapters: bind the project database, identity directory, audit writer, notification ingress and repository sync; the webhook route lives here |
 | `apps/projects/lib/auth/*`                            | OIDC session, return-to cookie, workspace gates and request context                                                           |
 | `apps/projects/lib/project-actions.ts`                | Binds the app's server actions to the package's `ProjectActions` port                                                         |
 
 App-only imports are forbidden in the package (`npm run check:boundaries`).
-`member`, `user` and `account` remain in the `ProjectDb` port because the
-project member list and personal repository tokens still read identity tables;
-they move behind the identity internal API in #190.
+`member`, `user` and `account` are not in the `ProjectDb` port: the project
+member list and personal repository tokens go through `IdentityClient`.
 
 ### Routes
 
@@ -315,8 +306,8 @@ another app's client. Unit tests use the repository ports.
 | Server actions     | `apps/calendars/actions/calendars.ts` (list data/events, create/update/move/delete event, add/toggle calendar, respond), `actions/meetings.ts` (team list/accept/decline, settings get/update) and `actions/project-tasks.ts` (task overlay) | Set `"use server"`; paths unchanged on the calendars host |
 | API                | `/api/health` only                                                                                                                                                                                       | No dedicated calendar or meeting route                                                            |
 | MCP tools          | `list_calendar`, `create_event`, `respond_to_event`, `list_meeting_requests`, `accept_meeting_request`, `decline_meeting_request`, `get_meeting_settings`, `update_meeting_settings`                     | `apps/copilot/lib/mcp/tools/{calendars,meetings}.ts`                                                  |
-| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `OidcSession`, `AuditLog`                                                              | `asynchrone_calendars` (`@workspace/db-calendars`); the app binds the shared client until #190   |
-| Audit actions      | none today                                                                                                                                                                                               |                                                                                                   |
+| Prisma models      | `Calendar`, `CalendarMember`, `CalendarEvent`, `EventAttendee`, `MeetingSettings`, `MeetingRequest`, `MeetingSlot`, `OidcSession`, `RateLimit`, `AuditLog`                                      | `asynchrone_calendars` (`@workspace/db-calendars`)                                                |
+| Audit actions      | `calendar.created`, `calendar.updated`, `calendar.event.created`, `calendar.event.updated`, `calendar.event.deleted`, `calendar.event.responded`, `meeting.settings.updated`, `meeting.request.created/accepted/declined/cancelled` | written by the calendars app |
 | Internal endpoints | search / export / delete as above                                                                                                                                                                        | Not wired yet                                                                                     |
 
 ## Files
@@ -324,9 +315,8 @@ another app's client. Unit tests use the repository ports.
 Target: `apps/files` / `@workspace/files`. The package landed in #155 and the
 screens, actions, upload/download APIs and the `uploads-sweep` route moved to
 `apps/files` in #161, bound through `apps/files/lib/files.ts` and
-`apps/files/components/files-provider.tsx`. Copilot keeps
-`apps/copilot/lib/files.ts` for search, export and deletion; the portal,
-assistant and MCP call the files internal API (#190).
+`apps/files/components/files-provider.tsx`. The portal, assistant and MCP call
+the files internal API (#190); search/export/deletion run inside the files app.
 
 | Surface                                       | Location                                                                                                                                                                                                                       | Notes                                                                                                      |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -344,7 +334,7 @@ assistant and MCP call the files internal API (#190).
 | Server actions                                | `apps/files/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
 | Cron                                          | `uploads-sweep` (files app, `/api/files/uploads/sweep`, daily 03:00, `CRON_SECRET`); the files app owns the CronJob since #161                                                                                                   |                                                                                                            |
 | MCP tools                                     | `apps/copilot/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
-| Prisma models                                 | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `OidcSession`, `AuditLog`                                                                                                                              | `asynchrone_files` (`@workspace/db-files`); the app binds the shared client until #190                   |
+| Prisma models                                 | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `RateLimit`, `OidcSession`, `AuditLog`                                                                                                                  | `asynchrone_files` (`@workspace/db-files`)                                                               |
 | Storage                                       | `packages/files/src/objects.ts` + `@workspace/storage`                                                                                                                                                                         | PostgreSQL large objects; resumable uploads; the app binds its own pool                                    |
 | Audit actions                                 | `file.created`, `file.folder.created`, `file.renamed`, `file.moved`, `file.duplicated`, `file.trashed`, `file.restored`, `file.deleted`, `file.access.updated`, `file.share.added`, `file.share.updated`, `file.share.removed` |                                                                                                            |
 | Audit entities                                | `file`                                                                                                                                                                                                                         |                                                                                                            |
@@ -353,9 +343,8 @@ assistant and MCP call the files internal API (#190).
 ## Messages
 
 Target: `apps/messages` / `@workspace/messaging`. The package landed in #156 and
-the app in #162 (`messages.copilot.asynchrone.space`). Until #190/#171 the app
-binds the shared database client (the documented transitional binding) and
-Copilot keeps an in-process binding for the assistant, MCP and search.
+the app in #162 (`messages.copilot.asynchrone.space`). The app binds only
+`@workspace/db-messages`; attachments and their upload sessions live there.
 
 | Surface                                        | Location                                                                                                        | Notes                                                                                                                                |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -371,9 +360,9 @@ Copilot keeps an in-process binding for the assistant, MCP and search.
 | Package write API                              | `packages/messaging/src/service.ts`                                                                             | `sendMessage`, `editMessage`, `deleteMessage`, `toggleReaction`, `addThreadReply`, `markRead`, DM/channel, mute/pin, `touchPresence` |
 | Attachments                                    | `packages/messaging/src/service.ts`, `../files/src/upload-client.ts` (`uploadAttachment`)                       | metadata in `messageAttachment`; bytes are PostgreSQL large objects through `@workspace/storage`                                     |
 | Storage binding                                | `packages/messaging/src/deps.ts` → `createMessagingRuntime`                                                     | the app binds `apps/messages/lib/large-object.ts`; the package never opens a pool                                                        |
-| Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `OidcSession`, `AuditLog` | the app-local OIDC session ships in `@workspace/db-messages`; the app still binds the shared client until #190/#171                     |
+| Prisma models                                  | `ChatTeam`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `MessageAttachment`, `UploadSession`, `RateLimit`, `OidcSession`, `AuditLog` | `asynchrone_messages` (`@workspace/db-messages`)                                                                                        |
 | Export/delete bytes                            | `packages/messaging/src/objects.ts`                                                                             | `listAttachmentsForExport` and `snapshotForOrganization`; Copilot keeps the binding for its export/deletion sagas                       |
-| Audit actions                                  | none today                                                                                                      |                                                                                                                                      |
+| Audit actions                                  | `message.sent`, `message.edited`, `message.deleted`, `message.replied`, `message.reaction.toggled`, `conversation.created` | written by the messages app |
 | Internal endpoints                             | search / export / delete as above; attachments are served by the messages app                                   |                                                                                                                                      |
 | Tests                                          | `packages/messaging/src/service.unit.test.ts`, `apps/messages/e2e/messages.spec.ts`                             | membership, unread state, threads, attachment upload/download, cross-org authorization, sign-in/org switch/redirect                   |
 
@@ -414,7 +403,7 @@ shell, the host-only OIDC session and the audit/notification wiring.
 | `packages/clients/src/components/use-clients.ts`             | Formatting, CSV download and `datetime-local` helpers                                                       |
 | `apps/clients/lib/clients/index.ts`                               | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
 | `apps/clients/lib/client-actions.ts`                              | Builds `CLIENT_ACTIONS` from `actions/clients.ts` and exposes it through `ClientActionsProvider`             |
-| `apps/copilot/lib/clients/index.ts`                               | Copilot search adapter; assistant, MCP and portal use the clients internal API (#190)                       |
+
 
 ### Routes
 
@@ -483,7 +472,7 @@ shell, the host-only OIDC session and the audit wiring.
 | `packages/employees/src/components/actions.tsx`            | `EmployeeActions` port + `EmployeeActionsProvider` / `useEmployeeActions()`                        |
 | `apps/employees/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
 | `apps/employees/lib/employee-actions.ts`                         | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
-| `apps/copilot/lib/employees/index.ts`                            | Copilot search adapter; assistant and MCP use the employees internal API (#190)                   |
+
 
 ### Routes
 
@@ -524,8 +513,8 @@ Target: stays in `apps/copilot` (#164); there is no `apps/portal`. The domain
 package landed in #158: `@workspace/portal` owns the context and authorization
 rules, the dashboard/project/task/document read models, document upload and
 download, the shared thread and task comments, portal access management and the
-meetings read model. Portal reads still run in-process through the domain
-packages until #190 replaced them with internal API calls (`DomainClient`).
+meetings read model. Every portal read goes through an internal API call
+(`DomainClient`); Copilot no longer imports a domain package.
 
 | Surface        | Inventory                                                                                                                                                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -537,7 +526,7 @@ packages until #190 replaced them with internal API calls (`DomainClient`).
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
 | Audit          | `client.document.linked` is written by the clients app for a portal upload; portal message/task-comment mutations still write no `AuditLog` row (preserved)                                                                   |
-| Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `e2e/portal.spec.ts` (invitation → portal, project visibility, document upload/download, workspace and portal rejection), `verify:portal`, `verify:data-export`, `verify:organization-deletion` |
+| Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `apps/copilot/e2e/portal.spec.ts` (invitation → portal, project visibility, document upload/download, workspace and portal rejection) and the cross-app deletion/export probes |
 
 ### Package layout (#158)
 
@@ -582,16 +571,16 @@ always applies its own organization, role, visibility and portal rules.
 | `GET/POST /admin/organizations...`       | Copilot     | `lib/admin/handler.ts`, `Admin*Schema`                                       | `internal:identity:admin`      | implemented                           |
 | `GET/POST /admin/users...`               | Copilot     | `lib/admin/handler.ts`, `Admin*Schema`                                       | `internal:identity:admin`      | implemented                           |
 | `POST /admin/handoffs`                   | Copilot     | `lib/admin/handler.ts`, `AdminHandoff*`                                      | `internal:identity:admin`      | implemented                           |
-| `GET /audit`                             | each app    | `@workspace/audit` `createAuditListHandler`, `AuditPageSchema`               | `internal:audit:read`          | Copilot only; domain apps after split |
-| `GET /audit/facets`                      | each app    | `@workspace/audit`, `AuditFacetsSchema`                                      | `internal:audit:read`          | Copilot only                          |
-| `GET /audit/export`                      | each app    | `@workspace/audit`, `AuditExportSchema`                                      | `internal:audit:read`          | Copilot only                          |
-| `POST /audit/prune`                      | each app    | `@workspace/audit`, `AuditPruneRequest/ResultSchema`                         | `internal:audit:write`         | Copilot only                          |
+| `GET /audit`                             | each app    | `@workspace/audit` `createAuditListHandler`, `AuditPageSchema`               | `internal:audit:read`          | implemented in every app       |
+| `GET /audit/facets`                      | each app    | `@workspace/audit`, `AuditFacetsSchema`                                      | `internal:audit:read`          | implemented in every app       |
+| `GET /audit/export`                      | each app    | `@workspace/audit`, `AuditExportSchema`                                      | `internal:audit:read`          | implemented in every app       |
+| `POST /audit/prune`                      | each app    | `@workspace/audit`, `AuditPruneRequest/ResultSchema`                         | `internal:audit:write`         | implemented in every app       |
 | `POST /notifications`                    | Copilot     | `app/internal/v1/notifications/route.ts`, `NotificationInput/ResultSchema`   | `internal:notifications:write` | implemented                           |
 | `POST /auth/revoke`                      | each domain | `app/internal/v1/auth/revoke/route.ts`; deletes local sessions by Copilot `sid` | `internal:domain:write`        | implemented (#169)                    |
-| `GET /search`                            | each domain | `@workspace/search` `createSearchHandler`, `SearchResponseSchema`            | `internal:search:read`         | handler exists, not wired             |
-| `GET /organizations/:id/export`          | each domain | `@workspace/sagas` `createExportHandler`, `ExportPartSchema`                 | `internal:export:read`         | handler exists, not wired             |
-| `DELETE /organizations/:id`              | each domain | `@workspace/sagas` `createDeleteOrganizationHandler`, `DeletionResultSchema` | `internal:delete:write`        | handler exists, not wired             |
-| `DELETE /users/:id`                      | each domain | `@workspace/sagas` `createDeleteUserHandler`, `DeletionResultSchema`         | `internal:delete:write`        | handler exists, not wired             |
+| `GET /search`                            | each domain | `@workspace/search` `createSearchHandler`, `SearchResponseSchema`            | `internal:search:read`         | implemented in every domain app |
+| `GET /organizations/:id/export`          | each domain | `@workspace/sagas` `createOrganizationExportHandler`, `ExportPartSchema`     | `internal:export:read`         | implemented in every domain app |
+| `DELETE /organizations/:id`              | each domain | `@workspace/sagas` `createOrganizationDeletionHandler`, `DeletionResultSchema` | `internal:delete:write`      | implemented in every domain app |
+| `DELETE /users/:id`                      | each domain | `@workspace/sagas` `createUserDeletionHandler`, `DeletionResultSchema`       | `internal:delete:write`        | implemented in every domain app |
 | Domain CRUD used by assistant/MCP/portal | each domain | `createDomainHandler` + `/internal/v1/domain/:operation`, `DomainCallSchema`   | `internal:domain:read/write`   | implemented (#190)                    |
 
 `packages/contracts/src/internal/contracts.ts` owns `INTERNAL_ROUTES` and the
@@ -602,7 +591,7 @@ not add an ad-hoc route shape.
 
 | Variable(s)                                                                                                                                                                                                              | Owner / readers                                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`, `DATABASE_POOL_MAX`                                                                                                                                                                                      | transitional monolith (`@workspace/db`), migration job and scripts; per-app `*_DATABASE_URL` replace it by app |
+| `DATABASE_URL`, `DATABASE_POOL_MAX`                                                                                                                                                                                      | the retired monolith schema, split/migration tooling and scripts; every app reads its own `*_DATABASE_URL` first |
 | `IDENTITY_DATABASE_URL`, `PROJECTS_DATABASE_URL`, `CALENDARS_DATABASE_URL`, `FILES_DATABASE_URL`, `MESSAGES_DATABASE_URL`, `CLIENTS_DATABASE_URL`, `EMPLOYEES_DATABASE_URL`, `CONTROL_TOWER_DATABASE_URL`                | the app that owns the database (`@workspace/db-*`)                                                             |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                                                                                                                                                                                  | Copilot (Better Auth/OIDC)                                                                                     |
 | `CONTROL_TOWER_BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                                                                                                                                                                    | control tower (separate instance; never reuse the Copilot secret)                                              |
@@ -638,42 +627,42 @@ Never bake secrets into an image.
 | Unit — shared packages    | `packages/{ai,app-shell,appearance,audit,auth,billing,contracts,core,db-core,integrations,notifications,oidc,organization,sagas,search,service-auth,storage}/**/*.unit.test.ts`                                                                                |
 | Unit — Assistant          | `packages/ai/src/{chat,conversations}.unit.test.ts` (stream reducer, deterministic replay, list ordering); `apps/copilot/lib/assistant/history.unit.test.ts`; `apps/copilot/app/api/assistant/{route,conversations/route}.unit.test.ts` (server-owned history, failed stream, create/delete cross-origin) |
 | Contracts (DB)            | `apps/copilot/scripts/contracts/assistant-persistence.contract.test.ts` (stored turns, reload, cross-org/cross-user rejection)                                                                                                                                |
-| E2E                       | `apps/copilot/e2e/{a11y,assistant,audit-log,password-reset,portal}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160); `apps/calendars/e2e/calendars.spec.ts` (sign-in, org switch, event, meeting settings) and `apps/files/e2e/{files,upload}.spec.ts` (sign-in, org switch, upload/download, chunk guards) (#161); `apps/messages/e2e/messages.spec.ts` (#162) |
+| E2E                       | `apps/copilot/e2e/{a11y,assistant,assistant-domain,audit-log,password-reset,portal}.spec.ts`; `apps/projects/e2e/{projects,authorization}.spec.ts` (#160); `apps/calendars/e2e/calendars.spec.ts` (#161); `apps/files/e2e/{files,upload}.spec.ts` (#161); `apps/messages/e2e/messages.spec.ts` (#162); `apps/clients/e2e/{clients,authorization}.spec.ts` and `apps/employees/e2e/{employees,authorization}.spec.ts` (#163) |
 | Cross-app E2E             | `packages/e2e` (`npm run test:e2e --workspace=@workspace/e2e`): Copilot + projects + calendars on separate hosts — sign-in, token refresh, organization-switch revocation, back-channel logout, impersonation handoff/banner/one-hour TTL, audience binding, stale session, partial search/audit/export and the deletion-saga retry (#210); see `docs/cross-app-e2e.md` |
-| Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
-| Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
+| Verification scripts (DB) | `apps/copilot/scripts/verify-trial.ts` (identity only). The former domain verification scripts were retired with the monolith binding; their coverage now lives in the per-app Playwright suites and the cross-app suite. |
+| Legal copy                | `npm run verify:legal-copy --workspace=landing`                                                                                                                                                                                                                    |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
 | Boundaries                | `scripts/check-boundaries.mjs`                                                                                                                                                                                                                                 |
 | Prisma/migrations         | `scripts/{verify-prisma-schemas,verify-migrations}.mjs`                                                                                                                                                                                                        |
 
-There is no general test script. Add a unit test next to a non-trivial
-extraction; #159 and #210 add the cross-domain and end-to-end coverage.
+Run every workspace unit test with `npm run test:unit` (Turbo). Add a unit test next to a non-trivial extraction; #159 and #210 add the cross-domain and end-to-end coverage.
 
 ## Parity checklist
 
-Each app is “done” only when every row is checked. The owning issue is in
-parentheses; keep the checklist honest rather than pre-checking it.
+Every app owns its database, its internal endpoints and its tests. The
+checklist below was re-run on 2026-11-02 against the live per-app databases,
+the per-app Playwright suites and the cross-app suite (#171).
 
 ### Landing (#176, #167)
 
-- [ ] Marketing routes render from `apps/landing` with no session or database.
-- [ ] MDX content, legal copy/PDFs and locale mirroring are unchanged.
-- [ ] No `@workspace/db-*`, auth or API route is imported.
-- [ ] Links to Copilot use `COPILOT_APP_URL`.
+- [x] Marketing routes render from `apps/landing` with no session or database.
+- [x] MDX content, legal copy/PDFs and locale mirroring are unchanged.
+- [x] No `@workspace/db-*`, auth or API route is imported (`verify:stateless`).
+- [x] Links to Copilot use `NEXT_PUBLIC_WORKSPACE_URL`.
 
 ### Copilot (#149, #150, #151, #152, #175, #164, #165, #166, #190)
 
 - [x] Renamed from `apps/web` to `apps/copilot`, deployed from the
       `asynchrone-space-copilot` image and a generic Helm chart instance at
       `copilot.asynchrone.space` (#175, #168).
-- [ ] Auth, 2FA, onboarding, organization selection, settings, billing, audit,
+- [x] Auth, 2FA, onboarding, organization selection, settings, billing, audit,
       search, help, feedback, MCP, platform handoff and the assistant run here.
-- [ ] OIDC authorization server, JWKS, consent and token lifecycle are unchanged.
+- [x] OIDC authorization server, JWKS, consent and token lifecycle are unchanged.
 - [x] The client portal stays here: `/{locale}/portal` pages, `/api/portal/*`,
       the client invitation flow, document upload/download, project visibility
       and the workspace/portal redirects, with Playwright coverage (#164).
 - [x] The portal reads domain data through internal APIs instead of the
-      in-process packages (#190).
+      in-process packages (#190, #171).
 - [x] Conversations persist and the server owns model history (#165).
 - [x] Copilot is the organization home: `/{locale}/{orgSlug}` renders the
       server-loaded conversation list, new chat, streaming transcript and tool
@@ -681,6 +670,8 @@ parentheses; keep the checklist honest rather than pre-checking it.
       (#166).
 - [x] No domain Prisma import remains in the assistant, MCP tools or portal
       adapter (#190).
+- [x] Copilot reads identity rows from `asynchrone_identity`; the monolith
+      `@workspace/db` is only used by the migration/split tooling.
 
 ### Projects (#153, #160)
 
@@ -694,15 +685,22 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [x] Own image (`APP=projects`), generic Helm chart instance, compose service and CI jobs
       (#160).
 - [x] Audit rows are written by the projects app (`apps/projects/lib/audit.ts`)
-      into the shared `auditLog` table; the fan-out endpoint is #187's.
-- [ ] `Project`/`Task`/`ProjectMessage`/repository models are read from
-      `asynchrone_projects` (pilot still binds the shared client, #190).
+      into its own `auditLog` table; Copilot aggregates them.
+- [x] Projects/tasks/messages/repository models are read from
+      `asynchrone_projects` (`@workspace/db-projects`).
 - [x] The hourly `repository-sync` cron moved to `apps/projects`
       (`/api/cron/repository-sync`, `CRON_SECRET`) (#168).
-- [ ] MCP tools and repository webhooks move to the projects app (#190).
-- [ ] Search, export and deletion endpoints are wired.
+- [x] MCP tools stay in Copilot and call the projects internal API; the
+      repository webhook moved to `apps/projects`
+      (`/api/webhooks/repositories/:id`).
+- [x] Search, export and deletion endpoints are mounted
+      (`/internal/v1/search`, `/internal/v1/organizations/:id/export`,
+      `DELETE /internal/v1/organizations/:id`, `DELETE /internal/v1/users/:id`).
 - [x] Assistant, MCP and portal reach it through `DomainClient` and
       `/internal/v1/domain/:operation` (#190).
+- [x] Identity reads (`member`, `user`, `account`) go through
+      `IdentityClient`; the project member list and personal repository tokens
+      are served by the identity API.
 
 ### Calendars (#154, #161)
 
@@ -710,12 +708,12 @@ parentheses; keep the checklist honest rather than pre-checking it.
       in `apps/calendars`; Copilot 308-redirects the old paths (#161).
 - [x] Host-only OIDC session, 2FA page gate, organization switch, own image
       (`APP=calendars`), chart, compose service and CI jobs (#161).
-- [ ] Calendar/event/meeting models in `asynchrone_calendars` (the app still
-      binds the shared client until #190; `oidcSession` is already migrated).
+- [x] Calendar/event/meeting models live in `asynchrone_calendars`.
 - [x] MCP tools and the assistant use the calendars internal API (#190).
-- [ ] Search, export and deletion endpoints are wired.
-- [ ] Meeting scheduling does not read another app's database (the portal and
-      the task overlay still read in-process).
+- [x] Search, export and deletion endpoints are mounted.
+- [x] Meeting scheduling reads members through the identity API and the
+      calendar task overlay through the projects internal API; no other app's
+      database is reachable.
 
 ### Files (#155, #161)
 
@@ -723,40 +721,48 @@ parentheses; keep the checklist honest rather than pre-checking it.
       `uploads-sweep` cron live in `apps/files` (#161).
 - [x] Host-only OIDC session, own image (`APP=files`), chart with the
       uploads-sweep CronJob, compose service and CI jobs (#161).
-- [ ] Large objects, versions, shares and activity live in `asynchrone_files`
-      (the app still binds the shared client until #190; `oidcSession` is
-      already migrated).
-- [x] Portal upload/download still enforces the client-visible link (unchanged,
-      still in Copilot).
-- [ ] Export and deletion unlink every large object through the files app.
-- [ ] Search endpoint is wired.
+- [x] Large objects, versions, shares and activity live in `asynchrone_files`.
+- [x] Portal uploads stream into the files app and downloads stream back out
+      through the internal API; the client-visible link is still enforced.
+- [x] Export and deletion unlink every large object in `asynchrone_files`.
+- [x] Search endpoint is mounted, plus internal export/delete and content
+      streaming for the archive.
 
 ### Messages (#156, #162)
 
 - [x] Messages app at `messages.copilot.asynchrone.space` with its own image, chart, OIDC session and Playwright suite (`#162`).
-- [x] Conversations, threads, reactions and attachments moved; Copilot 308-redirects the old paths and keeps the assistant/MCP binding.
-- [x] Attachment upload/download keeps the files chunked-session and large-object semantics.
-- [ ] Conversations/messages/reactions/attachments in `asynchrone_messages`; the app binds the shared client until #190/#171.
-- [ ] Portal discussion reads use an internal messages call.
-- [ ] Search, export and deletion endpoints are wired.
+- [x] Conversations, threads, reactions and attachments moved; Copilot 308-redirects the old paths.
+- [x] Attachment upload/download keeps the chunked-session and large-object
+      semantics; the upload sessions and bytes live in `asynchrone_messages`.
+- [x] Conversations/messages/reactions/attachments live in `asynchrone_messages`.
+- [x] Portal discussion is the project-scoped thread served by the projects
+      internal API (`list-project-messages` / `create-project-message`); the
+      portal never imports the projects package.
+- [x] Search, export and deletion endpoints are mounted; deletion unlinks the
+      attachment bytes.
 
 ### Clients (#157, #163)
 
 - [x] `#147` rename has landed and no `crm*` identifier remains in the package.
 - [x] Clients/contacts/deals/pipelines/fields/activities pages, actions and MCP tools.
 - [x] `@workspace/clients` owns the repository, service, schemas, access checks, CSV/date helpers, types and UI (`#157`).
-- [ ] Models live in `asynchrone_clients`; document links reference files by id only.
-- [ ] Project linking uses the projects internal API.
-- [ ] Audit, search, export and deletion endpoints are wired.
+- [x] Models live in `asynchrone_clients`; document links reference files by id
+      and read metadata through the files internal API.
+- [x] Project linking uses the projects internal API
+      (`set-project-client`, `list-client-projects`, counters).
+- [x] Audit, search, export and deletion endpoints are mounted.
+- [x] Portal access reads the identity API; invitations/revocations stay in
+      Copilot.
 
 ### Employees (#157, #163)
 
 - [x] `#147` rename has landed and no `hr*` identifier remains in the package.
 - [x] Attendance, leave, capacity, payroll, settings, profile and CSV export.
 - [x] `@workspace/employees` owns the repository, service, schemas, access checks, CSV/date helpers, types and UI; salary stays behind `isAdmin` (`#157`).
-- [ ] Models live in `asynchrone_employees`.
-- [ ] Project allocation uses the projects internal API.
-- [ ] Audit, search, export and deletion endpoints are wired.
+- [x] Models live in `asynchrone_employees`.
+- [x] Project allocation and the payroll client list use the projects and
+      clients internal APIs.
+- [x] Audit, search, export and deletion endpoints are mounted.
 
 ### Control tower (#209, #210)
 
@@ -767,29 +773,16 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [x] No control-tower code imports the identity database.
 - [x] `verify:auth-config` and `verify:platform-authorization` pass.
 
-## Known coupling that must disappear
+## Known coupling
 
-These are the concrete blockers the inventory exposes. They are covered by the
-phase issues rather than fixed in #146.
-
-1. `apps/copilot/lib/prisma.ts` re-exports `@workspace/db` (the monolith schema).
-   Domain pages and actions still read every table through that one client.
-2. The assistant (`lib/assistant/tools.ts`) and MCP tools import the Projects,
-   Files and Messages services in-process; calendar tools import
-   `@workspace/calendars` and meeting tools `@workspace/meetings` through the
-   app adapters. All of them still run inside Copilot instead of the domain
-   internal API (#190).
-3. The portal service (`@workspace/portal`) reads project/files/meeting data
-   in-process through its injected ports.
-4. Search, export and deletion handlers exist in packages but only Copilot's
-   audit/identity endpoints are wired; domain endpoints arrive with each app.
-5. The control tower still uses the identity database for its own auth tables.
-6. Notifications are written directly to the identity database by the Copilot
-   web app; domain apps must use `POST /internal/v1/notifications`.
+None. Every customer app imports exactly one `@workspace/db-*` package, and the
+domain packages read identity and other domains through the versioned internal
+APIs. `@workspace/db` remains only as the retired monolith schema used by the
+one-off data-split tooling; no app or package runtime imports it.
 
 The #147 rename is complete: the route group is `(clients)`, the packages are
-`@workspace/clients` and `@workspace/employees` (extracted in #157), the tables
-are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
+`@workspace/clients` and `@workspace/employees`, the tables are
+`clientActivity`, `clientFieldDefinition`, `clientDocument`,
 `employeeProfile` and `employeeSettings`, and the MCP tools use `clients_*` /
 `employees_*`.
 
@@ -799,7 +792,7 @@ are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
 - Adding a surface: add it to exactly one app, plus its audit and test rows.
 - Adding an internal endpoint: add it to `INTERNAL_ROUTES`, a Zod contract and
   the internal API map before wiring the handler.
-- Removing the transitional shim: delete the row from “Known coupling”.
+- Removing a coupling: delete the row from “Known coupling”.
 
 ### Deployment (#168)
 
@@ -840,6 +833,7 @@ are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
       vice versa); the admin API requires the control-tower client.
 - [x] The `e2e-cross-app` CI job runs the suite on ports 3020–3022 against the
       migrated per-app databases.
-- [ ] Replace the deletion-saga contract stub once the domain apps mount
-      `/internal/v1/{audit,search,organizations/:id}` (see
-      [cross-app-e2e.md](../cross-app-e2e.md#gaps)).
+- [x] The domain apps mount `/internal/v1/{audit,search,organizations/:id}`
+      and the audit/search/export fan-outs use them. The deletion-retry probe
+      keeps a controllable local origin only to simulate an outage and recovery
+      (see [cross-app-e2e.md](../cross-app-e2e.md#gaps)).

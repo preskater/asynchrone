@@ -9,8 +9,8 @@ import {
   type AuditEntry,
   type UserAuditInput,
 } from "@workspace/audit"
-import type { PrismaClient } from "@workspace/db"
 
+import { memberDirectory } from "@/lib/identity"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -49,20 +49,25 @@ export async function recordAuditMany(
  */
 export async function withActorIdentity<
   T extends {
+    organizationId: string
     actorId: string
     actorName?: string | null
     actorEmail?: string | null
   },
->(entries: T[], db: Pick<PrismaClient, "user">): Promise<T[]> {
+>(entries: T[]): Promise<T[]> {
   const missing = entries.filter(
     (entry) => !entry.actorName && entry.actorId !== SYSTEM_ACTOR_ID
   )
   if (missing.length === 0) return entries
-  const users = await db.user.findMany({
-    where: { id: { in: [...new Set(missing.map((entry) => entry.actorId))] } },
-    select: { id: true, name: true, email: true },
-  })
-  const byId = new Map(users.map((user) => [user.id, user]))
+  const organizationId = entries[0]?.organizationId
+  if (!organizationId) return entries
+  const members = await memberDirectory.list(organizationId)
+  const byId = new Map(
+    members.map((member) => [
+      member.userId,
+      { name: member.name, email: member.email },
+    ])
+  )
   return entries.map((entry) => {
     const user = byId.get(entry.actorId)
     if (!user) return entry

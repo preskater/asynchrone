@@ -1,5 +1,5 @@
 import { AuditReader } from "@workspace/audit"
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-identity"
 
 import { prisma } from "@/lib/prisma"
 

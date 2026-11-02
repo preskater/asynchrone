@@ -14,7 +14,7 @@ import {
   type RequestMeta,
   type UserAuditInput,
 } from "@workspace/audit"
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-identity"
 
 import type { RequestContext } from "@workspace/core/context"
 

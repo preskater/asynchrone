@@ -155,8 +155,28 @@ const DB_OWNER_ALIASES = {
   identity: new Set(["copilot"]),
 }
 
+/**
+ * Package names whose owner database does not match the package name. The
+ * messaging domain package reads its own `asynchrone_messages` schema, and the
+ * portal package (which lives inside Copilot) types its repository against the
+ * identity database.
+ */
+const PACKAGE_OWNER_ALIASES = {
+  "@workspace/messaging": "messages",
+  "@workspace/portal": "identity",
+}
+
 function checkDbOwnership(importer, packageName, file, specifier) {
   if (!packageName.startsWith("@workspace/db-")) return
+  // Test harnesses seed the fixtures they need on purpose: an e2e suite or a
+  // verification script is not the app runtime and owns no request.
+  const relativeFile = relative(root, file)
+  if (
+    /(^|\/)e2e\//.test(relativeFile) ||
+    /(^|\/)scripts\/(contracts|verify)/.test(relativeFile)
+  ) {
+    return
+  }
   // The shared pool/adapter package is not a per-app database.
   if (packageName === "@workspace/db-core") return
   const owner = packageName.slice("@workspace/db-".length)
@@ -165,6 +185,7 @@ function checkDbOwnership(importer, packageName, file, specifier) {
     DB_OWNER_ALIASES[owner]?.has(importer.appKey) ||
     importer.name === `@workspace/${owner}` ||
     importer.name.startsWith(`@workspace/${owner}-`) ||
+    PACKAGE_OWNER_ALIASES[importer.name] === owner ||
     importer.name === packageName
   if (!allowed) {
     report(

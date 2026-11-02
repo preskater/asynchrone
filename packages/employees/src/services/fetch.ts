@@ -38,8 +38,8 @@ export class EmployeeFetchService extends EmployeesServiceCore {
           to: parseDateKey(toKey),
         }),
         this.loadMembers(ctx.organizationId),
-        this.repo.listClients(ctx.organizationId),
-        this.repo.listProjects(ctx.organizationId),
+        this.repo.listClients(ctx),
+        this.repo.listProjects(ctx),
         this.repo.listActivities(ctx.organizationId),
       ])
 

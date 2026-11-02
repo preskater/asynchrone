@@ -27,3 +27,15 @@ export interface MessagingMember {
   avatarUrl?: string
   role: string
 }
+
+/**
+ * The identity reads the messaging domain needs. Copilot binds the identity
+ * database; a domain app binds `IdentityClient` (presence and the DM title).
+ */
+export interface MessagingDirectory {
+  listPresence(
+    organizationId: string
+  ): Promise<{ userId: string; lastSeenAt: Date | null }[]>
+  findName(organizationId: string, userId: string): Promise<string | null>
+  touchPresence(userId: string): Promise<void>
+}

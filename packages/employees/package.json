@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@workspace/core": "*",
-    "@workspace/db": "*",
+    "@workspace/db-employees": "*",
     "@workspace/i18n": "*",
     "@workspace/organization": "*",
     "@workspace/ui": "*",

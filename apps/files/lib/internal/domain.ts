@@ -65,6 +65,57 @@ export async function dispatchDomain(
         ctx,
         finalizeUploadSchema.parse(call.input)
       )
+    case "list-file-options": {
+      const data = await fileService.list(ctx)
+      return data.files
+        .filter((file) => !file.trashed && file.kind !== "folder")
+        .map((file) => ({
+          id: file.id,
+          name: file.name,
+          kind: file.kind,
+          mimeType: file.mimeType ?? null,
+          sizeBytes: file.sizeBytes ?? null,
+          trashed: file.trashed,
+          modifiedAt: file.modifiedAt,
+        }))
+    }
+    case "find-file": {
+      const data = await fileService.list(ctx)
+      const file = data.files.find(
+        (candidate) => candidate.id === fileInput.parse(call.input).fileId
+      )
+      return file
+        ? {
+            id: file.id,
+            name: file.name,
+            kind: file.kind,
+            mimeType: file.mimeType ?? null,
+            sizeBytes: file.sizeBytes ?? null,
+            trashed: file.trashed,
+            modifiedAt: file.modifiedAt,
+          }
+        : null
+    }
+    case "find-files-by-ids": {
+      const { ids } = z
+        .object({ ids: z.array(z.string().min(1)).max(500) })
+        .parse(call.input)
+      const data = await fileService.list(ctx)
+      const wanted = new Set(ids)
+      return data.files
+        .filter((file) => wanted.has(file.id))
+        .map((file) => ({
+          id: file.id,
+          name: file.name,
+          kind: file.kind,
+          mimeType: file.mimeType ?? null,
+          sizeBytes: file.sizeBytes ?? null,
+          trashed: file.trashed,
+          modifiedAt: file.modifiedAt,
+        }))
+    }
+    case "get-storage-usage":
+      return { usedBytes: await orgUsedBytes(ctx.organizationId) }
     case "get-file-quota": {
       const [quotaBytes, usedBytes] = await Promise.all([
         orgQuotaBytes(ctx.organizationId),

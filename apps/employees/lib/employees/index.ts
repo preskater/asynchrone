@@ -2,6 +2,11 @@ import { EmployeesRepository } from "@workspace/employees/repository"
 import { EmployeesService } from "@workspace/employees/service"
 
 import { recordAuditMany, withActorIdentity } from "@/lib/audit"
+import {
+  employeeClients,
+  employeeDirectory,
+  employeeProjects,
+} from "@/lib/employees/ports"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -15,8 +20,13 @@ import { prisma } from "@/lib/prisma"
 export const employeesRepository = new EmployeesRepository(
   prisma,
   async (entries) => {
-    await recordAuditMany(await withActorIdentity(entries, prisma), prisma)
+    await recordAuditMany(await withActorIdentity(entries), prisma)
     return { count: entries.length }
+  },
+  {
+    directory: employeeDirectory,
+    projects: employeeProjects,
+    clients: employeeClients,
   }
 )
 

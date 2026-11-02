@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-files"
 
 import type { FileStorage } from "./deps"
 

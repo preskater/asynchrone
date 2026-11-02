@@ -15,6 +15,7 @@ import {
   type PageInput,
 } from "@workspace/core/pagination"
 import { roleRank } from "@workspace/organization/roles"
+import type { DirectoryEntry } from "@workspace/organization/directory"
 import type { ProjectDb } from "./db"
 import { toMemberView } from "./members"
 import type { ProjectServicePorts } from "./ports"
@@ -91,7 +92,7 @@ type ProjectRow = NonNullable<
   Awaited<ReturnType<ProjectRepository["findById"]>>
 >
 type TaskRow = Awaited<ReturnType<ProjectRepository["listTasks"]>>[number]
-type MemberRow = Awaited<ReturnType<ProjectRepository["listMembers"]>>[number]
+type MemberRow = DirectoryEntry
 type TemplateRow = Awaited<
   ReturnType<ProjectRepository["listTemplates"]>
 >[number]
@@ -119,7 +120,7 @@ export class ProjectService {
 
   /** Number of owner-role members in an organization. */
   private ownerCount(organizationId: string) {
-    return this.db.member.count({ where: { organizationId, role: "owner" } })
+    return this.ports.directory.countOwners(organizationId)
   }
 
   private mapMember(row: MemberRow): Member {
@@ -262,7 +263,7 @@ export class ProjectService {
       description: row.description ?? undefined,
       status: row.status as Project["status"],
       clientId: row.clientId ?? undefined,
-      clientName: row.client?.name,
+      clientName: undefined,
       clientVisible: row.clientVisible,
       clientDiscussion: row.clientDiscussion as Project["clientDiscussion"],
       clientTaskComments:
@@ -274,6 +275,10 @@ export class ProjectService {
         undefined,
       taskCount: counts?.total ?? row._count?.tasks,
       doneTaskCount: counts?.done,
+      plannedHours: row.plannedHours ?? null,
+      isBillable: row.isBillable,
+      startDate: iso(row.startDate) ?? null,
+      endDate: iso(row.endDate) ?? null,
       createdAt: requiredIso(row.createdAt),
       dueDate: iso(row.dueDate),
     }
@@ -457,6 +462,83 @@ export class ProjectService {
       entityId: project.id,
       entityLabel: project.name,
       after: projectSnapshot(project),
+    })
+    return project
+  }
+
+  /**
+   * The employee/capacity settings the employees app edits. Projects owns the
+   * row, so the write and its audit row stay here.
+   */
+  async setEmployeeSettings(
+    ctx: RequestContext,
+    input: {
+      projectId: string
+      clientId?: string | null
+      plannedHours?: number | null
+      isBillable?: boolean
+      startDate?: Date | null
+      endDate?: Date | null
+    }
+  ): Promise<Project> {
+    this.canManage(ctx)
+    const before = await this.get(ctx, input.projectId)
+    await this.repo.update(input.projectId, {
+      clientId: input.clientId,
+      plannedHours: input.plannedHours,
+      isBillable: input.isBillable,
+      startDate: input.startDate,
+      endDate: input.endDate,
+    })
+    const fresh = await this.repo.findById(ctx.organizationId, input.projectId)
+    if (!fresh) throw new NotFoundError("Project")
+    const project = this.mapProject(fresh)
+    await this.ports.audit(ctx, {
+      action: AUDIT_ACTIONS.projectUpdated,
+      entityType: "project",
+      entityId: project.id,
+      entityLabel: project.name,
+      before: {
+        clientId: before.clientId ?? null,
+        plannedHours: before.plannedHours ?? null,
+        isBillable: before.isBillable,
+      },
+      after: {
+        clientId: project.clientId ?? null,
+        plannedHours: project.plannedHours ?? null,
+        isBillable: project.isBillable,
+      },
+    })
+    return project
+  }
+
+  /** Project rows with the company name, for the clients link picker. */
+  async listClientOptions(ctx: RequestContext): Promise<Project[]> {
+    return (await this.listShell(ctx)).projects
+  }
+
+  /**
+   * Link or unlink a project to a CRM company. The clients app owns the
+   * client record; this side only stores the opaque id and audits the change.
+   */
+  async setClient(
+    ctx: RequestContext,
+    projectId: string,
+    clientId: string | null
+  ): Promise<Project> {
+    this.canWrite(ctx)
+    const before = await this.get(ctx, projectId)
+    await this.repo.update(projectId, { clientId })
+    const fresh = await this.repo.findById(ctx.organizationId, projectId)
+    if (!fresh) throw new NotFoundError("Project")
+    const project = this.mapProject(fresh)
+    await this.ports.audit(ctx, {
+      action: AUDIT_ACTIONS.projectUpdated,
+      entityType: "project",
+      entityId: projectId,
+      entityLabel: project.name,
+      before: { clientId: before.clientId ?? null },
+      after: { clientId: project.clientId ?? null },
     })
     return project
   }
@@ -834,7 +916,11 @@ export class ProjectService {
     const existing = await this.repo.findTask(ctx.organizationId, taskId)
     if (!existing) throw new NotFoundError("Task")
     await createTaskComment(
-      { db: this.db, notify: this.ports.notify },
+      {
+        db: this.db,
+        notify: this.ports.notify,
+        directory: this.ports.directory,
+      },
       {
         organizationId: ctx.organizationId,
         taskId,
@@ -877,7 +963,10 @@ export class ProjectService {
       take: limit + 1,
     })
     const page = toPage(rows, limit, (row) =>
-      encodeCursor([row.createdAt.toISOString(), row.id])
+      encodeCursor([
+        (row.joinedAt ?? new Date(0)).toISOString(),
+        row.userId,
+      ])
     )
     return {
       items: page.items.map((row) => this.mapMember(row)),
@@ -901,37 +990,15 @@ export class ProjectService {
         code: "email_already_member",
       })
 
-    const user = await this.db.user.upsert({
-      where: { email: input.email },
-      update: {},
-      create: {
-        id: `user_${crypto.randomUUID()}`,
-        name: input.name,
-        email: input.email,
-        emailVerified: false,
-      },
-    })
-    await this.db.member.create({
-      data: {
-        id: `member_${crypto.randomUUID()}`,
-        organizationId: ctx.organizationId,
-        userId: user.id,
-        role: input.role,
-        createdAt: new Date(),
-      },
-    })
+    const member = await this.ports.directory.add(ctx.organizationId, input)
     await this.ports.audit(ctx, {
       action: AUDIT_ACTIONS.organizationMemberAdded,
       entityType: "member",
-      entityId: user.id,
-      entityLabel: user.email,
-      after: { email: user.email, name: user.name, role: input.role },
+      entityId: member.userId,
+      entityLabel: member.email,
+      after: { email: member.email, name: member.name, role: member.role },
     })
-    return toMemberView({
-      userId: user.id,
-      role: input.role,
-      user: { name: user.name, email: user.email, image: user.image },
-    })
+    return toMemberView(member)
   }
 
   async updateMemberRole(
@@ -940,10 +1007,10 @@ export class ProjectService {
     input: UpdateMemberRoleInput
   ): Promise<Member> {
     this.canManage(ctx)
-    const member = await this.db.member.findFirst({
-      where: { organizationId: ctx.organizationId, userId: memberId },
-      include: { user: true },
-    })
+    const member = await this.ports.directory.find(
+      ctx.organizationId,
+      memberId
+    )
     if (!member) throw new NotFoundError("Member")
 
     const isTargetOwner = member.role === "owner"
@@ -968,19 +1035,20 @@ export class ProjectService {
       }
     }
 
-    await this.db.member.update({
-      where: { id: member.id },
-      data: { role: input.role },
-    })
+    const updated = await this.ports.directory.updateRole(
+      ctx.organizationId,
+      member.userId,
+      input.role
+    )
     await this.ports.audit(ctx, {
       action: AUDIT_ACTIONS.organizationMemberRoleChanged,
       entityType: "member",
       entityId: member.userId,
-      entityLabel: member.user.email,
+      entityLabel: member.email,
       before: { role: member.role },
       after: { role: input.role },
     })
-    return toMemberView({ ...member, role: input.role })
+    return toMemberView(updated)
   }
 
   async removeMember(
@@ -988,10 +1056,10 @@ export class ProjectService {
     memberId: string
   ): Promise<{ id: string }> {
     this.canManage(ctx)
-    const member = await this.db.member.findFirst({
-      where: { organizationId: ctx.organizationId, userId: memberId },
-      include: { user: { select: { email: true, name: true } } },
-    })
+    const member = await this.ports.directory.find(
+      ctx.organizationId,
+      memberId
+    )
     if (!member) throw new NotFoundError("Member")
 
     if (member.userId === ctx.userId) {
@@ -1013,13 +1081,13 @@ export class ProjectService {
       }
     }
 
-    await this.db.member.delete({ where: { id: member.id } })
+    await this.ports.directory.remove(ctx.organizationId, member.userId)
     await this.ports.audit(ctx, {
       action: AUDIT_ACTIONS.organizationMemberRemoved,
       entityType: "member",
       entityId: member.userId,
-      entityLabel: member.user.email,
-      before: { role: member.role, email: member.user.email },
+      entityLabel: member.email,
+      before: { role: member.role, email: member.email },
     })
     return { id: memberId }
   }

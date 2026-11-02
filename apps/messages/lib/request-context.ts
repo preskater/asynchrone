@@ -10,7 +10,7 @@ import { routing } from "@workspace/i18n/routing"
 import { zodErrorMap } from "@workspace/i18n/zod"
 
 import { readSessionRecord } from "@/lib/auth/session"
-import { prisma } from "@/lib/prisma"
+import { identity, readWorkspace } from "@/lib/identity"
 
 /**
  * The actor context for a server action.
@@ -18,39 +18,23 @@ import { prisma } from "@/lib/prisma"
  * Server actions cannot read the route params, and the client must not be able
  * to choose a tenant. The organization therefore comes from the OIDC session
  * (which the `[orgSlug]` layout keeps in sync with the URL), and the role comes
- * from the membership row — never from the request body.
+ * from the identity internal API — never from the request body.
  */
 export async function getRequestContext(): Promise<RequestContext> {
   const session = await readSessionRecord()
   if (!session) throw new UnauthorizedError()
 
-  const [copilotSession, user, member] = await Promise.all([
-    prisma.session.findUnique({
-      where: { id: session.sid },
-      select: { id: true },
-    }),
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { id: true, name: true, email: true },
-    }),
-    prisma.member.findFirst({
-      where: {
-        organizationId: session.organizationId,
-        userId: session.userId,
-        clientId: null,
-      },
-      select: { role: true },
-    }),
-  ])
-
-  if (!copilotSession || !user || !member) throw new UnauthorizedError()
+  const workspace = await readWorkspace(session.sid, session.organizationId)
+  if (!workspace || workspace.member.clientId != null) {
+    throw new UnauthorizedError()
+  }
 
   return {
-    userId: user.id,
-    userName: user.name,
-    userEmail: user.email,
-    organizationId: session.organizationId,
-    role: parseRoles(member.role)[0] ?? "member",
+    userId: workspace.user.id,
+    userName: workspace.user.name,
+    userEmail: workspace.user.email,
+    organizationId: workspace.organization.id,
+    role: parseRoles(workspace.member.role)[0] ?? "member",
   }
 }
 
@@ -63,10 +47,9 @@ export async function getRequestContext(): Promise<RequestContext> {
  * locales are revalidated instead, which is exact and only two paths.
  */
 export async function revalidateOrgPath(organizationId: string) {
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { slug: true },
-  })
+  const organization = await identity
+    .getOrganization(organizationId)
+    .catch(() => null)
   if (!organization) return
   for (const locale of routing.locales) {
     revalidatePath(`/${locale}/${organization.slug}`, "layout")

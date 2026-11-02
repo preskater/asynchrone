@@ -23,8 +23,32 @@ function canWrite(ctx: RequestContext) {
   })
 }
 
+export interface CalendarAuditInput {
+  action: string
+  entityType: string
+  entityId: string
+  entityLabel?: string | null
+  before?: unknown
+  after?: unknown
+}
+
+export type CalendarAudit = (
+  ctx: RequestContext,
+  input: CalendarAuditInput
+) => Promise<void>
+
 export class CalendarService {
-  constructor(private readonly repo: CalendarRepositoryPort) {}
+  constructor(
+    private readonly repo: CalendarRepositoryPort,
+    private readonly audit?: CalendarAudit
+  ) {}
+
+  private record(
+    ctx: RequestContext,
+    input: CalendarAuditInput
+  ): Promise<void> {
+    return this.audit ? this.audit(ctx, input) : Promise.resolve()
+  }
 
   private mapCalendar(row: CalendarRow): CalendarSource {
     return {
@@ -146,7 +170,15 @@ export class CalendarService {
       createdBy: ctx.userId,
       attendees,
     })
-    return this.mapEvent(row)
+    const event = this.mapEvent(row)
+    await this.record(ctx, {
+      action: "calendar.event.created",
+      entityType: "calendarEvent",
+      entityId: event.id,
+      entityLabel: event.title,
+      after: { title: event.title, calendarId: event.calendarId },
+    })
+    return event
   }
 
   async updateEvent(
@@ -169,7 +201,16 @@ export class CalendarService {
       color: input.color,
       reminderMinutes: input.reminderMinutes,
     })
-    return this.mapEvent(row)
+    const event = this.mapEvent(row)
+    await this.record(ctx, {
+      action: "calendar.event.updated",
+      entityType: "calendarEvent",
+      entityId: event.id,
+      entityLabel: event.title,
+      before: { title: existing.title },
+      after: { title: event.title },
+    })
+    return event
   }
 
   async moveEvent(
@@ -184,7 +225,15 @@ export class CalendarService {
       startAt: new Date(input.startAt),
       endAt: new Date(input.endAt),
     })
-    return this.mapEvent(row)
+    const event = this.mapEvent(row)
+    await this.record(ctx, {
+      action: "calendar.event.updated",
+      entityType: "calendarEvent",
+      entityId: event.id,
+      entityLabel: event.title,
+      after: { startAt: event.startAt, endAt: event.endAt },
+    })
+    return event
   }
 
   async removeEvent(ctx: RequestContext, id: string): Promise<{ id: string }> {
@@ -192,6 +241,12 @@ export class CalendarService {
     const existing = await this.repo.findEvent(ctx.organizationId, id)
     if (!existing) throw new NotFoundError("Event")
     await this.repo.deleteEvent(id)
+    await this.record(ctx, {
+      action: "calendar.event.deleted",
+      entityType: "calendarEvent",
+      entityId: id,
+      entityLabel: existing.title,
+    })
     return { id }
   }
 
@@ -207,7 +262,14 @@ export class CalendarService {
       color: input.color,
       memberIds: [ctx.userId],
     })
-    return this.mapCalendar(row)
+    const calendar = this.mapCalendar(row)
+    await this.record(ctx, {
+      action: "calendar.created",
+      entityType: "calendar",
+      entityId: calendar.id,
+      entityLabel: calendar.name,
+    })
+    return calendar
   }
 
   async toggleCalendar(
@@ -222,7 +284,15 @@ export class CalendarService {
       id,
       visible ?? !calendar.visible
     )
-    return this.mapCalendar(row)
+    const updated = this.mapCalendar(row)
+    await this.record(ctx, {
+      action: "calendar.updated",
+      entityType: "calendar",
+      entityId: updated.id,
+      entityLabel: updated.name,
+      after: { visible: updated.visible },
+    })
+    return updated
   }
 
   async setAttendeeResponse(
@@ -234,6 +304,14 @@ export class CalendarService {
     if (!existing) throw new NotFoundError("Event")
     await this.repo.setAttendeeResponse(eventId, ctx.userId, input.response)
     const row = await this.repo.findEvent(ctx.organizationId, eventId)
-    return this.mapEvent(row ?? existing)
+    const event = this.mapEvent(row ?? existing)
+    await this.record(ctx, {
+      action: "calendar.event.responded",
+      entityType: "calendarEvent",
+      entityId: eventId,
+      entityLabel: existing.title,
+      after: { response: input.response },
+    })
+    return event
   }
 }

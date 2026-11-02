@@ -18,7 +18,7 @@ import {
   type AuditPageInput,
   type AuditRetentionView,
 } from "@workspace/audit"
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-identity"
 
 import { parseOrganizationMetadata } from "@workspace/appearance/types"
 import { toCsv } from "@workspace/core/csv"

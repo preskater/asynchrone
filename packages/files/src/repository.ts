@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-files"
 
 /**
  * Only the most recent versions/activity entries are needed by the file

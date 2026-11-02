@@ -11,7 +11,7 @@ import { routing } from "@workspace/i18n/routing"
 import { zodErrorMap } from "@workspace/i18n/zod"
 
 import { readSessionRecord } from "@/lib/auth/session"
-import { prisma } from "@/lib/prisma"
+import { identity, readWorkspace } from "@/lib/identity"
 
 /**
  * The actor context for a server action.
@@ -49,33 +49,17 @@ export async function getPageContext(): Promise<RequestContext> {
 async function toRequestContext(
   session: NonNullable<Awaited<ReturnType<typeof readSessionRecord>>>
 ): Promise<RequestContext> {
-  const [copilotSession, user, member] = await Promise.all([
-    prisma.session.findUnique({
-      where: { id: session.sid },
-      select: { id: true },
-    }),
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { id: true, name: true, email: true },
-    }),
-    prisma.member.findFirst({
-      where: {
-        organizationId: session.organizationId,
-        userId: session.userId,
-        clientId: null,
-      },
-      select: { role: true },
-    }),
-  ])
-
-  if (!copilotSession || !user || !member) throw new UnauthorizedError()
+  const workspace = await readWorkspace(session.sid, session.organizationId)
+  if (!workspace || workspace.member.clientId != null) {
+    throw new UnauthorizedError()
+  }
 
   return {
-    userId: user.id,
-    userName: user.name,
-    userEmail: user.email,
-    organizationId: session.organizationId,
-    role: parseRoles(member.role)[0] ?? "member",
+    userId: workspace.user.id,
+    userName: workspace.user.name,
+    userEmail: workspace.user.email,
+    organizationId: workspace.organization.id,
+    role: parseRoles(workspace.member.role)[0] ?? "member",
   }
 }
 
@@ -88,10 +72,9 @@ async function toRequestContext(
  * locales are revalidated instead, which is exact and only two paths.
  */
 export async function revalidateOrgPath(organizationId: string, path = "") {
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { slug: true },
-  })
+  const organization = await identity
+    .getOrganization(organizationId)
+    .catch(() => null)
   if (!organization) return
   for (const locale of routing.locales) {
     revalidatePath(`/${locale}/${organization.slug}${path}`, "layout")

@@ -8,7 +8,7 @@ import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { appOrigin } from "@workspace/contracts/server"
 import type { FilesData } from "@workspace/files/types"
 import { EntitlementsProvider } from "@workspace/organization/use-entitlements"
-import { toMemberDirectoryEntry } from "@workspace/organization/directory"
+import { toDirectoryEntry } from "@workspace/organization/directory"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -16,8 +16,7 @@ import { FilesShellProvider } from "@/components/files-provider"
 import { SiteHeader } from "@/components/site-header"
 import { getOrganizationAppearance } from "@/lib/appearance"
 import { requireFilesWorkspace } from "@/lib/auth/workspace"
-import { listUserOrganizations } from "@/lib/organization"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /** Domain screens hydrate their own data; the shell starts empty. */
 const EMPTY_FILES_DATA: FilesData = {
@@ -49,26 +48,22 @@ export default async function OrgLayout({
     returnTo: `/${locale}/${orgSlug}/files`,
   })
 
-  const [appearance, memberships, memberRows] = await Promise.all([
+  const [appearance, memberRows] = await Promise.all([
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
-    prisma.member.findMany({
-      where: { organizationId: workspace.organization.id, clientId: null },
-      include: { user: true },
-      orderBy: { createdAt: "asc" },
-    }),
+    identity.listMembers(workspace.organization.id),
   ])
 
   const t = await getTranslations("Common")
   const sidebar = await getTranslations("Sidebar")
   const copilotUrl = appOrigin("copilot")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
   // Organization members never carry the client role; the directory type keeps
   // it for portal rows, so normalize it for the workspace providers.
-  const members = memberRows.map(toMemberDirectoryEntry).map((member) => ({
-    ...member,
-    role: (member.role === "client" ? "member" : member.role) as
-      "owner" | "admin" | "member" | "viewer",
+  const members = memberRows.map(toDirectoryEntry).map((member) => ({
+    id: member.userId,
+    name: member.name,
+    email: member.email,
+    avatarUrl: member.avatarUrl ?? undefined,
   }))
 
   return (

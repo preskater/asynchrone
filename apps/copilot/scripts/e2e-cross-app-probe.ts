@@ -21,8 +21,8 @@ import { z } from "zod"
  * not import an app, so the suite spawns this script with the origins the case
  * needs and reads one JSON line from stdout. Everything runs the real Copilot
  * code against the real identity database and the running apps; only the
- * "recovered app" in the deletion-retry case is a local stub, because the
- * domain apps do not mount the saga routes yet (see docs/contract-tests.md).
+ * "recovered app" in the deletion-retry case is a local origin so the probe can
+ * fail it once and then let it answer (the domain apps mount the same route).
  *
  *   tsx apps/copilot/scripts/e2e-cross-app-probe.ts search '{"…"}'
  *
@@ -70,17 +70,19 @@ function unavailableApps(
   return (entries ?? []).map((entry) => entry.app)
 }
 
-async function createProbeClient(): Promise<{ id: string; name: string }> {
-  const { clientsService } = await import("@/lib/clients")
-  const name = `Probe client ${Date.now().toString(36)}-${Math.random()
+async function createProbeProject(): Promise<{ id: string; name: string }> {
+  const { callDomain, delegatedContext } = await import("@/lib/internal/domain")
+  const name = `Probe project ${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 6)}`
-  const client = await clientsService.saveClient(ctx, {
-    name,
-    status: "active",
-    isActive: true,
-  })
-  return { id: client.id, name }
+  const project = await callDomain(
+    "projects",
+    "create-project",
+    delegatedContext(ctx),
+    { name },
+    z.object({ id: z.string(), name: z.string() })
+  )
+  return { id: project.id, name: project.name }
 }
 
 /**
@@ -90,15 +92,15 @@ async function createProbeClient(): Promise<{ id: string; name: string }> {
  */
 async function search() {
   const { searchWorkspace } = await import("@/lib/search")
-  const client = await createProbeClient()
+  const project = await createProbeProject()
   const output = await searchWorkspace(
     ctx,
     args.organizationSlug,
-    client.name,
+    project.name,
     { timeoutMs: 1_500 }
   )
   return {
-    query: client.name,
+    query: project.name,
     partial: output.partial,
     unavailableApps: unavailableApps(output.unavailableApps),
     results: output.results.map((result) => ({
@@ -122,14 +124,23 @@ async function audit() {
   })
 
   const { auditService } = await import("@/lib/audit")
-  // The client creation writes a local audit row the page must contain.
-  const client = await createProbeClient()
+  // A local Copilot row proves the page still contains the identity part of
+  // the trail while a domain app is unreachable.
+  await prisma.auditLog.create({
+    data: {
+      organizationId: args.organizationId,
+      actorId: args.userId,
+      actorEmail: args.userEmail,
+      action: "organization.updated",
+      entityType: "organization",
+      entityId: args.organizationId,
+    },
+  })
 
   const page = await auditService.list(ctx, { limit: 10 })
   const exported = await auditService.export(ctx, {}, "json")
 
   return {
-    createdClient: client.name,
     localEntries: page.items.length,
     partial: page.partial ?? false,
     unavailableApps: unavailableApps(page.unavailableApps),
@@ -197,10 +208,10 @@ interface StubState {
  *
  * A domain app that answers `503` leaves the job `partial` and keeps identity;
  * the retry resumes at the failed app, completes it and only then deletes
- * identity. The stub speaks the `DELETE /internal/v1/organizations/:id`
- * contract (`DeletionResultSchema`) because the domain apps do not mount it
- * yet; the orchestrator, the identity store, the typed saga client and the
- * service token are the production ones.
+ * identity. The stub speaks the same `DELETE /internal/v1/organizations/:id`
+ * contract (`DeletionResultSchema`) as the real apps; the orchestrator, the
+ * identity store, the typed saga client and the service token are the
+ * production ones.
  */
 async function deletionRetry() {
   const { deleteOrganizationAcrossApps } = await import("@/lib/sagas/service")

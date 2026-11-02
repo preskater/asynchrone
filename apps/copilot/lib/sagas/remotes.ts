@@ -34,3 +34,21 @@ export function sagaRemotes(): {
 
   return { apps, clients }
 }
+
+/** The service-token client and origins used to stream domain export bytes. */
+export function sagaServices(): {
+  tokens: ServiceTokenClient
+  baseUrl: (app: string) => string | null
+} | null {
+  const issuer = process.env.COPILOT_APP_URL ?? process.env.BETTER_AUTH_URL
+  const clientId = process.env.COPILOT_OAUTH_CLIENT_ID
+  const clientSecret = process.env.COPILOT_OAUTH_CLIENT_SECRET
+  if (!issuer || !clientId || !clientSecret) return null
+  return {
+    tokens: new ServiceTokenClient({ issuer, clientId, clientSecret }),
+    baseUrl: (app) => {
+      const definition = APPS[app as keyof typeof APPS]
+      return definition ? (process.env[definition.hostEnv] ?? null) : null
+    },
+  }
+}

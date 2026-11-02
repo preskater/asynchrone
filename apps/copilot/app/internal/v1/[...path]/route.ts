@@ -1,4 +1,4 @@
-import { SERVICE_SCOPES } from "@workspace/contracts"
+import type { ServiceScope } from "@workspace/contracts"
 
 import { handleIdentityRequest } from "@/lib/identity/handler"
 import { identityRepository } from "@/lib/identity/repository"
@@ -7,9 +7,11 @@ import { requireCopilotService } from "@/lib/internal/service"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function GET(
+type Context = { params: Promise<{ path: string[] }> }
+
+async function handle(
   request: Request,
-  context: { params: Promise<{ path: string[] }> }
+  context: Context
 ): Promise<Response> {
   const { path } = await context.params
 
@@ -17,7 +19,12 @@ export async function GET(
     segments: path,
     request,
     repository: identityRepository,
-    authorize: () =>
-      requireCopilotService(request, SERVICE_SCOPES.identityRead),
+    authorize: (scope: ServiceScope) =>
+      requireCopilotService(request, scope),
   })
 }
+
+export const GET = handle
+export const POST = handle
+export const PATCH = handle
+export const DELETE = handle

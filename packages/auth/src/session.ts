@@ -46,7 +46,6 @@ export interface AuthSessionPortalMember {
   organizationId: string
   clientId: string | null
   organization: { id: string; name: string; slug: string }
-  client: { id: string; name: string } | null
 }
 
 export interface AuthSessionDb {
@@ -59,7 +58,6 @@ export interface AuthSessionDb {
       where: { userId: string; clientId?: { not: null } }
       include?: {
         organization: { select: { id: true; name: true; slug: true } }
-        client: { select: { id: true; name: true } }
       }
     }): PromiseLike<any[]>
   }
@@ -84,6 +82,11 @@ function firstRole(role: string | null | undefined): MemberRole {
 export interface CreateAuthSessionOptions {
   auth: AuthServer
   db: AuthSessionDb
+  /** The clients app owns the company name; Copilot binds its internal API. */
+  resolveClientName?: (
+    organizationId: string,
+    clientId: string
+  ) => Promise<string | null>
 }
 
 /**
@@ -91,7 +94,11 @@ export interface CreateAuthSessionOptions {
  * The Better Auth instance and database are injected so the package never
  * imports an app or mounts a second auth server.
  */
-export function createAuthSession({ auth, db }: CreateAuthSessionOptions) {
+export function createAuthSession({
+  auth,
+  db,
+  resolveClientName,
+}: CreateAuthSessionOptions) {
   async function contextForMember(
     user: AuthSessionUser,
     organizationId: string
@@ -188,7 +195,6 @@ export function createAuthSession({ auth, db }: CreateAuthSessionOptions) {
       where: { userId: session.user.id, clientId: { not: null } },
       include: {
         organization: { select: { id: true, name: true, slug: true } },
-        client: { select: { id: true, name: true } },
       },
     })
 
@@ -196,7 +202,10 @@ export function createAuthSession({ auth, db }: CreateAuthSessionOptions) {
       members.find((entry) => entry.organizationId === activeOrganizationId) ??
       members[0]
 
-    if (!member?.client) return null
+    if (!member?.clientId) return null
+    const clientId = member.clientId as string
+    const clientName =
+      (await resolveClientName?.(member.organization.id, clientId)) ?? clientId
 
     return {
       userId: session.user.id,
@@ -205,8 +214,8 @@ export function createAuthSession({ auth, db }: CreateAuthSessionOptions) {
       organizationId: member.organization.id,
       organizationName: member.organization.name,
       organizationSlug: member.organization.slug,
-      clientId: member.client.id,
-      clientName: member.client.name,
+      clientId,
+      clientName,
     }
   }
 

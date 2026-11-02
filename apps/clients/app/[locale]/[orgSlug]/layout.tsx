@@ -14,7 +14,6 @@ import { SiteHeader } from "@/components/site-header"
 import { getOrganizationAppearance } from "@/lib/appearance"
 import { requireClientWorkspace } from "@/lib/auth/workspace"
 import { CLIENT_ACTIONS } from "@/lib/client-actions"
-import { listUserOrganizations } from "@/lib/organization"
 
 /**
  * The workspace shell for the clients host.
@@ -36,14 +35,13 @@ export default async function OrgLayout({
     orgSlug,
     returnTo: `/${locale}/${orgSlug}/clients`,
   })
-  const [appearance, memberships] = await Promise.all([
+  const [appearance] = await Promise.all([
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
   ])
 
   const t = await getTranslations("Common")
   const copilotUrl = appOrigin("copilot")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
 
   return (
     <TooltipProvider>

@@ -16,7 +16,7 @@ import {
   SERVICE_SCOPES,
   internalAudience,
 } from "@workspace/contracts"
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-identity"
 
 import {
   E2E_OAUTH_CLIENT_ID,
@@ -31,6 +31,8 @@ function hashClientSecret(secret: string): string {
 const calendarsResource = internalAudience("calendars")
 const copilotResource = internalAudience("copilot")
 
+const crossAudiences = ["projects"] as const
+
 const resources = [
   {
     identifier: calendarsResource,
@@ -42,6 +44,7 @@ const resources = [
     name: "Copilot",
     scopes: [
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
       SERVICE_SCOPES.identityAdmin,
       SERVICE_SCOPES.auditRead,
@@ -54,6 +57,17 @@ const resources = [
     ],
   },
 ]
+
+for (const target of crossAudiences) {
+  resources.push({
+    identifier: internalAudience(target),
+    name: target,
+    scopes: [
+      SERVICE_SCOPES.domainRead,
+      ...(crossAudiences.length ? [SERVICE_SCOPES.domainWrite] : []),
+    ],
+  })
+}
 
 const now = new Date()
 
@@ -92,6 +106,7 @@ const client = await prisma.oauthClient.upsert({
     scopes: [...APP_USER_SCOPES],
     clientCredentialsScopes: [
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
     ],
     redirectUris: [`${E2E_CALENDARS_URL}/api/auth/callback`],

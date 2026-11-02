@@ -14,7 +14,6 @@ import { ProjectSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { getOrganizationAppearance } from "@/lib/appearance"
 import { requireProjectWorkspace, toRequestContext } from "@/lib/auth/workspace"
-import { listUserOrganizations } from "@/lib/organization"
 import { PROJECT_ACTIONS } from "@/lib/project-actions"
 import { projectService } from "@/lib/projects"
 
@@ -41,16 +40,15 @@ export default async function OrgLayout({
   })
   const ctx = toRequestContext(workspace)
 
-  const [initialData, appearance, memberships] = await Promise.all([
+  const [initialData, appearance] = await Promise.all([
     projectService.listShell(ctx),
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
   ])
 
   const t = await getTranslations("Common")
   const copilotUrl = appOrigin("copilot")
   const messagesUrl = appOrigin("messages")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
 
   return (
     <TooltipProvider>

@@ -26,6 +26,20 @@ export interface MeetingClientRow {
   name: string
 }
 
+/**
+ * The identity directory the meeting rules need. The owning app binds the
+ * identity internal API; the package never reads an identity table.
+ */
+export interface MeetingDirectory {
+  listManagers(
+    organizationId: string
+  ): Promise<{ userId: string; role: string }[]>
+  findInternalMembers(
+    organizationId: string,
+    userIds: string[]
+  ): Promise<{ userId: string }[]>
+}
+
 export interface MeetingSlotRow {
   id: string
   requestId: string
@@ -268,16 +282,6 @@ export interface MeetingDb {
       }
       select: { id: true; name: true }
     }): PromiseLike<{ id: string; name: string }>
-  }
-  member: {
-    findMany(args: {
-      where: {
-        organizationId: string
-        clientId: null
-        userId?: { in: string[] }
-      }
-      select: { userId: true; role?: true }
-    }): PromiseLike<{ userId: string; role?: string }[]>
   }
   $transaction<T>(fn: (tx: MeetingTransaction) => Promise<T>): PromiseLike<T>
 }

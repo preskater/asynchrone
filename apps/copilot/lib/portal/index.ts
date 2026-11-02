@@ -1,3 +1,4 @@
+import { Readable } from "node:stream"
 import { headers } from "next/headers"
 import { z } from "zod"
 
@@ -13,9 +14,9 @@ import {
   callDomain,
   delegatedContext,
   delegatedPortalContext,
+  domainServiceFetch,
   requireDomainClient,
 } from "@/lib/internal/domain"
-import { largeObjectStore } from "@/lib/large-object"
 import { notificationService } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
 
@@ -50,21 +51,57 @@ const quotaResult = z.object({
   usedBytes: z.number(),
 })
 
-const fileResult = z.object({ id: z.string() })
-
 const runtime = createPortalRuntime({
   db: prisma,
-  storage: largeObjectStore,
   files: {
     createUploadedFile: async (ctx, input) => {
-      const file = await callDomain(
+      const search = new URLSearchParams({
+        organizationId: ctx.organizationId,
+        name: input.name,
+        sizeBytes: String(input.sizeBytes),
+      })
+      if (input.mimeType) search.set("mimeType", input.mimeType)
+      const response = await domainServiceFetch(
         "files",
-        "create-uploaded-file",
-        delegatedContext(ctx),
-        input,
-        fileResult
+        `/internal/v1/files/upload?${search.toString()}`,
+        {
+          method: "POST",
+          body: Readable.toWeb(input.stream) as ReadableStream,
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-user-id": ctx.userId,
+            "x-user-name": ctx.userName,
+            "x-user-email": ctx.userEmail,
+            "x-user-role": ctx.role,
+          },
+          scope: "internal:domain:write",
+          duplex: "half",
+        } as RequestInit & { scope: "internal:domain:write" }
       )
-      return { id: file.id }
+      if (!response.ok) {
+        throw new Error(`The files app refused the upload (${response.status})`)
+      }
+      const body = (await response.json()) as { data: { id: string } }
+      return { id: body.data.id }
+    },
+    openDocument: async (organizationId, fileId, metadata) => {
+      const response = await domainServiceFetch(
+        "files",
+        `/internal/v1/files/${encodeURIComponent(fileId)}/content?organizationId=${encodeURIComponent(organizationId)}`,
+        { scope: "internal:export:read" }
+      )
+      if (!response.ok || !response.body) {
+        throw new Error(`The files app has no bytes for ${fileId}`)
+      }
+      const size = Number(response.headers.get("content-length") ?? 0)
+      return {
+        name: metadata.name,
+        mimeType: metadata.mimeType,
+        size,
+        stream: Readable.fromWeb(
+          response.body as import("node:stream/web").ReadableStream
+        ),
+      }
     },
     quotaBytes: async (organizationId) => {
       const quota = await callDomain(

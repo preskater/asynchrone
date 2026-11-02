@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 
 import { readSessionRecord } from "@/lib/auth/session"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /**
  * Locale root: send a signed-in member to the files list of their active
@@ -17,10 +17,9 @@ export default async function LocaleHome({
 
   if (!session) redirect(`/${locale}/sign-in`)
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: session.organizationId },
-    select: { slug: true },
-  })
+  const organization = await identity
+    .getOrganization(session.organizationId)
+    .catch(() => null)
 
   redirect(
     organization ? `/${locale}/${organization.slug}` : `/${locale}/sign-in`

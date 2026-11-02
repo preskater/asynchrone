@@ -1,7 +1,10 @@
-import { Prisma, prisma } from "@workspace/db"
+import { z } from "zod"
+
+import { Prisma, prisma } from "@workspace/db-identity"
 
 import { AUDIT_ACTIONS } from "@/lib/audit/actions"
 import { recordSystemAudit } from "@/lib/audit/record"
+import { domainClient } from "@/lib/internal/domain"
 
 import type { BillingRepositoryPort } from "./types"
 
@@ -192,11 +195,28 @@ export class BillingRepository implements BillingRepositoryPort {
   }
 
   async sumUsedBytes(organizationId: string): Promise<number> {
-    const result = await prisma.fileNode.aggregate({
-      where: { organizationId, trashed: false },
-      _sum: { sizeBytes: true },
-    })
-    return result._sum.sizeBytes ?? 0
+    const client = domainClient("files")
+    if (!client) return 0
+    try {
+      const result = await client.call(
+        "get-storage-usage",
+        {
+          userId: "system",
+          userName: "Billing",
+          userEmail: "billing@asynchrone.space",
+          organizationId,
+          role: "owner",
+          impersonatedBy: null,
+          portal: null,
+        },
+        {},
+        z.object({ usedBytes: z.number() })
+      )
+      return result.usedBytes
+    } catch (error) {
+      console.error("[billing] storage usage read failed", error)
+      return 0
+    }
   }
 
   async listOwnerRecipients(organizationId: string) {

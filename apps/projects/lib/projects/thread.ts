@@ -1,3 +1,4 @@
+import { memberDirectory } from "@/lib/identity"
 import { prisma } from "@/lib/prisma"
 import { notificationService } from "@/lib/projects"
 
@@ -15,6 +16,7 @@ import {
 const dependencies: ProjectThreadDependencies = {
   db: prisma,
   notify: (args) => notificationService.notify(args),
+  directory: memberDirectory,
 }
 
 export const listProjectMessages = (

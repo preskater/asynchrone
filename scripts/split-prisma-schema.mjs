@@ -112,6 +112,8 @@ const DATABASES = {
       "FileShare",
       "FileVersion",
       "FileActivity",
+      // Local fixed-window limiters for uploads and other per-app actions.
+      "RateLimit",
       // The app-local relying-party session (#161).
       "OidcSession",
     ],
@@ -126,6 +128,11 @@ const DATABASES = {
       "Message",
       "MessageReaction",
       "MessageAttachment",
+      // Attachment uploads own their transient sessions and large objects in
+      // this database; message bytes never cross into the files database.
+      "UploadSession",
+      // Local fixed-window limiter for attachment uploads.
+      "RateLimit",
       // The app-local relying-party session (#162).
       "OidcSession",
     ],
@@ -282,19 +289,37 @@ export default defineConfig({
 `
 }
 
-function renderIndex(env) {
+const APP_BY_DATABASE = {
+  identity: "copilot",
+  projects: "projects",
+  calendars: "calendars",
+  files: "files",
+  messages: "messages",
+  clients: "clients",
+  employees: "employees",
+  "control-tower": "control-tower",
+}
+
+function renderIndex(database, env) {
+  const app = APP_BY_DATABASE[database] ?? database
   return `import { PrismaPg } from "@prisma/adapter-pg"
 
 import { createPool } from "@workspace/db-core"
 
 import { PrismaClient } from "../lib/generated/prisma/client"
 
-const pool = createPool(process.env.${env} ?? process.env.DATABASE_URL, {
-  label: "${env}",
-})
+const pool = createPool(
+  process.env.${env} ?? process.env.DATABASE_URL,
+  {
+    app: "${app}",
+    label: "${env}",
+  }
+)
 const adapter = new PrismaPg(pool, { disposeExternalPool: false })
 
 export const prisma = new PrismaClient({ adapter })
+export { Prisma } from "../lib/generated/prisma/client"
+export type { PrismaClient } from "../lib/generated/prisma/client"
 export { pool }
 `
 }
@@ -371,6 +396,6 @@ export default [...config, { ignores: ["lib/generated/**", "prisma/migrations/**
   )
   write(`${directory}/prisma.config.ts`, renderPrismaConfig(definition.env))
   write(`${directory}/prisma/schema.prisma`, renderSchema(db))
-  write(`${directory}/src/index.ts`, renderIndex(definition.env))
+  write(`${directory}/src/index.ts`, renderIndex(db, definition.env))
   console.log(`wrote ${directory}`)
 }

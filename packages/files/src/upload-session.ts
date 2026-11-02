@@ -1,4 +1,3 @@
-import type { PrismaClient } from "@workspace/db"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
 import { roleRank } from "@workspace/organization/roles"
@@ -61,18 +60,79 @@ export type UploadRateLimit = (
  */
 export type UploadReferenceChecker = (oids: bigint[]) => Promise<string[]>
 
+export interface UploadSessionRow {
+  id: string
+  organizationId: string
+  userId: string
+  name: string
+  parentId: string | null
+  kind: string
+  mimeType: string | null
+  oid: bigint
+  expectedSize: number | null
+  receivedBytes: number
+  sha256: string | null
+  transient: boolean
+  status: string
+  createdAt: Date
+  updatedAt: Date
+  expiresAt: Date
+}
+
+/**
+ * Only the upload-session table. The files app and the messages app each own
+ * one in their own database, so the port carries no other model.
+ */
+export interface UploadSessionDb {
+  uploadSession: {
+    findFirst(args: {
+      where: { id: string; organizationId: string }
+    }): Promise<UploadSessionRow | null>
+    findMany(args: {
+      where: { status: string; expiresAt: { lt: Date } }
+      select: { id: true; oid: true }
+      take: number
+    }): Promise<{ id: string; oid: bigint }[]>
+    create(args: {
+      data: {
+        organizationId: string
+        userId: string
+        name: string
+        parentId: string | null
+        kind: string
+        mimeType?: string
+        oid: number
+        expectedSize?: number
+        transient: boolean
+        expiresAt: Date
+      }
+    }): Promise<UploadSessionRow>
+    update(args: {
+      where: { id: string }
+      data: {
+        receivedBytes?: number
+        sha256?: string
+        expiresAt?: Date
+        status?: string
+      }
+      select?: { receivedBytes: true }
+    }): Promise<{ receivedBytes: number }>
+    updateMany(args: {
+      where: { id: string; status: string }
+      data: { status: string }
+    }): Promise<{ count: number }>
+  }
+}
+
 export interface UploadSessionDeps {
-  db: PrismaClient
+  db: UploadSessionDb
   storage: FileStorage
   quota: FileQuota
-  fileService: FileService
+  /** Required for workspace files; a transient-only app (messages) omits it. */
+  fileService?: FileService
   assertRateLimit: UploadRateLimit
   referencedOids: UploadReferenceChecker
 }
-
-type UploadSessionRow = Awaited<
-  ReturnType<PrismaClient["uploadSession"]["findFirstOrThrow"]>
->
 
 /**
  * Chunked upload sessions (ADR 0010).
@@ -295,6 +355,12 @@ export class UploadSessionService {
 
     let file: FileNode | null = null
     if (!session.transient) {
+      if (!this.deps.fileService) {
+        throw new ForbiddenError(
+          "This app only accepts transient uploads.",
+          { code: "upload_not_transient" }
+        )
+      }
       try {
         await this.deps.fileService.assertUploadAccess(ctx, session.parentId)
         file = await this.deps.fileService.createUploadedFile(ctx, {

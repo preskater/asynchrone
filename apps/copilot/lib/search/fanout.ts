@@ -50,7 +50,16 @@ export async function searchAcrossApps(
   organizationId: string,
   query: string,
   remotes: SearchRemote[],
-  options: { limit?: number; timeoutMs?: number } = {}
+  options: {
+    limit?: number
+    timeoutMs?: number
+    organizationSlug?: string
+    locale?: string
+    userId?: string
+    userName?: string
+    userEmail?: string
+    role?: string
+  } = {}
 ): Promise<SearchFanoutResult> {
   const limit = Math.min(Math.max(options.limit ?? 20, 1), 50)
   const timeoutMs = options.timeoutMs ?? 2_000
@@ -61,7 +70,15 @@ export async function searchAcrossApps(
         organizationId,
         query,
         limit,
-        AbortSignal.timeout(timeoutMs)
+        AbortSignal.timeout(timeoutMs),
+        {
+          organizationSlug: options.organizationSlug,
+          locale: options.locale,
+          userId: options.userId,
+          userName: options.userName,
+          userEmail: options.userEmail,
+          role: options.role,
+        }
       )
     )
   )

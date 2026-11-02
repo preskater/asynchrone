@@ -1,3 +1,5 @@
+import type { MemberDirectoryPort } from "@workspace/organization/directory"
+
 import type { ProjectDb } from "./db"
 
 /**
@@ -6,7 +8,6 @@ import type { ProjectDb } from "./db"
  * shell never pays for workspace-wide task history.
  */
 export const projectInclude = {
-  client: { select: { id: true, name: true } },
   members: { include: { project: false } },
   labels: { include: { label: true } },
   repository: { select: { provider: true } },
@@ -26,7 +27,10 @@ export type ProjectWithRelations = Awaited<
 >
 
 export class ProjectRepository {
-  constructor(private readonly db: ProjectDb) {}
+  constructor(
+    private readonly db: ProjectDb,
+    private readonly directory: MemberDirectoryPort
+  ) {}
 
   listShell(organizationId: string) {
     return this.db.project.findMany({
@@ -126,6 +130,11 @@ export class ProjectRepository {
       description?: string | null
       status?: string
       dueDate?: Date | null
+      clientId?: string | null
+      plannedHours?: number | null
+      isBillable?: boolean
+      startDate?: Date | null
+      endDate?: Date | null
       clientVisible?: boolean
       clientDiscussion?: string
       clientTaskComments?: string
@@ -395,48 +404,41 @@ export class ProjectRepository {
 
   // --- members ---
 
-  listMembers(organizationId: string) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null },
-      include: { user: true },
-      orderBy: { createdAt: "asc" },
-    })
+  /** Internal members only; portal clients never appear in project pickers. */
+  async listMembers(organizationId: string) {
+    const entries = await this.directory.list(organizationId)
+    return entries
+      .filter((entry) => entry.clientId == null)
+      .sort(
+        (a, b) =>
+          (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0) ||
+          a.userId.localeCompare(b.userId)
+      )
   }
 
-  /** Keyset page ordered by `(createdAt, id)`, oldest first. */
-  listMembersPage(
+  /** Keyset page ordered by `(joinedAt, userId)`, oldest first. */
+  async listMembersPage(
     organizationId: string,
     options: {
       before?: { createdAt: Date; id: string } | null
       take: number
     }
   ) {
-    return this.db.member.findMany({
-      where: {
-        organizationId,
-        clientId: null,
-        ...(options.before
-          ? {
-              OR: [
-                { createdAt: { gt: options.before.createdAt } },
-                {
-                  createdAt: options.before.createdAt,
-                  id: { gt: options.before.id },
-                },
-              ],
-            }
-          : {}),
-      },
-      include: { user: true },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      take: options.take,
-    })
+    const entries = await this.listMembers(organizationId)
+    const after = options.before
+      ? entries.filter((entry) => {
+          const joinedAt = entry.joinedAt ?? new Date(0)
+          return (
+            joinedAt > options.before!.createdAt ||
+            (joinedAt.getTime() === options.before!.createdAt.getTime() &&
+              entry.userId > options.before!.id)
+          )
+        })
+      : entries
+    return after.slice(0, options.take)
   }
 
-  findMemberByEmail(organizationId: string, email: string) {
-    return this.db.member.findFirst({
-      where: { organizationId, user: { email } },
-      include: { user: true },
-    })
+  async findMemberByEmail(organizationId: string, email: string) {
+    return this.directory.findByEmail(organizationId, email)
   }
 }

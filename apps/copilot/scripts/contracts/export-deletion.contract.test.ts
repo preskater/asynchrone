@@ -94,9 +94,6 @@ describe("organization export and deletion contracts", () => {
   })
 
   afterAll(async () => {
-    await prisma.platformAuditEvent
-      .deleteMany({ where: { organizationId: { in: [orgId, otherOrgId] } } })
-      .catch(() => {})
     await prisma.organization
       .deleteMany({ where: { id: { in: [orgId, otherOrgId] } } })
       .catch(() => {})

@@ -2,11 +2,10 @@
 import "./env"
 
 /**
- * Compatibility shim.
+ * Copilot's database client.
  *
- * The Prisma schema, migrations, shared `pg.Pool` and generated client live in
- * `packages/db` (`@workspace/db`) so the customer app and the control tower use
- * one schema. Existing import sites keep using `@/lib/prisma`; this file only
- * re-exports the shared singleton.
+ * Copilot owns `asynchrone_identity`; every other customer app owns its own
+ * database. This module binds the identity package for the app, its actions
+ * and the internal routes.
  */
-export { pool, prisma } from "@workspace/db"
+export { pool, prisma } from "@workspace/db-identity"

@@ -106,6 +106,27 @@ export const AUDIT_ACTIONS = {
   attendanceCleared: "attendance.clear",
   leaveCreated: "leave.create",
   leaveCancelled: "leave.cancel",
+
+  calendarCreated: "calendar.created",
+  calendarUpdated: "calendar.updated",
+  calendarEventCreated: "calendar.event.created",
+  calendarEventUpdated: "calendar.event.updated",
+  calendarEventDeleted: "calendar.event.deleted",
+  calendarEventResponded: "calendar.event.responded",
+
+  meetingSettingsUpdated: "meeting.settings.updated",
+  meetingRequestCreated: "meeting.request.created",
+  meetingRequestAccepted: "meeting.request.accepted",
+  meetingRequestDeclined: "meeting.request.declined",
+  meetingRequestCancelled: "meeting.request.cancelled",
+
+  messageSent: "message.sent",
+  messageEdited: "message.edited",
+  messageDeleted: "message.deleted",
+  messageReplied: "message.replied",
+  messageReactionToggled: "message.reaction.toggled",
+  conversationCreated: "conversation.created",
+  conversationUpdated: "conversation.updated",
 } as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS]

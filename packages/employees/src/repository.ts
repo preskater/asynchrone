@@ -1,25 +1,24 @@
-import type { PrismaClient } from "@workspace/db"
+import type { RequestContext } from "@workspace/core/context"
+import type { PrismaClient } from "@workspace/db-employees"
 
-import type { EmployeeAudit, EmployeeAuditEntry } from "./ports"
+import type {
+  EmployeeAudit,
+  EmployeeAuditEntry,
+  EmployeeRepositoryPorts,
+} from "./ports"
 
 export class EmployeesRepository {
   constructor(
     private readonly db: PrismaClient,
-    private readonly audit: EmployeeAudit
+    private readonly audit: EmployeeAudit,
+    private readonly ports: EmployeeRepositoryPorts
   ) {}
 
   // --- Members & profiles ---------------------------------------------------
 
-  listMembers(organizationId: string) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, image: true },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    })
+  async listMembers(organizationId: string) {
+    const members = await this.ports.directory.list(organizationId)
+    return members.filter((member) => member.clientId == null)
   }
 
   listProfiles(organizationId: string) {
@@ -250,31 +249,31 @@ export class EmployeesRepository {
 
   // --- Clients, activities, projects -----------------------------------------
 
-  listClients(organizationId: string) {
-    return this.db.client.findMany({
-      where: { organizationId },
-      orderBy: { name: "asc" },
-    })
+  listClients(ctx: RequestContext) {
+    return this.ports.clients.list(ctx)
   }
 
-  findClient(organizationId: string, id: string) {
-    return this.db.client.findFirst({ where: { id, organizationId } })
+  findClient(ctx: RequestContext, id: string) {
+    return this.ports.clients.find(ctx, id)
   }
 
-  createClient(data: {
-    organizationId: string
-    name: string
-    contactEmail?: string | null
-    isActive: boolean
-  }) {
-    return this.db.client.create({ data })
+  createClient(
+    ctx: RequestContext,
+    data: {
+      name: string
+      contactEmail?: string | null
+      isActive: boolean
+    }
+  ) {
+    return this.ports.clients.create(ctx, data)
   }
 
   updateClient(
+    ctx: RequestContext,
     id: string,
     data: { name: string; contactEmail?: string | null; isActive: boolean }
   ) {
-    return this.db.client.update({ where: { id }, data })
+    return this.ports.clients.update(ctx, id, data)
   }
 
   listActivities(organizationId: string) {
@@ -312,19 +311,16 @@ export class EmployeesRepository {
     return this.db.internalActivity.update({ where: { id }, data })
   }
 
-  listProjects(organizationId: string) {
-    return this.db.project.findMany({
-      where: { organizationId },
-      include: { client: { select: { id: true, name: true } } },
-      orderBy: { name: "asc" },
-    })
+  listProjects(ctx: RequestContext) {
+    return this.ports.projects.list(ctx)
   }
 
-  findProject(organizationId: string, id: string) {
-    return this.db.project.findFirst({ where: { id, organizationId } })
+  findProject(ctx: RequestContext, id: string) {
+    return this.ports.projects.find(ctx, id)
   }
 
   updateProject(
+    ctx: RequestContext,
     id: string,
     data: {
       clientId?: string | null
@@ -334,7 +330,7 @@ export class EmployeesRepository {
       endDate?: Date | null
     }
   ) {
-    return this.db.project.update({ where: { id }, data })
+    return this.ports.projects.update(ctx, id, data)
   }
 
   // --- Payroll ---------------------------------------------------------------

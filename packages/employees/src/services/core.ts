@@ -124,12 +124,12 @@ export class EmployeesServiceCore {
     settings: EmployeeSettingsData
   ): EmployeeMemberData {
     return {
-      id: row.user.id,
-      name: row.user.name,
-      email: row.user.email,
-      avatarUrl: row.user.image ?? undefined,
+      id: row.userId,
+      name: row.name,
+      email: row.email,
+      avatarUrl: row.avatarUrl ?? undefined,
       orgRole: row.role,
-      profile: this.mapProfile(profileByUser.get(row.user.id), settings),
+      profile: this.mapProfile(profileByUser.get(row.userId), settings),
     }
   }
 
@@ -207,7 +207,7 @@ export class EmployeesServiceCore {
       name: row.name,
       status: row.status,
       clientId: row.clientId ?? undefined,
-      clientName: row.client?.name ?? undefined,
+      clientName: row.clientName ?? undefined,
       isBillable: row.isBillable,
       plannedHours: row.plannedHours ?? undefined,
       startDate: row.startDate ? toDateKey(row.startDate) : undefined,
@@ -287,7 +287,7 @@ export class EmployeesServiceCore {
     organizationId: string
   ): Promise<Map<string, string>> {
     const members = await this.repo.listMembers(organizationId)
-    return new Map(members.map((row) => [row.user.id, row.user.name]))
+    return new Map(members.map((row) => [row.userId, row.name]))
   }
 
   /**

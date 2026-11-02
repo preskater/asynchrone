@@ -80,7 +80,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
    cp apps/copilot/.env.example apps/copilot/.env
    ```
 
-   At minimum set `DATABASE_URL` and `BETTER_AUTH_SECRET`. An `OPENAI_API_KEY`
+   At minimum set `IDENTITY_DATABASE_URL` (or `DATABASE_URL`) and `BETTER_AUTH_SECRET`. An `OPENAI_API_KEY`
    is only required for AI assistant features. See
    [Environment variables](#environment-variables) below.
 
@@ -125,6 +125,7 @@ cp apps/files/.env.example apps/files/.env
 cp apps/messages/.env.example apps/messages/.env
 cp apps/clients/.env.example apps/clients/.env
 cp apps/employees/.env.example apps/employees/.env
+# Every domain .env points at its own *_DATABASE_URL (the app falls back to DATABASE_URL).
 # then copy the PROJECTS_*/CALENDARS_*/FILES_*/MESSAGES_*/CLIENTS_*/EMPLOYEES_* pairs written by:
 npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth
 ```
@@ -211,7 +212,7 @@ stateless landing reads only `apps/landing/.env` (see
 
 | Variable             | Required | Description                                                                                                                                                                    |
 | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`       | Yes      | PostgreSQL connection string.                                                                                                                                                  |
+| `DATABASE_URL`       | No*      | Retired monolith connection string used by the migration/split tooling. Each app reads its own `IDENTITY_DATABASE_URL`, `PROJECTS_DATABASE_URL`, … first; every `*_DATABASE_URL` falls back to `DATABASE_URL` for local convenience. |
 | `DATABASE_POOL_MAX`  | No       | Max Postgres connections per instance (default `3`).                                                                                                                           |
 | `BETTER_AUTH_SECRET` | Yes      | Secret used to sign sessions and encrypt the stored MCP/OAuth JWKS keys. Keep it stable across runtimes; clear the `jwks` table when rotating it.                              |
 | `BETTER_AUTH_URL`    | Yes      | Public base URL of Copilot (`https://copilot.asynchrone.space` in production): issuer, OAuth metadata and social callbacks.                                                       |
@@ -264,10 +265,12 @@ the `uploads-sweep` cron live in `apps/files` since #161
 - **Metadata → Prisma.** `FileNode`, `FileVersion`, and `MessageAttachment` hold
   `oid BigInt? @unique`, `sizeBytes`, `mimeType`, and `sha256`. `UploadSession`
   tracks in-progress uploads.
-- **One shared pool.** `packages/db/src/prisma.ts` exports a single `pg.Pool` handed to
-  `new PrismaPg(pool, { disposeExternalPool: false })`; Prisma and the
-  large-object code share it. Each large-object operation runs on one dedicated
-  connection inside a single `BEGIN … COMMIT` transaction (never `pool.query()`).
+- **One pool per app.** Each `@workspace/db-<domain>` package exports one
+  `pg.Pool` handed to `new PrismaPg(pool, { disposeExternalPool: false })`;
+  Prisma and the large-object code share it. Each large-object operation runs
+  on one dedicated connection inside a single `BEGIN … COMMIT` transaction
+  (never `pool.query()`). Message attachments live in the messages database,
+  file bytes in the files database.
 - **Downloads** stream the large object with `Content-Length`/`Content-Disposition`;
   `maxDuration` is set on the upload/download routes.
 
@@ -295,14 +298,11 @@ the `uploads-sweep` cron live in `apps/files` since #161
 
 ### Verifying
 
-`apps/copilot/scripts/verify-large-object.ts` uploads ≥8 MiB of random bytes, reads
-them back, and asserts equal size and SHA‑256 for both the single-shot and the
-chunked create/append/hash paths; it then deletes/aborts and asserts
-`pg_largeobject_metadata` returns to its baseline (no orphans):
-
-```bash
-npm run verify:large-object --workspace=copilot
-```
+The files app's Playwright suite covers the chunked upload, offset validation,
+download and sweep paths (`npm run test:e2e --workspace=files`); the Copilot
+suite covers the portal upload/download round trip through the files internal
+API. Large-object orphans are exercised by the organization-deletion saga in
+the cross-app suite.
 
 ## Deployment
 

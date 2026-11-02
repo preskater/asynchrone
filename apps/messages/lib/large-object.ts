@@ -1,6 +1,6 @@
 import { createLargeObjectStore } from "@workspace/storage"
 
-import { pool } from "@workspace/db"
+import { pool } from "@workspace/db-messages"
 
 /**
  * The large-object adapter for message attachments.

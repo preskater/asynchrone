@@ -164,7 +164,7 @@ test("back-channel logout ends every workspace app's session", async ({
   // `duplicateAppSession`) so the logout token has to remove both rows.
   const [calendarsSession] = await oidcSessionsForUser(account.userId)
   const siblingId = await duplicateAppSession(calendarsSession!.id)
-  expect(await oidcSessionsForUser(account.userId)).toHaveLength(2)
+  expect(await oidcSessionsForUser(account.userId)).toHaveLength(3)
   expect(await copilotSessionForUser(account.userId)).not.toBeNull()
 
   // Signing out of Copilot deletes the Copilot session, which dispatches a

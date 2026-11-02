@@ -23,16 +23,15 @@ export class EmployeeRecordsService extends EmployeesServiceCore {
 
     let row
     if (input.id) {
-      const existing = await this.repo.findClient(ctx.organizationId, input.id)
+      const existing = await this.repo.findClient(ctx, input.id)
       if (!existing) throw new NotFoundError("Client")
-      row = await this.repo.updateClient(input.id, {
+      row = await this.repo.updateClient(ctx, input.id, {
         name: input.name,
         contactEmail: input.contactEmail ?? null,
         isActive: input.isActive,
       })
     } else {
-      row = await this.repo.createClient({
-        organizationId: ctx.organizationId,
+      row = await this.repo.createClient(ctx, {
         name: input.name,
         contactEmail: input.contactEmail ?? null,
         isActive: input.isActive,
@@ -105,20 +104,17 @@ export class EmployeeRecordsService extends EmployeesServiceCore {
     requireAdmin(access)
 
     const existing = await this.repo.findProject(
-      ctx.organizationId,
+      ctx,
       input.projectId
     )
     if (!existing) throw new NotFoundError("Project")
 
     if (input.clientId) {
-      const client = await this.repo.findClient(
-        ctx.organizationId,
-        input.clientId
-      )
+      const client = await this.repo.findClient(ctx, input.clientId)
       if (!client) throw new NotFoundError("Client")
     }
 
-    await this.repo.updateProject(input.projectId, {
+    await this.repo.updateProject(ctx, input.projectId, {
       clientId: input.clientId ?? null,
       plannedHours: input.plannedHours ?? null,
       isBillable: input.isBillable,
@@ -126,9 +122,9 @@ export class EmployeeRecordsService extends EmployeesServiceCore {
       endDate: input.endDate ? parseDateKey(input.endDate) : null,
     })
 
-    const row = await this.repo.findProject(ctx.organizationId, input.projectId)
+    const row = await this.repo.findProject(ctx, input.projectId)
     // Re-load with client include for the mapped shape.
-    const projects = await this.repo.listProjects(ctx.organizationId)
+    const projects = await this.repo.listProjects(ctx)
     const full =
       projects.find((project) => project.id === input.projectId) ?? row
     if (!full) throw new NotFoundError("Project")

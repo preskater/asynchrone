@@ -13,7 +13,7 @@
   "dependencies": {
     "@workspace/app-shell": "*",
     "@workspace/core": "*",
-    "@workspace/db": "*",
+    "@workspace/db-messages": "*",
     "@workspace/files": "*",
     "@workspace/i18n": "*",
     "@workspace/organization": "*",

@@ -9,14 +9,13 @@ import type { RequestContext } from "@workspace/core/context"
 import { requirePermission } from "@/lib/core/auth-context"
 import { ConflictError } from "@workspace/core/errors"
 import { sendDataExportReadyEmail } from "@/lib/email"
-import { listForExport } from "@/lib/files"
-import { listAttachmentsForExport } from "@/lib/messaging"
 import {
   openLargeObjectStream,
   unlinkLargeObject,
   uploadLargeObject,
 } from "@/lib/large-object"
 import { prisma } from "@/lib/prisma"
+import { sagaRemotes, sagaServices } from "@/lib/sagas/remotes"
 
 /** How long a finished archive can be downloaded. */
 import { DATA_EXPORT_TTL_DAYS } from "@workspace/organization/lifecycle"
@@ -27,96 +26,59 @@ const DAY = 24 * 60 * 60 * 1000
 const STALE_AFTER_MS = 60 * 60 * 1000
 
 /**
- * One JSON file per table. `from` is the SQL after `SELECT t.* FROM`, scoped
- * to `$1` (the organization id) and aliasing the exported table as `t`.
- * Platform-internal tables (audit events, handoffs, trial claims, rate
- * limits, billing webhook logs) and unfinished uploads are left out.
+ * Identity tables included in an export. Passwords, OAuth grants, sessions,
+ * 2FA secrets, rate limits and platform handoffs are credentials and never
+ * leave the database.
  */
-const DIRECT = [
-  "team",
-  "member",
-  "invitation",
-  "project",
-  "label",
-  "task",
-  "task_identifier_counter",
-  "taskTemplate",
-  "projectMessage",
-  "repositoryConnection",
-  "calendar",
-  "calendarEvent",
-  "meetingSettings",
-  "meetingRequest",
-  "fileNode",
-  "chatTeam",
-  "conversation",
-  "employeeProfile",
-  "employeeSettings",
-  "attendanceEntry",
-  "leaveRequest",
-  "leaveBalance",
-  "leaveAdjustment",
-  "salaryProfile",
-  "client",
-  "contact",
-  "pipeline",
-  "deal",
-  "clientActivity",
-  "clientFieldDefinition",
-  "clientDocument",
-  "notification",
-  "portalInvite",
-  "internalActivity",
-  "auditLog",
-  "subscription",
-  "invoice",
-  "ai_usage_event",
-  "assistantConversation",
-  "dataExport",
-].map((table) => ({
-  table,
-  from: `"${table}" t WHERE t."organizationId" = $1`,
-}))
+const TABLES: Record<string, (organizationId: string) => Promise<unknown[]>> = {
+  organization: (organizationId) =>
+    prisma.organization.findMany({ where: { id: organizationId } }),
+  team: (organizationId) =>
+    prisma.team.findMany({ where: { organizationId } }),
+  teamMember: (organizationId) =>
+    prisma.teamMember.findMany({ where: { team: { organizationId } } }),
+  member: (organizationId) =>
+    prisma.member.findMany({ where: { organizationId } }),
+  invitation: (organizationId) =>
+    prisma.invitation.findMany({ where: { organizationId } }),
+  notification: (organizationId) =>
+    prisma.notification.findMany({ where: { organizationId } }),
+  portalInvite: (organizationId) =>
+    prisma.portalInvite.findMany({ where: { organizationId } }),
+  subscription: (organizationId) =>
+    prisma.subscription.findMany({ where: { organizationId } }),
+  invoice: (organizationId) =>
+    prisma.invoice.findMany({ where: { organizationId } }),
+  aiUsageEvent: (organizationId) =>
+    prisma.aiUsageEvent.findMany({ where: { organizationId } }),
+  assistantConversation: (organizationId) =>
+    prisma.assistantConversation.findMany({ where: { organizationId } }),
+  assistantMessage: (organizationId) =>
+    prisma.assistantMessage.findMany({
+      where: { conversation: { organizationId } },
+    }),
+  dataExport: (organizationId) =>
+    prisma.dataExport.findMany({ where: { organizationId } }),
+  auditLog: (organizationId) =>
+    prisma.auditLog.findMany({ where: { organizationId } }),
+}
 
-const child = (table: string, fk: string, parent: string) => ({
-  table,
-  from: `"${table}" t JOIN "${parent}" p ON p.id = t."${fk}" WHERE p."organizationId" = $1`,
-})
+function toJson(rows: Record<string, unknown>[]) {
+  return JSON.stringify(
+    rows,
+    (_key, value) =>
+      typeof value === "bigint" ? value.toString() : (value as unknown),
+    2
+  )
+}
 
-const TABLES = [
-  ...DIRECT,
-  child("teamMember", "teamId", "team"),
-  child("projectMember", "projectId", "project"),
-  child("projectLabel", "projectId", "project"),
-  child("projectActivity", "projectId", "project"),
-  child("taskLabel", "taskId", "task"),
-  child("subtask", "taskId", "task"),
-  child("taskComment", "taskId", "task"),
-  child("calendarMember", "calendarId", "calendar"),
-  child("eventAttendee", "eventId", "calendarEvent"),
-  child("meetingSlot", "requestId", "meetingRequest"),
-  child("fileShare", "fileId", "fileNode"),
-  child("fileVersion", "fileId", "fileNode"),
-  child("fileActivity", "fileId", "fileNode"),
-  child("conversationMember", "conversationId", "conversation"),
-  child("message", "conversationId", "conversation"),
-  child("assistantMessage", "conversationId", "assistantConversation"),
-  child("contactCompany", "contactId", "contact"),
-  child("pipelineStage", "pipelineId", "pipeline"),
-  child("dealContact", "dealId", "deal"),
-  {
-    table: "messageReaction",
-    from: `"messageReaction" t JOIN "message" m ON m.id = t."messageId" JOIN "conversation" p ON p.id = m."conversationId" WHERE p."organizationId" = $1`,
-  },
-  {
-    table: "messageAttachment",
-    from: `"messageAttachment" t JOIN "message" m ON m.id = t."messageId" JOIN "conversation" p ON p.id = m."conversationId" WHERE p."organizationId" = $1`,
-  },
-]
+/** Keeps archive paths readable and free of separators or control bytes. */
+function safeName(name: string) {
+  return name.replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 120) || "file"
+}
 
-/** Columns that are credentials, never part of an export. */
-const SECRET_COLUMNS: Record<string, string[]> = {
-  repositoryConnection: ["webhookSecret"],
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
 export async function listExports(organizationId: string) {
@@ -170,24 +132,15 @@ export async function requestExport(ctx: RequestContext) {
   })
 }
 
-function toJson(rows: Record<string, unknown>[]) {
-  return JSON.stringify(
-    rows,
-    (_key, value) => (typeof value === "bigint" ? value.toString() : value),
-    2
-  )
-}
-
-/** Keeps archive paths readable and free of separators or control bytes. */
-function safeName(name: string) {
-  return name.replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 120) || "file"
-}
-
 /**
- * Writes the archive straight into a new large object, so neither the JSON
- * nor the files are ever held in memory as a whole ZIP.
+ * Writes the archive straight into a new large object, so neither the JSON nor
+ * the files are ever held in memory as a whole ZIP.
+ *
+ * Identity tables come from this database; every domain app contributes one
+ * part through its export endpoint. File and attachment bytes are streamed
+ * from the app that owns them, never read across a database.
  */
-async function writeArchive(organizationId: string) {
+async function writeArchive(exportId: string, organizationId: string) {
   const out = new PassThrough()
   const uploading = uploadLargeObject(out)
   const zip = new Zip((error, chunk, final) => {
@@ -204,12 +157,41 @@ async function writeArchive(organizationId: string) {
     entry.push(new TextEncoder().encode(text), true)
     await drain()
   }
-  const addLargeObject = async (path: string, oid: bigint) => {
+  const addObject = async (path: string, oid: number) => {
     const entry = new ZipPassThrough(path)
     zip.add(entry)
-    const { stream } = await openLargeObjectStream(Number(oid))
+    const { stream } = await openLargeObjectStream(oid)
     for await (const chunk of stream) {
       entry.push(chunk as Uint8Array)
+      await drain()
+    }
+    entry.push(new Uint8Array(0), true)
+  }
+  const addRemote = async (path: string, app: string, id: string) => {
+    const services = sagaServices()
+    const baseUrl = services?.baseUrl(app)
+    if (!services || !baseUrl) throw new Error(`No origin for ${app}`)
+    const token = await services.tokens.getToken({
+      audience: `urn:asynchrone:app:${app}`,
+      scopes: ["internal:export:read"],
+    })
+    const response = await fetch(
+      new URL(
+        `${path}?organizationId=${encodeURIComponent(organizationId)}`,
+        baseUrl
+      ),
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    )
+    if (!response.ok || !response.body) {
+      throw new Error(`${app} export stream failed (${response.status})`)
+    }
+    const entry = new ZipPassThrough(`files/${app}/${id}`)
+    zip.add(entry)
+    const reader = response.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      entry.push(value, false)
       await drain()
     }
     entry.push(new Uint8Array(0), true)
@@ -217,46 +199,90 @@ async function writeArchive(organizationId: string) {
 
   try {
     const counts: Record<string, number> = {}
-    for (const { table, from } of TABLES) {
-      // ponytail: one query per table loads it whole; page it if an export
-      // ever runs out of memory on a very large organization.
-      const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
-        `SELECT t.* FROM ${from}`,
-        organizationId
-      )
-      for (const column of SECRET_COLUMNS[table] ?? []) {
-        for (const row of rows) delete row[column]
-      }
+    for (const [table, read] of Object.entries(TABLES)) {
+      const rows = (await read(organizationId)) as Record<string, unknown>[]
       counts[table] = rows.length
-      await addText(`data/${table}.json`, toJson(rows))
+      await addText(`data/identity/${table}.json`, toJson(rows))
     }
 
-    const { files, versions } = await listForExport(organizationId)
-    const attachments = await listAttachmentsForExport(organizationId)
+    const { apps, clients } = sagaRemotes()
+    const services = sagaServices()
+    let files = 0
 
-    // Versions often share the current bytes; each large object goes in once.
-    const seen = new Set<bigint>()
-    let fileCount = 0
-    for (const file of files) {
-      seen.add(file.oid!)
-      await addLargeObject(`files/${file.id}-${safeName(file.name)}`, file.oid!)
-      fileCount++
-    }
-    for (const version of versions) {
-      if (seen.has(version.oid!)) continue
-      seen.add(version.oid!)
-      await addLargeObject(
-        `files/versions/${version.fileId}/${version.id}-${safeName(version.name)}`,
-        version.oid!
-      )
-      fileCount++
-    }
-    for (const attachment of attachments) {
-      await addLargeObject(
-        `attachments/${attachment.id}-${safeName(attachment.name)}`,
-        attachment.oid!
-      )
-      fileCount++
+    for (const app of apps) {
+      const client = clients[app]
+      if (!client) continue
+      const part = await client.exportOrganization(organizationId)
+      const tables = part.manifest.tables
+      for (const [table, rows] of Object.entries(part.data)) {
+        counts[`${app}.${table}`] = rows.length
+        await addText(
+          `data/${app}/${table}.json`,
+          toJson(rows as Record<string, unknown>[])
+        )
+      }
+      const data = part.data
+
+      if (app === "files" && services) {
+        for (const row of data.fileNode ?? []) {
+          if (!isRecord(row) || typeof row.id !== "string") continue
+          if (row.oid === null || row.oid === undefined) continue
+          await addRemote(
+            `/internal/v1/files/${encodeURIComponent(row.id)}/content`,
+            "files",
+            `${row.id}-${safeName(String(row.name ?? "file"))}`
+          )
+          files++
+        }
+        for (const row of data.fileVersion ?? []) {
+          if (!isRecord(row) || typeof row.id !== "string") continue
+          if (row.oid === null || row.oid === undefined) continue
+          const fileId = typeof row.fileId === "string" ? row.fileId : "file"
+          await addRemote(
+            `/internal/v1/files/versions/${encodeURIComponent(row.id)}/content`,
+            "files",
+            `versions/${fileId}/${row.id}-${safeName(String(row.name ?? "version"))}`
+          )
+          files++
+        }
+      }
+
+      if (app === "messages" && services) {
+        for (const row of data.messageAttachment ?? []) {
+          if (!isRecord(row) || typeof row.id !== "string") continue
+          if (row.oid === null || row.oid === undefined) continue
+          await addRemote(
+            `/internal/v1/messages/attachments/${encodeURIComponent(row.id)}/content`,
+            "messages",
+            `${row.id}-${safeName(String(row.name ?? "attachment"))}`
+          )
+          files++
+        }
+      }
+
+      await prisma.dataExportApp.upsert({
+        where: { exportId_app: { exportId, app } },
+        create: {
+          exportId,
+          app,
+          status: "complete",
+          schemaVersion: part.manifest.schemaVersion,
+          rowCount: Object.values(tables).reduce(
+            (total, count) => total + count,
+            0
+          ),
+          completedAt: new Date(),
+        },
+        update: {
+          status: "complete",
+          schemaVersion: part.manifest.schemaVersion,
+          rowCount: Object.values(tables).reduce(
+            (total, count) => total + count,
+            0
+          ),
+          completedAt: new Date(),
+        },
+      })
     }
 
     await addText(
@@ -266,7 +292,7 @@ async function writeArchive(organizationId: string) {
           organizationId,
           exportedAt: new Date().toISOString(),
           tables: counts,
-          files: fileCount,
+          files,
         },
         null,
         2
@@ -300,7 +326,7 @@ export async function buildExport(exportId: string, now = new Date()) {
   })
 
   try {
-    const { oid, size } = await writeArchive(job.organizationId)
+    const { oid, size } = await writeArchive(exportId, job.organizationId)
     await prisma.dataExport.update({
       where: { id: exportId },
       data: {

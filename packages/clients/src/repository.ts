@@ -1,6 +1,12 @@
-import type { PrismaClient } from "@workspace/db"
+import type { RequestContext } from "@workspace/core/context"
+import type { PrismaClient } from "@workspace/db-clients"
 
-import type { ClientAudit, ClientAuditEntry } from "./ports"
+import type {
+  ClientAudit,
+  ClientAuditEntry,
+  ClientFileRow,
+  ClientRepositoryPorts,
+} from "./ports"
 
 /** Columns selecting the company fields shared by every client query. */
 const CLIENT_SELECT = {
@@ -30,26 +36,20 @@ type ActivityCursor = { occurredAt: Date; id: string }
 export class ClientsRepository {
   constructor(
     private readonly db: PrismaClient,
-    private readonly audit: ClientAudit
+    private readonly audit: ClientAudit,
+    private readonly ports: ClientRepositoryPorts
   ) {}
 
   // --- Members ---------------------------------------------------------------
 
-  listMembers(organizationId: string) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    })
+  async listMembers(organizationId: string) {
+    const members = await this.ports.directory.list(organizationId)
+    return members.filter((member) => member.clientId == null)
   }
 
-  memberExists(organizationId: string, userId: string) {
-    return this.db.member.findFirst({
-      where: { organizationId, userId },
-      select: { id: true },
-    })
+  async memberExists(organizationId: string, userId: string) {
+    const members = await this.ports.directory.list(organizationId)
+    return members.find((member) => member.userId === userId) ?? null
   }
 
   // --- Companies (clients) -----------------------------------------------------
@@ -113,16 +113,8 @@ export class ClientsRepository {
     })
   }
 
-  projectCountsByClient(organizationId: string) {
-    return this.db.project.groupBy({
-      by: ["clientId"],
-      where: {
-        organizationId,
-        clientId: { not: null },
-        client: { deletedAt: null },
-      },
-      _count: { _all: true },
-    })
+  async projectCountsByClient(ctx: RequestContext) {
+    return this.ports.projects.countsByClient(ctx)
   }
 
   clientContactCount(organizationId: string, clientId: string) {
@@ -131,8 +123,8 @@ export class ClientsRepository {
     })
   }
 
-  clientProjectCount(organizationId: string, clientId: string) {
-    return this.db.project.count({ where: { organizationId, clientId } })
+  clientProjectCount(ctx: RequestContext, clientId: string) {
+    return this.ports.projects.countForClient(ctx, clientId)
   }
 
   /** Open deal count/value per company (callers map by `clientId`). */
@@ -286,42 +278,25 @@ export class ClientsRepository {
   }
 
   /** Project options used for client detail pages and statistics. */
-  listProjectOptions(organizationId: string) {
-    return this.db.project.findMany({
-      where: { organizationId },
-      select: { id: true, name: true, status: true, clientId: true },
-      orderBy: { createdAt: "desc" },
-    })
+  listProjectOptions(ctx: RequestContext) {
+    return this.ports.projects.listOptions(ctx)
   }
 
-  findProject(organizationId: string, id: string) {
-    return this.db.project.findFirst({
-      where: { id, organizationId },
-      select: { id: true, name: true, status: true, clientId: true },
-    })
+  findProject(ctx: RequestContext, id: string) {
+    return this.ports.projects.find(ctx, id)
   }
 
-  setProjectClient(id: string, clientId: string | null) {
-    return this.db.project.update({
-      where: { id },
-      data: { clientId },
-      select: { id: true, name: true, status: true, clientId: true },
-    })
+  setProjectClient(
+    ctx: RequestContext,
+    id: string,
+    clientId: string | null
+  ) {
+    return this.ports.projects.setClient(ctx, id, clientId)
   }
 
   /** Projects with their current company, used by the client link picker. */
-  listProjectLinkOptions(organizationId: string) {
-    return this.db.project.findMany({
-      where: { organizationId },
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        clientId: true,
-        client: { select: { name: true } },
-      },
-      orderBy: { name: "asc" },
-    })
+  listProjectLinkOptions(ctx: RequestContext) {
+    return this.ports.projects.listLinkOptions(ctx)
   }
 
   // --- Contacts ----------------------------------------------------------------
@@ -691,12 +666,8 @@ export class ClientsRepository {
   }
 
   /** Projects linked to one company (detail page). */
-  listProjectsForClient(organizationId: string, clientId: string) {
-    return this.db.project.findMany({
-      where: { organizationId, clientId },
-      select: { id: true, name: true, status: true, clientId: true },
-      orderBy: { createdAt: "desc" },
-    })
+  listProjectsForClient(ctx: RequestContext, clientId: string) {
+    return this.ports.projects.listForClient(ctx, clientId)
   }
 
   /** Deals linked to one company. */
@@ -953,32 +924,37 @@ export class ClientsRepository {
 
   // --- Documents ------------------------------------------------------------------
 
-  private static readonly DOCUMENT_INCLUDE = {
-    file: {
-      select: {
-        id: true,
-        name: true,
-        kind: true,
-        mimeType: true,
-        sizeBytes: true,
-        trashed: true,
-      },
-    },
-  } as const
-
-  listDocuments(organizationId: string, entity: string, entityId: string) {
-    return this.db.clientDocument.findMany({
-      where: { organizationId, entity, entityId },
-      include: ClientsRepository.DOCUMENT_INCLUDE,
-      orderBy: { createdAt: "desc" },
+  /** Join the file metadata the files app owns onto document links. */
+  private async withFiles<T extends { fileId: string }>(
+    ctx: RequestContext,
+    rows: T[]
+  ): Promise<(T & { file: ClientFileRow })[]> {
+    if (rows.length === 0) return []
+    const files = await this.ports.files.byIds(
+      ctx,
+      rows.map((row) => row.fileId)
+    )
+    const byId = new Map(files.map((file) => [file.id, file]))
+    return rows.flatMap((row) => {
+      const file = byId.get(row.fileId)
+      return file ? [{ ...row, file }] : []
     })
   }
 
-  findDocument(organizationId: string, id: string) {
-    return this.db.clientDocument.findFirst({
-      where: { id, organizationId },
-      include: ClientsRepository.DOCUMENT_INCLUDE,
+  async listDocuments(ctx: RequestContext, entity: string, entityId: string) {
+    const rows = await this.db.clientDocument.findMany({
+      where: { organizationId: ctx.organizationId, entity, entityId },
+      orderBy: { createdAt: "desc" },
     })
+    return this.withFiles(ctx, rows)
+  }
+
+  async findDocument(ctx: RequestContext, id: string) {
+    const row = await this.db.clientDocument.findFirst({
+      where: { id, organizationId: ctx.organizationId },
+    })
+    if (!row) return null
+    return (await this.withFiles(ctx, [row]))[0] ?? null
   }
 
   findDocumentLink(
@@ -993,51 +969,48 @@ export class ClientsRepository {
     })
   }
 
-  createDocument(data: {
-    organizationId: string
-    fileId: string
-    entity: string
-    entityId: string
-    visibility: string
-    addedBy: string
-  }) {
-    return this.db.clientDocument.create({
-      data,
-      include: ClientsRepository.DOCUMENT_INCLUDE,
+  async createDocument(
+    ctx: RequestContext,
+    data: {
+      fileId: string
+      entity: string
+      entityId: string
+      visibility: string
+      addedBy: string
+    }
+  ) {
+    const row = await this.db.clientDocument.create({
+      data: { ...data, organizationId: ctx.organizationId },
     })
+    const withFile = (await this.withFiles(ctx, [row]))[0]
+    if (!withFile) throw new Error("The linked file no longer exists")
+    return withFile
   }
 
-  updateDocumentVisibility(id: string, visibility: string) {
-    return this.db.clientDocument.update({
+  async updateDocumentVisibility(
+    ctx: RequestContext,
+    id: string,
+    visibility: string
+  ) {
+    const row = await this.db.clientDocument.update({
       where: { id },
       data: { visibility },
-      include: ClientsRepository.DOCUMENT_INCLUDE,
     })
+    const withFile = (await this.withFiles(ctx, [row]))[0]
+    if (!withFile) throw new Error("The linked file no longer exists")
+    return withFile
   }
 
   deleteDocument(id: string) {
     return this.db.clientDocument.delete({ where: { id } })
   }
 
-  findFileForLink(organizationId: string, fileId: string) {
-    return this.db.fileNode.findFirst({
-      where: { id: fileId, organizationId },
-      select: { id: true, name: true, trashed: true },
-    })
+  findFileForLink(ctx: RequestContext, fileId: string) {
+    return this.ports.files.find(ctx, fileId)
   }
 
-  listFileOptions(organizationId: string) {
-    return this.db.fileNode.findMany({
-      where: { organizationId, trashed: false, kind: { not: "folder" } },
-      select: {
-        id: true,
-        name: true,
-        kind: true,
-        mimeType: true,
-        modifiedAt: true,
-      },
-      orderBy: { name: "asc" },
-    })
+  listFileOptions(ctx: RequestContext) {
+    return this.ports.files.listOptions(ctx)
   }
 
   // --- Audit ----------------------------------------------------------------------

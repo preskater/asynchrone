@@ -59,9 +59,9 @@ export class EmployeeOverviewService extends EmployeesServiceCore {
       }),
       this.repo.listBalances(ctx.organizationId, year),
       this.repo.listAdjustments(ctx.organizationId, year),
-      this.repo.listClients(ctx.organizationId),
+      this.repo.listClients(ctx),
       this.repo.listActivities(ctx.organizationId),
-      this.repo.listProjects(ctx.organizationId),
+      this.repo.listProjects(ctx),
       // Project totals only need the current year; unbounded allocations made
       // the overview grow with every tracked half-day ever recorded.
       this.repo.listAllocationEntries(ctx.organizationId, {

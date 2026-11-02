@@ -18,7 +18,7 @@ export default createNextConfig({
     "@workspace/audit",
     "@workspace/calendars",
     "@workspace/contracts",
-    "@workspace/db",
+    "@workspace/db-calendars",
     "@workspace/db-core",
     "@workspace/meetings",
     "@workspace/notifications",

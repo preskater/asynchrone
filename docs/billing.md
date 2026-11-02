@@ -186,5 +186,5 @@ the visitor to the billing tab instead.
 - Usage-based metering, revenue recognition, accounting exports, filing VAT
   returns and non-Stripe currencies are out of scope.
 - Downgrading keeps rows and files; writes that exceed the new storage quota
-  are rejected by the existing quota checks (`packages/files/src/storage.ts`, bound in `apps/copilot/lib/files.ts`). Other
+  are rejected by the existing quota checks (`packages/files/src/storage.ts`, bound in `apps/files/lib/files.ts`). Other
   feature limits belong to the entitlement layer.

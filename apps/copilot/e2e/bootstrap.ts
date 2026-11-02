@@ -10,8 +10,12 @@
  */
 import { createHash } from "node:crypto"
 
-import { SERVICE_SCOPES, internalAudience } from "@workspace/contracts"
-import { prisma } from "@workspace/db"
+import {
+  APP_USER_SCOPES,
+  SERVICE_SCOPES,
+  internalAudience,
+} from "@workspace/contracts"
+import { prisma } from "@workspace/db-identity"
 
 import {
   E2E_COPILOT_OAUTH_CLIENT_ID,
@@ -24,6 +28,9 @@ function hashClientSecret(secret: string): string {
 }
 
 const domainScopes = [
+  SERVICE_SCOPES.identityRead,
+  SERVICE_SCOPES.identityWrite,
+  SERVICE_SCOPES.notificationsWrite,
   SERVICE_SCOPES.domainRead,
   SERVICE_SCOPES.domainWrite,
   SERVICE_SCOPES.auditRead,
@@ -32,11 +39,18 @@ const domainScopes = [
   SERVICE_SCOPES.deleteWrite,
 ]
 
-const resources = E2E_DOMAIN_APPS.map((app) => ({
-  identifier: internalAudience(app.key),
-  name: app.key.charAt(0).toUpperCase() + app.key.slice(1),
-  scopes: domainScopes,
-}))
+const resources = [
+  ...E2E_DOMAIN_APPS.map((app) => ({
+    identifier: internalAudience(app.key),
+    name: app.key.charAt(0).toUpperCase() + app.key.slice(1),
+    scopes: domainScopes,
+  })),
+  {
+    identifier: internalAudience("copilot"),
+    name: "Copilot",
+    scopes: domainScopes,
+  },
+]
 
 const now = new Date()
 
@@ -102,6 +116,74 @@ for (const resource of resources) {
       createdAt: now,
     },
   })
+}
+
+for (const app of E2E_DOMAIN_APPS) {
+  const appClient = await prisma.oauthClient.upsert({
+    where: { clientId: app.clientId },
+    update: {
+      clientSecret: hashClientSecret(app.clientSecret),
+      clientCredentialsScopes: [
+        SERVICE_SCOPES.identityRead,
+        SERVICE_SCOPES.identityWrite,
+        SERVICE_SCOPES.notificationsWrite,
+        SERVICE_SCOPES.domainRead,
+        SERVICE_SCOPES.domainWrite,
+      ],
+      disabled: false,
+      updatedAt: now,
+    },
+    create: {
+      id: `oauth_client_e2e_${app.clientId}`,
+      clientId: app.clientId,
+      clientSecret: hashClientSecret(app.clientSecret),
+      name: `Asynchrone Space ${app.key} (e2e)`,
+      disabled: false,
+      skipConsent: true,
+      enableEndSession: true,
+      subjectType: "public",
+      scopes: [...APP_USER_SCOPES],
+      clientCredentialsScopes: [
+        SERVICE_SCOPES.identityRead,
+        SERVICE_SCOPES.identityWrite,
+        SERVICE_SCOPES.notificationsWrite,
+        SERVICE_SCOPES.domainRead,
+        SERVICE_SCOPES.domainWrite,
+      ],
+      redirectUris: [`${app.url}/api/auth/callback`],
+      postLogoutRedirectUris: [app.url],
+      backchannelLogoutUri: `${app.url}/api/auth/backchannel-logout`,
+      backchannelLogoutSessionRequired: true,
+      tokenEndpointAuthMethod: "client_secret_basic",
+      applicationType: "web",
+      grantTypes: ["authorization_code", "refresh_token", "client_credentials"],
+      responseTypes: ["code"],
+      requirePKCE: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+  })
+
+  for (const resource of resources) {
+    await prisma.oauthClientResource.upsert({
+      where: {
+        clientId_resourceId: {
+          clientId: appClient.clientId,
+          resourceId: resource.identifier,
+        },
+      },
+      update: {},
+      create: {
+        id: `oauth_client_resource_e2e_${appClient.clientId}_${resource.identifier.replace(
+          /[^a-z0-9]+/gi,
+          "_"
+        )}`,
+        clientId: appClient.clientId,
+        resourceId: resource.identifier,
+        createdAt: now,
+      },
+    })
+  }
 }
 
 console.log(

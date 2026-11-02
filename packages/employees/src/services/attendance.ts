@@ -86,7 +86,7 @@ export class EmployeeAttendanceService extends EmployeesServiceCore {
     let activityId = input.internalActivityId
     let projectIsBillable: boolean | undefined
     if (projectId) {
-      const project = await this.repo.findProject(ctx.organizationId, projectId)
+      const project = await this.repo.findProject(ctx, projectId)
       if (!project) throw new NotFoundError("Project")
       projectIsBillable = project.isBillable
     }

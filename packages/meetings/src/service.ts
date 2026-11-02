@@ -89,11 +89,47 @@ function requireStaff(ctx: RequestContext, minRank: number) {
   })
 }
 
+export interface MeetingAuditInput {
+  action: string
+  entityType: string
+  entityId: string
+  entityLabel?: string | null
+  before?: unknown
+  after?: unknown
+}
+
+export type MeetingAudit = (
+  ctx: RequestContext,
+  input: MeetingAuditInput
+) => Promise<void>
+
+/** Portal callers have no email/role on their context; audit uses client. */
+function auditContext(
+  ctx: MeetingPortalContext | RequestContext
+): RequestContext {
+  if ("userEmail" in ctx && "role" in ctx) return ctx
+  return {
+    userId: ctx.userId,
+    userName: ctx.userName,
+    userEmail: "",
+    organizationId: ctx.organizationId,
+    role: "client",
+  }
+}
+
 export class MeetingService {
   constructor(
     private readonly repo: MeetingRepositoryPort,
-    private readonly notifier: MeetingNotifier
+    private readonly notifier: MeetingNotifier,
+    private readonly audit?: MeetingAudit
   ) {}
+
+  private record(
+    ctx: RequestContext,
+    input: MeetingAuditInput
+  ): Promise<void> {
+    return this.audit ? this.audit(ctx, input) : Promise.resolve()
+  }
 
   // ---------------------------------------------------------------------------
   // Settings
@@ -137,7 +173,15 @@ export class MeetingService {
       maxDurationMinutes: input.maxDurationMinutes,
       provider: input.provider,
     })
-    return this.mapSettings(row)
+    const settings = this.mapSettings(row)
+    await this.record(ctx, {
+      action: "meeting.settings.updated",
+      entityType: "meetingSettings",
+      entityId: ctx.organizationId,
+      entityLabel: "Meeting settings",
+      after: { provider: settings.provider },
+    })
+    return settings
   }
 
   // ---------------------------------------------------------------------------
@@ -303,6 +347,13 @@ export class MeetingService {
     })
 
     await this.notifyManagers(ctx, row)
+    await this.record(auditContext(ctx), {
+      action: "meeting.request.created",
+      entityType: "meetingRequest",
+      entityId: row.id,
+      entityLabel: row.title,
+      after: { clientId: row.clientId, status: row.status },
+    })
     return this.mapRequest(
       row,
       row.slots.map((slot, index) =>
@@ -336,6 +387,12 @@ export class MeetingService {
       decidedAt: new Date(),
       decidedByName: ctx.userName,
       decidedById: ctx.userId,
+    })
+    await this.record(auditContext(ctx), {
+      action: "meeting.request.cancelled",
+      entityType: "meetingRequest",
+      entityId: updated.id,
+      entityLabel: updated.title,
     })
     return this.mapRequest(
       updated,
@@ -481,10 +538,18 @@ export class MeetingService {
       throw error
     }
 
-    return this.mapRequest(
+    const accepted = this.mapRequest(
       updated,
       updated.slots.map((entry) => this.mapSlot(entry, false))
     )
+    await this.record(ctx, {
+      action: "meeting.request.accepted",
+      entityType: "meetingRequest",
+      entityId: accepted.id,
+      entityLabel: accepted.title,
+      after: { slotId: input.slotId },
+    })
+    return accepted
   }
 
   async declineRequest(
@@ -511,10 +576,17 @@ export class MeetingService {
       decidedAt: new Date(),
       decisionNote: input.note?.trim() || null,
     })
-    return this.mapRequest(
+    const declined = this.mapRequest(
       updated,
       updated.slots.map((slot) => this.mapSlot(slot, false))
     )
+    await this.record(ctx, {
+      action: "meeting.request.declined",
+      entityType: "meetingRequest",
+      entityId: declined.id,
+      entityLabel: declined.title,
+    })
+    return declined
   }
 
   // ---------------------------------------------------------------------------

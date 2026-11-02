@@ -217,6 +217,40 @@
     "leave": {
       "create": "Leave request created",
       "cancel": "Leave request cancelled"
+    },
+    "calendar": {
+      "created": "Calendar created",
+      "updated": "Calendar updated",
+      "event": {
+        "created": "Event created",
+        "updated": "Event updated",
+        "deleted": "Event deleted",
+        "responded": "Event response changed"
+      }
+    },
+    "meeting": {
+      "settings": {
+        "updated": "Meeting settings updated"
+      },
+      "request": {
+        "created": "Meeting requested",
+        "accepted": "Meeting accepted",
+        "declined": "Meeting declined",
+        "cancelled": "Meeting cancelled"
+      }
+    },
+    "message": {
+      "sent": "Message sent",
+      "edited": "Message edited",
+      "deleted": "Message deleted",
+      "replied": "Thread reply sent",
+      "reaction": {
+        "toggled": "Reaction changed"
+      }
+    },
+    "conversation": {
+      "created": "Conversation created",
+      "updated": "Conversation updated"
     }
   },
   "entities": {

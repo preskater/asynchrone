@@ -104,16 +104,11 @@ export async function deleteAccount(userId: string, confirmEmail: string) {
     await tx.teamMember.deleteMany({ where: { userId } })
     await tx.member.deleteMany({ where: { userId } })
     await tx.invitation.deleteMany({ where: { inviterId: userId } })
-    await tx.userRepositoryToken.deleteMany({ where: { userId } })
     await tx.oauthAccessToken.deleteMany({ where: { userId } })
     await tx.oauthRefreshToken.deleteMany({ where: { userId } })
     await tx.oauthConsent.deleteMany({ where: { userId } })
     await tx.notification.deleteMany({ where: { userId } })
     await tx.assistantConversation.deleteMany({ where: { userId } })
-    await tx.taskComment.updateMany({
-      where: { authorId: userId },
-      data: { authorName: null },
-    })
 
     for (const { organizationId } of memberships) {
       await tx.auditLog.create({
@@ -126,17 +121,9 @@ export async function deleteAccount(userId: string, confirmEmail: string) {
         },
       })
     }
-    await tx.platformAuditEvent.create({
-      data: {
-        actorId: userId,
-        // The real address is personal data; the audit keeps only the id.
-        actorEmail: anonymizedEmail,
-        actorRole: "user",
-        action: "user.deleted",
-        targetType: "user",
-        targetId: userId,
-        before: { organizations: memberships.length },
-      },
+    console.info("[account-deletion] identity anonymized", {
+      userId,
+      organizations: memberships.length,
     })
   })
 

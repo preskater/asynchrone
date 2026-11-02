@@ -28,19 +28,9 @@ import type {
  * (there is no `apps/portal`).
  */
 
-/** Bytes live in PostgreSQL large objects owned by `@workspace/storage`. */
-export interface PortalStorage {
-  upload(
-    readable: Readable,
-    options?: { maxBytes?: number }
-  ): Promise<{ oid: number; size: number; sha256: string }>
-  open(oid: number): Promise<{ size: number; stream: Readable }>
-  unlink(oid: number): Promise<void>
-}
-
 /** The files-domain operations a portal document needs. */
 export interface PortalFiles {
-  /** Persist a completed upload in the workspace file tree. */
+  /** Stream an upload into the workspace file tree (bytes stay in files). */
   createUploadedFile(
     ctx: RequestContext,
     input: {
@@ -48,10 +38,15 @@ export interface PortalFiles {
       parentId?: string | null
       sizeBytes: number
       mimeType?: string
-      oid: number
-      sha256: string
+      stream: Readable
     }
   ): Promise<{ id: string }>
+  /** Open a file's bytes after the caller resolved the client-visible link. */
+  openDocument(
+    organizationId: string,
+    fileId: string,
+    metadata: { name: string; mimeType?: string }
+  ): Promise<{ name: string; mimeType?: string; size: number; stream: Readable }>
   quotaBytes(organizationId: string): Promise<number>
   usedBytes(organizationId: string): Promise<number>
 }
@@ -176,8 +171,6 @@ export interface PortalClientDocuments {
   ): Promise<{
     name: string
     mimeType?: string
-    /** OID as a string; large-object ids are bigint. */
-    oid: string | null
     trashed: boolean
   } | null>
   createDocument(input: {

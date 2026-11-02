@@ -3,7 +3,6 @@ import { PassThrough } from "node:stream"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { RequestContext } from "@workspace/core/context"
-import { MaxBytesExceededError } from "@workspace/storage"
 
 import type { PortalRepository } from "./repository"
 import { MAX_PORTAL_UPLOAD_BYTES, PortalService } from "./service"
@@ -230,7 +229,6 @@ function buildService() {
     ]),
     findDocumentLink: vi.fn(async () => ({
       name: "brief.pdf",
-      oid: "42",
       mimeType: "application/pdf",
       trashed: false,
     })),
@@ -242,20 +240,14 @@ function buildService() {
     findClientInOrganization: vi.fn(async () => ({ id: "client_a" })),
   }
 
-  const storage = {
-    upload: vi.fn(async () => ({
-      oid: 7,
-      size: 11,
-      sha256: "a".repeat(64),
-    })),
-    open: vi.fn(async () => ({
+  const files = {
+    createUploadedFile: vi.fn(async () => ({ id: "file_new" })),
+    openDocument: vi.fn(async () => ({
+      name: "brief.pdf",
+      mimeType: "application/pdf",
       size: 2048,
       stream: new PassThrough(),
     })),
-    unlink: vi.fn(async () => undefined),
-  }
-  const files = {
-    createUploadedFile: vi.fn(async () => ({ id: "file_new" })),
     quotaBytes: vi.fn(async () => 1_000_000),
     usedBytes: vi.fn(async () => 0),
   }
@@ -306,7 +298,6 @@ function buildService() {
 
   const service = new PortalService({
     repository: repo as unknown as PortalRepository,
-    storage,
     projects,
     clientDocuments,
     files,
@@ -321,7 +312,6 @@ function buildService() {
     repo,
     projects,
     clientDocuments,
-    storage,
     files,
     collaboration,
     meetings,
@@ -546,7 +536,7 @@ describe("PortalService access management", () => {
 
 describe("PortalService documents", () => {
   it("opens only documents linked to the caller's client company", async () => {
-    const { service, clientDocuments, storage } = buildService()
+    const { service, clientDocuments, files } = buildService()
 
     const file = await service.openDocument(ctxA, "file_a")
 
@@ -555,7 +545,10 @@ describe("PortalService documents", () => {
       "client_a",
       "file_a"
     )
-    expect(storage.open).toHaveBeenCalledWith(42)
+    expect(files.openDocument).toHaveBeenCalledWith("org_a", "file_a", {
+      name: "brief.pdf",
+      mimeType: "application/pdf",
+    })
     expect(file).toMatchObject({
       name: "brief.pdf",
       mimeType: "application/pdf",
@@ -564,20 +557,19 @@ describe("PortalService documents", () => {
   })
 
   it("does not open a document shared with another company", async () => {
-    const { service, clientDocuments, storage } = buildService()
+    const { service, clientDocuments, files } = buildService()
     clientDocuments.findDocumentLink.mockResolvedValueOnce(null as never)
 
     await expect(service.openDocument(ctxB, "file_a")).rejects.toMatchObject({
       message: expect.stringContaining("Document"),
     })
-    expect(storage.open).not.toHaveBeenCalled()
+    expect(files.openDocument).not.toHaveBeenCalled()
   })
 
   it("does not open a trashed file or a missing large object", async () => {
-    const { service, clientDocuments, storage } = buildService()
+    const { service, clientDocuments, files } = buildService()
     clientDocuments.findDocumentLink.mockResolvedValueOnce({
       name: "brief.pdf",
-      oid: "42",
       mimeType: "application/pdf",
       trashed: true,
     })
@@ -585,11 +577,11 @@ describe("PortalService documents", () => {
     await expect(service.openDocument(ctxA, "file_a")).rejects.toMatchObject({
       message: expect.stringContaining("Document"),
     })
-    expect(storage.open).not.toHaveBeenCalled()
+    expect(files.openDocument).not.toHaveBeenCalled()
   })
 
   it("uploads a document into the files tree, links it to the client and notifies the team", async () => {
-    const { service, clientDocuments, storage, files, notify } = buildService()
+    const { service, clientDocuments, files, notify } = buildService()
 
     const document = await service.uploadDocument(ctxA, {
       name: "photo.png",
@@ -598,9 +590,6 @@ describe("PortalService documents", () => {
       stream: new PassThrough(),
     })
 
-    expect(storage.upload).toHaveBeenCalledWith(expect.anything(), {
-      maxBytes: MAX_PORTAL_UPLOAD_BYTES,
-    })
     expect(files.createUploadedFile).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: "org_a",
@@ -610,7 +599,7 @@ describe("PortalService documents", () => {
       expect.objectContaining({
         name: "photo.png",
         sizeBytes: 11,
-        oid: 7,
+        stream: expect.anything(),
       })
     )
     expect(clientDocuments.createDocument).toHaveBeenCalledWith({
@@ -635,7 +624,7 @@ describe("PortalService documents", () => {
   })
 
   it("rejects an empty or oversized upload before touching storage", async () => {
-    const { service, storage } = buildService()
+    const { service, files } = buildService()
 
     await expect(
       service.uploadDocument(ctxA, {
@@ -653,27 +642,11 @@ describe("PortalService documents", () => {
       })
     ).rejects.toMatchObject({ code: "file_too_large" })
 
-    expect(storage.upload).not.toHaveBeenCalled()
-  })
-
-  it("maps a stream that exceeds the cap to the portal size error", async () => {
-    const { service, storage, files } = buildService()
-    storage.upload.mockRejectedValueOnce(
-      new MaxBytesExceededError(MAX_PORTAL_UPLOAD_BYTES)
-    )
-
-    await expect(
-      service.uploadDocument(ctxA, {
-        name: "spoofed.bin",
-        sizeBytes: 1,
-        stream: new PassThrough(),
-      })
-    ).rejects.toMatchObject({ code: "file_too_large" })
     expect(files.createUploadedFile).not.toHaveBeenCalled()
   })
 
   it("refuses an upload when the workspace storage quota is full", async () => {
-    const { service, files, storage } = buildService()
+    const { service, files } = buildService()
     files.usedBytes.mockResolvedValueOnce(1_000_000)
 
     await expect(
@@ -683,6 +656,6 @@ describe("PortalService documents", () => {
         stream: new PassThrough(),
       })
     ).rejects.toMatchObject({ code: "storage_quota_exceeded" })
-    expect(storage.upload).not.toHaveBeenCalled()
+    expect(files.createUploadedFile).not.toHaveBeenCalled()
   })
 })

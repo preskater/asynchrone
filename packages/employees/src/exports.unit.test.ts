@@ -15,10 +15,12 @@ const ctx: RequestContext = {
 
 function member(id: string, name: string) {
   return {
-    id: `member_${id}`,
     userId: id,
+    name,
+    email: `${id}@example.com`,
+    avatarUrl: undefined,
     role: "member",
-    user: { id, name, email: `${id}@example.com`, image: null },
+    clientId: null,
   }
 }
 

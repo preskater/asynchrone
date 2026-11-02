@@ -84,7 +84,18 @@ export class RepositoryIntegrationService {
   constructor(
     private readonly repo: RepositoryConnectionRepository,
     private readonly db: ProjectDb,
-    private readonly options: { appBaseUrl?: string } = {}
+    private readonly options: {
+      appBaseUrl?: string
+      /**
+       * The linked provider token Better Auth stored for this user. The
+       * identity database owns `account`, so a domain app reads it through
+       * Copilot's internal API.
+       */
+      accountToken?: (
+        userId: string,
+        provider: RepositoryProvider
+      ) => Promise<string | null>
+    } = {}
   ) {}
 
   private canManage(ctx: RequestContext) {
@@ -190,12 +201,9 @@ export class RepositoryIntegrationService {
         return null
       }
     }
-    const account = await this.db.account.findFirst({
-      where: { userId, providerId: provider, accessToken: { not: null } },
-      orderBy: { updatedAt: "desc" },
-      select: { accessToken: true },
-    })
-    return account?.accessToken ?? null
+    return this.options.accountToken
+      ? (await this.options.accountToken(userId, provider)) ?? null
+      : null
   }
 
   /** Like `resolveUserToken`, but throws a clear error when none is saved. */

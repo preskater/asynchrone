@@ -14,4 +14,6 @@ const pool = createPool(
 const adapter = new PrismaPg(pool, { disposeExternalPool: false })
 
 export const prisma = new PrismaClient({ adapter })
+export { Prisma } from "../lib/generated/prisma/client"
+export type { PrismaClient } from "../lib/generated/prisma/client"
 export { pool }

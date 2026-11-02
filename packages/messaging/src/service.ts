@@ -56,19 +56,43 @@ type MessageRow = Awaited<
 type ReplyRow = Awaited<ReturnType<MessagingRepository["listReplies"]>>[number]
 type TeamRow = Awaited<ReturnType<MessagingRepository["listTeams"]>>[number]
 
-/** What the owning app binds: today the files/database pool's large objects. */
+export interface MessagingAuditInput {
+  action: string
+  entityType: string
+  entityId: string
+  entityLabel?: string | null
+  before?: unknown
+  after?: unknown
+}
+
+export type MessagingAudit = (
+  ctx: RequestContext,
+  input: MessagingAuditInput
+) => Promise<void>
+
+/** What the owning app binds: the large objects and the audit writer. */
 export interface MessagingServiceDeps {
   storage: MessagingStorage
+  audit?: MessagingAudit
 }
 
 export class MessagingService {
   private readonly storage: MessagingStorage
+  private readonly audit?: MessagingAudit
 
   constructor(
     private readonly repo: MessagingRepository,
     deps: MessagingServiceDeps
   ) {
     this.storage = deps.storage
+    this.audit = deps.audit
+  }
+
+  private record(
+    ctx: RequestContext,
+    input: MessagingAuditInput
+  ): Promise<void> {
+    return this.audit ? this.audit(ctx, input) : Promise.resolve()
   }
 
   private mapConversation(row: ConversationRow): Conversation {
@@ -153,7 +177,7 @@ export class MessagingService {
     const now = Date.now()
     const presence: Record<string, Presence> = {}
     for (const entry of onlineUsers) {
-      const lastSeen = entry.user.lastSeenAt?.getTime()
+      const lastSeen = entry.lastSeenAt?.getTime()
       if (!lastSeen) continue
       const minutes = (now - lastSeen) / 60000
       presence[entry.userId] =
@@ -284,6 +308,13 @@ export class MessagingService {
       })
     }
     const message = this.mapMessage(row)
+    await this.record(ctx, {
+      action: "message.sent",
+      entityType: "message",
+      entityId: message.id,
+      entityLabel: message.body.slice(0, 120),
+      after: { conversationId: message.conversationId },
+    })
     return message
   }
 
@@ -301,6 +332,12 @@ export class MessagingService {
       edited: true,
     })
     const message = this.mapMessage(row)
+    await this.record(ctx, {
+      action: "message.edited",
+      entityType: "message",
+      entityId: message.id,
+      entityLabel: message.body.slice(0, 120),
+    })
     return message
   }
 
@@ -328,6 +365,11 @@ export class MessagingService {
           )
       )
     )
+    await this.record(ctx, {
+      action: "message.deleted",
+      entityType: "message",
+      entityId: id,
+    })
     return { id }
   }
 
@@ -341,7 +383,14 @@ export class MessagingService {
     if (!existing) throw new NotFoundError("Message")
     await this.repo.toggleReaction(messageId, input.emoji, ctx.userId)
     const row = await this.repo.findMessage(ctx.organizationId, messageId)
-    return this.mapMessage(row ?? existing)
+    const message = this.mapMessage(row ?? existing)
+    await this.record(ctx, {
+      action: "message.reaction.toggled",
+      entityType: "message",
+      entityId: messageId,
+      after: { emoji: input.emoji },
+    })
+    return message
   }
 
   async addThreadReply(
@@ -360,7 +409,14 @@ export class MessagingService {
       body: input.body,
       parentId: parent.id,
     })
-    return this.mapMessage(row)
+    const reply = this.mapMessage(row)
+    await this.record(ctx, {
+      action: "message.replied",
+      entityType: "message",
+      entityId: reply.id,
+      after: { parentId: reply.parentId ?? null },
+    })
+    return reply
   }
 
   async markRead(
@@ -392,18 +448,26 @@ export class MessagingService {
     )
     if (existing) return this.mapConversation(existing)
 
-    const member = await this.repo.findMemberName(
+    const memberName = await this.repo.findMemberName(
       ctx.organizationId,
       input.memberId
     )
-    const name = member?.user.name ?? ctx.userName
+    const name = memberName ?? ctx.userName
     const row = await this.repo.createConversation({
       organizationId: ctx.organizationId,
       kind: "dm",
       name,
       memberIds: [ctx.userId, input.memberId],
     })
-    return this.mapConversation(row)
+    const conversation = this.mapConversation(row)
+    await this.record(ctx, {
+      action: "conversation.created",
+      entityType: "conversation",
+      entityId: conversation.id,
+      entityLabel: conversation.name,
+      after: { kind: "dm" },
+    })
+    return conversation
   }
 
   async createChannel(

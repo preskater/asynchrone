@@ -1,6 +1,8 @@
 import { expect, type Page } from "@playwright/test"
 
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-identity"
+import { prisma as projectsPrisma } from "@workspace/db-projects"
+import { prisma as clientsPrisma } from "@workspace/db-clients"
 
 import { E2E_BASE_URL } from "./env"
 
@@ -77,7 +79,7 @@ export async function createProject(
     select: { userId: true },
   })
 
-  const project = await prisma.project.create({
+  const project = await projectsPrisma.project.create({
     data: {
       organizationId: organization.id,
       name,
@@ -107,7 +109,7 @@ export async function createClient(
   })
   if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
 
-  const client = await prisma.client.create({
+  const client = await clientsPrisma.client.create({
     data: { organizationId: organization.id, name, status: "active" },
     select: { id: true },
   })
@@ -119,7 +121,7 @@ export async function linkProjectToClient(
   projectId: string,
   clientId: string
 ): Promise<void> {
-  await prisma.project.update({ where: { id: projectId }, data: { clientId } })
+  await projectsPrisma.project.update({ where: { id: projectId }, data: { clientId } })
 }
 
 /**

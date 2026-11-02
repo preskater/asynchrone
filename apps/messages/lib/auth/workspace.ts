@@ -2,15 +2,10 @@ import { redirect } from "next/navigation"
 
 import { resolveWorkspace } from "@workspace/app-shell/resolve-workspace"
 import { appUrl } from "@workspace/contracts/server"
-import type { MemberRole } from "@workspace/contracts"
+import { IdentityClientError, type MemberRole } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
 import type { Entitlements } from "@workspace/organization/entitlements"
-import { parseRoles } from "@workspace/organization/roles"
-import {
-  IMPERSONATION_TTL_MS,
-  twoFactorRequiredByClaims,
-  type OidcSessionRecord,
-} from "@workspace/oidc"
+import { IMPERSONATION_TTL_MS, twoFactorRequiredByClaims } from "@workspace/oidc"
 
 import {
   resolveTokenOrganization,
@@ -18,25 +13,23 @@ import {
 } from "@/lib/auth/routing"
 import { readSessionRecord } from "@/lib/auth/session"
 import { env } from "@/lib/env"
+import { readWorkspace } from "@/lib/identity"
 import { sessionStore } from "@/lib/oidc"
-import {
-  getOrganizationShell,
-  isPortalMember,
-  listUserOrganizations,
-} from "@/lib/organization"
-import { prisma } from "@/lib/prisma"
 
 /** Everything the messages shell and its server actions need per request. */
 export interface MessagesWorkspace {
   /** The app-local OIDC session (host-only cookie). */
-  session: OidcSessionRecord
+  session: NonNullable<Awaited<ReturnType<typeof readSessionRecord>>>
   user: { id: string; name: string; email: string; image: string | null }
   organization: { id: string; name: string; slug: string }
   role: MemberRole
   /** Copilot session metadata: impersonation expiry and the banner. */
   impersonatedBy: string | null
   entitlements: Entitlements
+  storageQuotaBytes: number
   deletionScheduledAt: Date | null
+  /** Every organization the user can switch to. */
+  organizations: { id: string; name: string; slug: string }[]
 }
 
 /**
@@ -45,12 +38,13 @@ export interface MessagesWorkspace {
  * The shared resolver owns the contract (signed-out, no organization, portal
  * accounts, impersonation TTL); this module adds the relying-party rules:
  *
- * - the local session must still map to a Copilot sign-in;
+ * - the local session must still map to a live Copilot sign-in;
  * - the token's organization must be the route's organization;
  * - the organization's 2FA policy is enforced on the page as well as at the
  *   authorization endpoint.
  *
- * Anything else redirects, so no screen renders without a valid workspace.
+ * Identity data comes from Copilot's workspace API; this app owns no identity
+ * table and never reads the identity database.
  */
 export async function requireMessagesWorkspace({
   locale,
@@ -63,53 +57,54 @@ export async function requireMessagesWorkspace({
   returnTo: string
 }): Promise<MessagesWorkspace> {
   const session = await readSessionRecord()
+  const signInPath = `/${locale}/sign-in?returnTo=${encodeURIComponent(returnTo)}`
+  if (!session) redirect(signInPath)
 
-  const [user, copilotSession, memberships] = session
-    ? await Promise.all([
-        prisma.user.findUnique({
-          where: { id: session.userId },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            customerTwoFactorEnabled: true,
-          },
-        }),
-        prisma.session.findUnique({
-          where: { id: session.sid },
-          select: { impersonatedBy: true, createdAt: true },
-        }),
-        listUserOrganizations(session.userId),
-      ])
-    : [null, null, []]
+  let workspace
+  try {
+    workspace = await readWorkspace(session.sid, session.organizationId)
+  } catch (cause) {
+    if (cause instanceof IdentityClientError && cause.status === 404) {
+      await sessionStore.deleteBySid(session.sid)
+      redirect(signInPath)
+    }
+    throw cause
+  }
+  if (!workspace) {
+    await sessionStore.deleteBySid(session.sid)
+    redirect(signInPath)
+  }
 
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations.map(({ id, name, slug }) => ({
+    id,
+    name,
+    slug,
+  }))
 
   const resolution = await resolveWorkspace({
-    getSession: async () =>
-      session && user && copilotSession
-        ? {
-            user: {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              image: user.image,
-              twoFactorEnabled: Boolean(user.customerTwoFactorEnabled),
-            },
-            session: {
-              id: session.id,
-              activeOrganizationId: session.organizationId,
-              impersonatedBy: copilotSession.impersonatedBy,
-              createdAt: copilotSession.createdAt,
-            },
-          }
-        : null,
+    getSession: async () => ({
+      user: {
+        id: workspace.user.id,
+        name: workspace.user.name,
+        email: workspace.user.email,
+        image: workspace.user.image,
+        twoFactorEnabled: workspace.user.twoFactorEnabled,
+      },
+      session: {
+        id: workspace.session.id,
+        activeOrganizationId: session.organizationId,
+        impersonatedBy: workspace.session.impersonatedBy,
+        createdAt: workspace.session.createdAt,
+      },
+    }),
     listOrganizations: async () => organizations,
-    isPortalMember,
+    isPortalMember: async (organizationId, userId) =>
+      organizationId === workspace.organization.id &&
+      userId === workspace.user.id &&
+      workspace.member.clientId != null,
     endExpiredImpersonation: async () => {
       // An impersonation that outlived its TTL ends the local session too.
-      if (session) await sessionStore.deleteBySid(session.sid)
+      await sessionStore.deleteBySid(session.sid)
     },
     orgSlug,
     impersonationTtlMs: IMPERSONATION_TTL_MS,
@@ -121,11 +116,6 @@ export async function requireMessagesWorkspace({
 
   if (resolution.kind === "redirect") redirect(resolution.to)
 
-  if (!session || !user) {
-    // The resolver already redirects; this keeps the types honest.
-    redirect(`/${locale}/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
-  }
-
   // The access token is bound to one organization. Never serve another
   // organization's data with it: send the user back to the organization the
   // session was issued for (or re-authorize when that membership is gone).
@@ -133,7 +123,7 @@ export async function requireMessagesWorkspace({
     tokenOrganizationId: session.organizationId,
     routeOrganizationId: resolution.organization.id,
     organizations,
-    signInPath: `/${locale}/sign-in?returnTo=${encodeURIComponent(returnTo)}`,
+    signInPath,
     locale,
   })
   if (tokenOrganization.kind === "sign-out") {
@@ -142,28 +132,16 @@ export async function requireMessagesWorkspace({
   }
   if (tokenOrganization.kind === "redirect") redirect(tokenOrganization.to)
 
-  const member = await prisma.member.findFirst({
-    where: {
-      organizationId: resolution.organization.id,
-      userId: session.userId,
-    },
-    select: { role: true },
-  })
-  if (!member)
-    redirect(`/${locale}/sign-in?returnTo=${encodeURIComponent(returnTo)}`)
-
-  const shell = await getOrganizationShell(resolution.organization.id)
-  if (!shell) redirect(appUrl("copilot", { locale, path: "/onboarding" }))
-
-  const impersonatedBy = resolution.session.session.impersonatedBy ?? null
+  const impersonatedBy = workspace.session.impersonatedBy ?? null
   if (
     twoFactorEnrollmentRequired({
       // The current policy wins, but a token captured under an older policy
       // cannot lower the requirement: both must be satisfied.
       required:
-        shell.requireTwoFactor || twoFactorRequiredByClaims(session.claims),
-      entitled: shell.entitlements.requireTwoFactor,
-      enrolled: Boolean(user.customerTwoFactorEnabled),
+        workspace.requireTwoFactor ||
+        twoFactorRequiredByClaims(session.claims),
+      entitled: workspace.entitlements.requireTwoFactor,
+      enrolled: workspace.user.twoFactorEnabled,
       impersonated: Boolean(impersonatedBy),
     })
   ) {
@@ -179,24 +157,26 @@ export async function requireMessagesWorkspace({
   return {
     session,
     user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      image: user.image,
+      id: workspace.user.id,
+      name: workspace.user.name,
+      email: workspace.user.email,
+      image: workspace.user.image ?? null,
     },
     organization: {
-      id: resolution.organization.id,
-      slug: resolution.organization.slug,
-      name: resolution.organization.name ?? resolution.organization.slug,
+      id: workspace.organization.id,
+      slug: workspace.organization.slug,
+      name: workspace.organization.name,
     },
-    role: (parseRoles(member.role)[0] ?? "member") as MemberRole,
+    role: workspace.member.role,
     impersonatedBy,
-    entitlements: shell.entitlements,
-    deletionScheduledAt: shell.deletionScheduledAt,
+    entitlements: workspace.entitlements as unknown as Entitlements,
+    storageQuotaBytes: workspace.storageQuotaBytes,
+    deletionScheduledAt: workspace.deletionScheduledAt,
+    organizations,
   }
 }
 
-/** The actor context the messaging service authorizes against. */
+/** The actor context the messages services authorize against. */
 export function toRequestContext(workspace: MessagesWorkspace): RequestContext {
   return {
     userId: workspace.user.id,

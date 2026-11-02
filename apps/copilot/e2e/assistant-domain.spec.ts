@@ -25,8 +25,16 @@ test("an assistant domain action creates and reads a project over the internal A
   const suffix = randomUUID().slice(0, 8)
   const name = `Assistant project ${suffix}`
 
-  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  const client = new Client({
+    connectionString:
+      process.env.IDENTITY_DATABASE_URL ?? process.env.DATABASE_URL,
+  })
   await client.connect()
+  const projects = new Client({
+    connectionString:
+      process.env.PROJECTS_DATABASE_URL ?? process.env.DATABASE_URL,
+  })
+  await projects.connect()
   let projectId: string | undefined
   try {
     const owner = await client.query<{
@@ -148,8 +156,9 @@ test("an assistant domain action creates and reads a project over the internal A
     expect(foreign.status).toBe(404)
   } finally {
     if (projectId) {
-      await client.query(`delete from project where id = $1`, [projectId])
+      await projects.query(`delete from project where id = $1`, [projectId])
     }
     await client.end()
+    await projects.end()
   }
 })

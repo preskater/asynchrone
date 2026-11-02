@@ -18,7 +18,7 @@ export default createNextConfig({
     "@workspace/audit",
     "@workspace/clients",
     "@workspace/contracts",
-    "@workspace/db",
+    "@workspace/db-clients",
     "@workspace/db-core",
     "@workspace/notifications",
     "@workspace/oidc",

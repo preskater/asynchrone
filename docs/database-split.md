@@ -112,7 +112,7 @@ short.
 
 - Remove the monolith database and its migrations in a later cleanup PR.
 - The control tower is already cut over to `asynchrone_control_tower`
-  (see [control-tower-database.md](./control-tower-database.md)); #186 starts
-  Copilot reading `@workspace/db-identity`; #187–#190 add the internal APIs and
-  sagas.
+  (see [control-tower-database.md](./control-tower-database.md)); Copilot reads
+  `@workspace/db-identity` and every domain app reads its own package (#171).
+  The internal APIs, audit fan-out and export/deletion sagas are live.
 - Do not delete the snapshot until the rollback window closes.
