@@ -76,6 +76,12 @@ const client = await prisma.oauthClient.upsert({
   where: { clientId: E2E_OAUTH_CLIENT_ID },
   update: {
     clientSecret: hashClientSecret(E2E_OAUTH_CLIENT_SECRET),
+    scopes: [...APP_USER_SCOPES],
+    clientCredentialsScopes: [
+      SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
+      SERVICE_SCOPES.notificationsWrite,
+    ],
     redirectUris: [`${E2E_MESSAGES_URL}/api/auth/callback`],
     postLogoutRedirectUris: [E2E_MESSAGES_URL],
     backchannelLogoutUri: `${E2E_MESSAGES_URL}/api/auth/backchannel-logout`,

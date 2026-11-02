@@ -20,24 +20,6 @@ import {
   toggleReactionSchema,
 } from "@workspace/messaging/schemas"
 
-export const listMessagingAction = withAction(async () => {
-  const ctx = await getRequestContext()
-  return messagingService.list(ctx)
-})
-
-export const listMessagesAction = withAction(
-  async (conversationId: string, cursor?: string | null) => {
-    const ctx = await getRequestContext()
-    return messagingService.listMessages(ctx, conversationId, { cursor })
-  }
-)
-
-export const touchPresenceAction = withAction(async () => {
-  const ctx = await getRequestContext()
-  await messagingService.touchPresence(ctx)
-  return { ok: true }
-})
-
 export const sendMessageAction = withAction(async (input: unknown) => {
   const ctx = await getRequestContext()
   const parsed = await parseLocalized(sendMessageSchema, input)

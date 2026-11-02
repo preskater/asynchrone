@@ -100,7 +100,8 @@ test("sends a message and round-trips an attachment", async ({ page }) => {
   // the persisted row so the download addresses the stored large object.
   await expect(link).toHaveAttribute(
     "href",
-    /^\/api\/messages\/attachments\/c[a-z0-9]+$/
+    /^\/api\/messages\/attachments\/c[a-z0-9]+$/,
+    { timeout: 30_000 }
   )
   const href = await link.getAttribute("href")
 

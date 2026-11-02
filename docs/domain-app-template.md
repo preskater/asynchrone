@@ -206,6 +206,12 @@ still render the moved screens.
 - Identity reads (`member`, `user`, `account`, `session`) go through
   `IdentityClient`; the member directory, workspace gate, presence and portal
   access are all `/internal/v1/*` calls.
+- Polling reads and other background requests go through route handlers with a
+  plain `fetch`, never server actions. A server-action response applies an RSC
+  payload through the client router: it re-renders the route (overwriting the
+  client store with fresh `initialData`) and can abort an in-flight navigation,
+  which broke the organization-switch handoff in the messages app (#171).
+  Server actions are for mutations only.
 - Meeting settings render at `/{locale}/{orgSlug}/calendars/settings`; Copilot's
   organization settings tab links there.
 - Repository webhook delivery (`/api/webhooks/repositories/:id`) and the sync UI
