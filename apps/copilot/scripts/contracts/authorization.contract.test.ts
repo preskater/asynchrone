@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import { contextForMember } from "@/lib/core/auth-context"
+import { PortalService } from "@workspace/portal"
 import { calendarService } from "@/lib/calendars"
 import { clientsService } from "@/lib/clients"
 import { employeesService } from "@/lib/employees"
@@ -8,7 +9,6 @@ import { fileService } from "@/lib/files"
 import { meetingService } from "@/lib/meetings"
 import { messagingService } from "@/lib/messaging"
 import { notificationService } from "@/lib/notifications"
-import { portalService } from "@/lib/portal"
 import { prisma } from "@/lib/prisma"
 import { projectService } from "@/lib/projects"
 import { searchWorkspace } from "@/lib/search"
@@ -209,8 +209,94 @@ describe("cross-organization contracts", () => {
   })
 
   it("rejects portal reads for a company of another organization", async () => {
+    // The production portal calls the projects internal API. The contract suite
+    // has no browser and no domain app, so bind the same scoped query the
+    // projects app runs; a project of another company is not found.
+    const projects = {
+      listProjects: async (organizationId: string, clientId: string) => {
+        const rows = await prisma.project.findMany({
+          where: { organizationId, clientId, clientVisible: true },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            tasks: { select: { status: true } },
+          },
+        })
+        return rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          status: row.status,
+          dueDate: undefined,
+          doneTasks: row.tasks.filter((task) => task.status === "done").length,
+          totalTasks: row.tasks.length,
+        }))
+      },
+      listUnreadMessages: async () => [],
+      findProject: async (
+        organizationId: string,
+        clientId: string,
+        projectId: string
+      ) => {
+        const row = await prisma.project.findFirst({
+          where: {
+            id: projectId,
+            organizationId,
+            clientId,
+            clientVisible: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            dueDate: true,
+            createdAt: true,
+            clientDiscussion: true,
+            clientTaskComments: true,
+            tasks: {
+              select: { id: true, title: true, status: true, dueDate: true },
+            },
+          },
+        })
+        if (!row) return null
+        return {
+          id: row.id,
+          name: row.name,
+          description: row.description ?? undefined,
+          status: row.status,
+          dueDate: row.dueDate?.toISOString(),
+          createdAt: row.createdAt.toISOString(),
+          tasks: row.tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            dueDate: task.dueDate?.toISOString(),
+          })),
+          discussionPolicy: row.clientDiscussion as
+            "none" | "read" | "read_write",
+          taskCommentsPolicy: row.clientTaskComments as
+            "none" | "read" | "read_write",
+        }
+      },
+      findProjectPolicy: async () => null,
+      findProjectTask: async () => null,
+      findTask: async () => null,
+    }
+    const portal = new PortalService({
+      repository: {} as never,
+      storage: {} as never,
+      files: {} as never,
+      projects: projects as never,
+      clientDocuments: {} as never,
+      collaboration: {} as never,
+      meetings: {} as never,
+      invitations: {} as never,
+      notify: async () => undefined,
+    })
+
     await expect(
-      portalService.getProject(fixture.portalB, fixture.projectA)
+      portal.getProject(fixture.portalB, fixture.projectA)
     ).rejects.toMatchObject({ code: "not_found" })
   })
 

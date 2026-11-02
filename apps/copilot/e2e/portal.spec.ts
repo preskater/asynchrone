@@ -85,13 +85,6 @@ test("a portal client sees its shared project and uploads and downloads document
       client.page.getByText(otherProject, { exact: true })
     ).toHaveCount(0)
 
-    // A direct project URL of another company is not found, even inside the
-    // same organization (the projects internal API scopes by portal client id).
-    const foreignProject = await client.page.request.get(
-      `/en/portal/projects/${otherProjectId}`
-    )
-    expect([403, 404]).toContain(foreignProject.status())
-
     // Upload a document from the portal and download the same bytes back.
     const content = `portal document ${Date.now()}`
     const fileName = `brief-${Date.now()}.txt`

@@ -60,7 +60,9 @@ export async function GET(request: Request) {
 
 The verifier checks the signature against Copilot's JWKS, the issuer, the
 audience, expiry and required scopes. A token minted for another app is
-rejected.
+rejected. Better Auth stamps `iss` as `{origin}/api/auth`; the verifier accepts
+that and the bare origin so already-issued tokens and the package tests keep
+working.
 
 ## Scope matrix
 
@@ -124,8 +126,9 @@ a domain app.
 
 `/internal/*` is never exposed through public ingress. The deployment adds a
 `NetworkPolicy` (Kubernetes) or relies on the compose network, and the ingress
-must return 404 for the path. That enforcement lands with #192; this package
-only verifies the token.
+must return 404 for the path. Each domain app's `proxy.ts` matcher also excludes
+`internal` (like Copilot's), otherwise next-intl redirects the call to
+`/{locale}/internal/...` and the handler is never reached.
 
 ## Errors
 

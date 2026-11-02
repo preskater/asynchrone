@@ -34,10 +34,14 @@ export class ServiceTokenVerifier {
   readonly issuer: string
   readonly audience: string
   private readonly keySet: VerificationKey
+  private readonly acceptedIssuers: string[]
 
   constructor(config: ServiceTokenVerifierConfig) {
     this.issuer = ensureIssuer(config.issuer)
     this.audience = config.audience
+    // Better Auth's OAuth provider stamps `iss` as `{origin}/api/auth`; older
+    // tokens and the package tests use the bare origin. Accept both.
+    this.acceptedIssuers = [this.issuer, `${this.issuer}/api/auth`]
     this.keySet =
       config.keySet ??
       createRemoteJWKSet(
@@ -52,7 +56,7 @@ export class ServiceTokenVerifier {
     let payload: unknown
     try {
       const result = await jwtVerify(token, this.keySet, {
-        issuer: this.issuer,
+        issuer: this.acceptedIssuers,
         audience: this.audience,
       })
       payload = result.payload

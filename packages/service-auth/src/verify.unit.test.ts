@@ -15,6 +15,7 @@ let sign: (options?: {
   audience?: string
   scope?: string
   expires?: string
+  issuer?: string
 }) => Promise<string>
 let verifier: ServiceTokenVerifier
 
@@ -30,10 +31,11 @@ beforeAll(async () => {
     audience: tokenAudience = audience,
     scope = SERVICE_SCOPES.identityRead,
     expires = "5m",
+    issuer: tokenIssuer = issuer,
   } = {}) =>
     new SignJWT({ scope, client_id: "projects" })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" })
-      .setIssuer(issuer)
+      .setIssuer(tokenIssuer)
       .setAudience(tokenAudience)
       .setSubject("projects")
       .setIssuedAt()
@@ -50,6 +52,13 @@ describe("service token verifier", () => {
       requiredScopes: [SERVICE_SCOPES.identityRead],
     })
     expect(claims).toMatchObject({ sub: "projects", aud: audience })
+  })
+
+  it("accepts Better Auth's /api/auth issuer", async () => {
+    const token = await sign({ issuer: `${issuer}/api/auth` })
+    await expect(verifier.verify(token)).resolves.toMatchObject({
+      iss: `${issuer}/api/auth`,
+    })
   })
 
   it("rejects a token for another app", async () => {

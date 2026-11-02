@@ -41,7 +41,7 @@ function portalContext(
     organizationName: overrides.organizationName ?? "",
     organizationSlug: overrides.organizationSlug ?? "",
     clientId,
-    clientName: overrides.clientName ?? "",
+    clientName: overrides.clientName || "Portal client",
   }
 }
 

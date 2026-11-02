@@ -89,8 +89,9 @@ test("an assistant domain action creates and reads a project over the internal A
         }),
       }
     )
-    expect(create.status).toBe(200)
-    const created = (await create.json()) as { data: { id: string } }
+    const createBody = await create.text()
+    expect(create.status, createBody).toBe(200)
+    const created = JSON.parse(createBody) as { data: { id: string } }
     projectId = created.data.id
 
     // Retrying the same key replays the original result instead of creating a

@@ -16,12 +16,20 @@ import {
 const isCi = Boolean(process.env.CI)
 const reuseExistingServer = !isCi
 
+const domainAppUrls = Object.fromEntries(
+  E2E_DOMAIN_APPS.map((app) => [
+    `${app.key.toUpperCase()}_APP_URL`,
+    `http://localhost:${app.port}`,
+  ])
+)
+
 const copilotEnv = {
   BETTER_AUTH_URL: E2E_BASE_URL,
   E2E_AUTH_RATE_LIMIT_DISABLED: "1",
   COPILOT_APP_URL: E2E_BASE_URL,
   COPILOT_OAUTH_CLIENT_ID: E2E_COPILOT_OAUTH_CLIENT_ID,
   COPILOT_OAUTH_CLIENT_SECRET: E2E_COPILOT_OAUTH_CLIENT_SECRET,
+  ...domainAppUrls,
 }
 
 const domainServers = E2E_DOMAIN_APPS.map((app) => ({
