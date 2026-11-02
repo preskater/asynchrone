@@ -12,7 +12,6 @@ import type { PortalMeetingsData } from "@workspace/meetings/types"
 import type { ProjectMessageData } from "@workspace/projects/thread"
 import type { TaskCommentData } from "@workspace/projects/task-comments"
 import type { PortalPolicy } from "@workspace/projects/types"
-import { MaxBytesExceededError } from "@workspace/storage"
 
 import { requireInternalMember, requirePortalManager } from "./context"
 import type {
@@ -23,7 +22,6 @@ import type {
   PortalMeetings,
   PortalNotify,
   PortalProjects,
-  PortalStorage,
 } from "./deps"
 import type { PortalRepository } from "./repository"
 import type { InvitePortalUserInput } from "./schemas"
@@ -42,7 +40,6 @@ export const MAX_PORTAL_UPLOAD_BYTES = 25 * 1024 * 1024
 
 export interface PortalServiceDeps {
   repository: PortalRepository
-  storage: PortalStorage
   files: PortalFiles
   projects: PortalProjects
   clientDocuments: PortalClientDocuments
@@ -304,17 +301,14 @@ export class PortalService {
       ctx.clientId,
       fileId
     )
-    if (!link || link.trashed || link.oid === null) {
+    if (!link || link.trashed) {
       throw new NotFoundError("Document")
     }
 
-    const { size, stream } = await this.deps.storage.open(Number(link.oid))
-    return {
+    return this.deps.files.openDocument(ctx.organizationId, fileId, {
       name: link.name,
-      mimeType: link.mimeType ?? undefined,
-      size,
-      stream,
-    }
+      mimeType: link.mimeType,
+    })
   }
 
   /**
@@ -351,21 +345,6 @@ export class PortalService {
       })
     }
 
-    let uploaded
-    try {
-      uploaded = await this.deps.storage.upload(input.stream, {
-        maxBytes: MAX_PORTAL_UPLOAD_BYTES,
-      })
-    } catch (error) {
-      if (error instanceof MaxBytesExceededError) {
-        throw new ValidationError("The file is too large.", undefined, {
-          code: "file_too_large",
-          params: { max: String(MAX_PORTAL_UPLOAD_BYTES / (1024 * 1024)) },
-        })
-      }
-      throw error
-    }
-
     const fileCtx: RequestContext = {
       userId: ctx.userId,
       userName: ctx.userName,
@@ -376,10 +355,9 @@ export class PortalService {
     const file = await this.deps.files.createUploadedFile(fileCtx, {
       name: input.name,
       parentId: null,
-      sizeBytes: uploaded.size,
+      sizeBytes: input.sizeBytes,
       mimeType: input.mimeType,
-      oid: uploaded.oid,
-      sha256: uploaded.sha256,
+      stream: input.stream,
     })
 
     const link = await this.deps.clientDocuments.createDocument({
@@ -387,7 +365,7 @@ export class PortalService {
       clientId: ctx.clientId,
       fileId: file.id,
       name: input.name,
-      sizeBytes: uploaded.size,
+      sizeBytes: input.sizeBytes,
       addedBy: ctx.userId,
       addedByName: ctx.userName,
       addedByEmail: ctx.userEmail,
@@ -400,7 +378,7 @@ export class PortalService {
       id: link.id,
       fileId: file.id,
       name: input.name,
-      sizeBytes: uploaded.size,
+      sizeBytes: input.sizeBytes,
       createdAt: link.createdAt,
       addedByName: ctx.userName,
       isNew: true,

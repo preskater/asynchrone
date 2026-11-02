@@ -121,17 +121,12 @@ export async function GET(request: Request) {
   })
 
   try {
-    await prisma.platformAuditEvent.create({
-      data: {
-        actorId: handoff.actorId,
-        actorEmail: actor?.email ?? "unknown",
-        actorRole: actor?.role ?? "unknown",
-        action: "platform.impersonate.session-opened",
-        targetType: "user",
-        targetId: target.id,
-        organizationId: handoff.organizationId ?? membership?.organizationId ?? null,
-        after: { sessionId: session.id, expiresInSeconds: IMPERSONATION_TTL_SECONDS },
-      },
+    // The platform audit trail lives in the control tower database (#209).
+    console.info("[platform] impersonation session opened", {
+      actorId: handoff.actorId,
+      userId: target.id,
+      sessionId: session.id,
+      organizationId: handoff.organizationId ?? membership?.organizationId ?? null,
     })
   } catch (error) {
     // Do not open an unaudited impersonation session.

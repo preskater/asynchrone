@@ -21,17 +21,30 @@ import type {
 } from "./types"
 
 /**
- * The server actions the messaging screens call. Copilot passes its
- * `actions/messaging.ts` exports; a domain app passes its own. Every action
- * returns an `ActionResult` so optimistic updates can roll back on failure.
+ * The read side of the screens: the polls and the conversation pages.
+ *
+ * These are deliberately *not* server actions. A server-action response applies
+ * an RSC payload through the client router, which re-renders the route (the
+ * layout passes fresh `initialData`, resetting the client store) and can abort
+ * an in-flight navigation — the organization-switch handoff left the app while
+ * a poll was landing (#171). Reads therefore go through route handlers with a
+ * plain `fetch` and return their data directly, throwing on failure.
  */
-export interface MessagingActions {
-  listMessagingAction: () => Promise<ActionResult<MessagingData>>
-  listMessagesAction: (
+export interface MessagingLive {
+  poll: () => Promise<MessagingData>
+  pollMessages: (
     conversationId: string,
     cursor?: string | null
-  ) => Promise<ActionResult<Page<Message>>>
-  touchPresenceAction: () => Promise<ActionResult<{ ok: boolean }>>
+  ) => Promise<Page<Message>>
+  touchPresence: () => Promise<void>
+}
+
+/**
+ * The server actions the messaging screens call for mutations. The messages app
+ * passes its `actions/messaging.ts` exports. Every action returns an
+ * `ActionResult` so optimistic updates can roll back on failure.
+ */
+export interface MessagingActions {
   sendMessageAction: (input: SendMessageInput) => Promise<ActionResult<Message>>
   editMessageAction: (
     id: string,
@@ -117,6 +130,7 @@ const MessagingContext = React.createContext<MessagingStore | null>(null)
 export function MessagingProvider({
   children,
   actions,
+  live,
   initialData,
   currentUserId,
   organizationId,
@@ -124,6 +138,7 @@ export function MessagingProvider({
 }: {
   children: React.ReactNode
   actions: MessagingActions
+  live: MessagingLive
   initialData: MessagingData
   currentUserId: string
   organizationId: string
@@ -169,6 +184,11 @@ export function MessagingProvider({
             Math.min(oldest, new Date(message.createdAt).getTime()),
           Number.POSITIVE_INFINITY
         )
+        const newestFetched = fetched.reduce(
+          (newest, message) =>
+            Math.max(newest, new Date(message.createdAt).getTime()),
+          Number.NEGATIVE_INFINITY
+        )
         const others = prev.filter(
           (message) => message.conversationId !== conversationId
         )
@@ -183,13 +203,23 @@ export function MessagingProvider({
             !message.id.startsWith("m_") &&
             new Date(message.createdAt).getTime() < oldestFetched
         )
+        // A sent message the snapshot predates: the read started before this
+        // row was persisted, so keeping it is the only correct outcome — the
+        // next poll includes it anyway (a stale response used to drop it).
+        const newer = prev.filter(
+          (message) =>
+            message.conversationId === conversationId &&
+            !fetchedIds.has(message.id) &&
+            !message.id.startsWith("m_") &&
+            new Date(message.createdAt).getTime() > newestFetched
+        )
         const optimistic = prev.filter(
           (message) =>
             message.conversationId === conversationId &&
             message.id.startsWith("m_") &&
             !fetchedIds.has(message.id)
         )
-        return [...others, ...older, ...fetched, ...optimistic]
+        return [...others, ...older, ...fetched, ...newer, ...optimistic]
       })
     },
     []
@@ -205,10 +235,9 @@ export function MessagingProvider({
         return
       }
       setMessagesLoading((prev) => ({ ...prev, [conversationId]: true }))
-      void actions
-        .listMessagesAction(conversationId)
-        .then((result) => {
-          const page = unwrap(result)
+      void live
+        .pollMessages(conversationId)
+        .then((page) => {
           mergeConversation(conversationId, page.items)
           setCursors((prev) => ({
             ...prev,
@@ -223,7 +252,7 @@ export function MessagingProvider({
           }))
         )
     },
-    [actions, cursors, messagesLoading, mergeConversation]
+    [live, cursors, messagesLoading, mergeConversation]
   )
 
   const loadOlderMessages = React.useCallback(
@@ -231,10 +260,9 @@ export function MessagingProvider({
       const cursor = cursors[conversationId]
       if (!cursor || messagesLoading[conversationId]) return
       setMessagesLoading((prev) => ({ ...prev, [conversationId]: true }))
-      void actions
-        .listMessagesAction(conversationId, cursor)
-        .then((result) => {
-          const page = unwrap(result)
+      void live
+        .pollMessages(conversationId, cursor)
+        .then((page) => {
           setMessages((prev) => {
             const existing = new Set(
               prev
@@ -259,17 +287,16 @@ export function MessagingProvider({
           }))
         )
     },
-    [actions, cursors, messagesLoading]
+    [live, cursors, messagesLoading]
   )
 
   React.useEffect(() => {
     let active = true
     const refetch = () => {
-      void actions
-        .listMessagingAction()
-        .then((result) => {
+      void live
+        .poll()
+        .then((data) => {
           if (!active) return
-          const data = unwrap(result)
           setConversations(data.conversations)
           setTeams(data.teams)
           setPresence(data.presence)
@@ -278,11 +305,10 @@ export function MessagingProvider({
         .catch(() => {})
       const conversationId = activeConversationRef.current
       if (conversationId) {
-        void actions
-          .listMessagesAction(conversationId)
-          .then((result) => {
+        void live
+          .pollMessages(conversationId)
+          .then((page) => {
             if (!active) return
-            const page = unwrap(result)
             mergeConversation(conversationId, page.items)
           })
           .catch(() => {})
@@ -300,9 +326,9 @@ export function MessagingProvider({
     // Presence is coarse: write at most once every 30s, not on every poll.
     const presence = window.setInterval(() => {
       if (document.visibilityState === "visible")
-        void actions.touchPresenceAction()
+        void live.touchPresence().catch(() => {})
     }, 30000)
-    void actions.touchPresenceAction()
+    void live.touchPresence().catch(() => {})
 
     return () => {
       active = false
@@ -311,7 +337,7 @@ export function MessagingProvider({
       window.removeEventListener("focus", onVisible)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [actions, mergeConversation])
+  }, [live, mergeConversation])
 
   const store = React.useMemo<MessagingStore>(() => {
     const getMember = (id?: string) =>

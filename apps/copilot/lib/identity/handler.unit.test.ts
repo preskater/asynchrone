@@ -36,6 +36,15 @@ const repository: IdentityRepository = {
     email: "ada@example.com",
   })),
   getEntitlements: vi.fn(async () => entitlements),
+  getWorkspace: vi.fn(async () => null),
+  addMember: vi.fn(async () => members[0]!),
+  updateMemberRole: vi.fn(async () => members[0]!),
+  removeMember: vi.fn(async () => ({ id: "user_1" })),
+  getPortalAccess: vi.fn(async () => ({ members: [], invites: [] })),
+  getAppearance: vi.fn(async () => ({ metadata: null })),
+  listPresence: vi.fn(async () => []),
+  getIntegrationToken: vi.fn(async () => ({ accessToken: null })),
+  touchPresence: vi.fn(async () => ({ at: new Date() })),
 }
 
 async function call(

@@ -2,7 +2,7 @@ import type { AssistantConversationSummary } from "@workspace/ai/conversations"
 import type { AssistantPart, ChatMessage } from "@workspace/ai/chat"
 import type { RequestContext } from "@workspace/core/context"
 import { NotFoundError } from "@workspace/core/errors"
-import type { Prisma } from "@workspace/db"
+import type { Prisma } from "@workspace/db-identity"
 
 import {
   MAX_HISTORY_MESSAGES,

@@ -1,3 +1,5 @@
+import { recordUserAudit } from "@/lib/audit"
+import { memberDirectory } from "@/lib/identity"
 import { prisma } from "@/lib/prisma"
 import { notificationService } from "@/lib/projects"
 
@@ -15,6 +17,8 @@ import {
 const dependencies: TaskCommentDependencies = {
   db: prisma,
   notify: (args) => notificationService.notify(args),
+  directory: memberDirectory,
+  audit: recordUserAudit,
 }
 
 export const listTaskComments = (organizationId: string, taskId: string) =>

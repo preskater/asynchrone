@@ -1,11 +1,14 @@
 import { NotFoundError } from "@workspace/core/errors"
+import type { MemberDirectoryPort } from "@workspace/organization/directory"
 
 import type { ProjectDb } from "./db"
-import type { ProjectNotify } from "./ports"
+import type { ProjectAudit, ProjectNotify } from "./ports"
 
 export interface TaskCommentDependencies {
   db: ProjectDb
   notify: ProjectNotify
+  directory: MemberDirectoryPort
+  audit?: ProjectAudit
 }
 
 export const TASK_COMMENT_MAX_LENGTH = 4000
@@ -29,21 +32,22 @@ type CommentRow = {
 }
 
 async function namesByIds(
-  db: ProjectDb,
+  directory: MemberDirectoryPort,
+  organizationId: string,
   ids: string[]
 ): Promise<Map<string, string>> {
   const nameById = new Map<string, string>()
   if (ids.length === 0) return nameById
-  const users = await db.user.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true },
-  })
-  for (const user of users) nameById.set(user.id, user.name)
+  const members = await directory.list(organizationId)
+  const wanted = new Set(ids)
+  for (const member of members) {
+    if (wanted.has(member.userId)) nameById.set(member.userId, member.name)
+  }
   return nameById
 }
 
 export async function listTaskComments(
-  { db }: TaskCommentDependencies,
+  { db, directory }: TaskCommentDependencies,
   organizationId: string,
   taskId: string
 ): Promise<TaskCommentData[]> {
@@ -56,7 +60,7 @@ export async function listTaskComments(
       rows.filter((row) => !row.authorName).map((row) => row.authorId)
     ),
   ]
-  const nameById = await namesByIds(db, missingNames)
+  const nameById = await namesByIds(directory, organizationId, missingNames)
   return rows.map((row) => mapComment(row, nameById))
 }
 
@@ -79,7 +83,7 @@ function mapComment(
  * project members so the team sees them in the header bell.
  */
 export async function createTaskComment(
-  { db, notify }: TaskCommentDependencies,
+  { db, notify, directory, audit }: TaskCommentDependencies,
   input: {
     organizationId: string
     taskId: string
@@ -111,16 +115,35 @@ export async function createTaskComment(
     },
   })
 
+  await audit?.(
+    {
+      organizationId: input.organizationId,
+      userId: input.authorId,
+      userName: input.authorName ?? "Client",
+      userEmail: "",
+    },
+    {
+      action: "task.comment.added",
+      entityType: "task",
+      entityId: input.taskId,
+      entityLabel: input.body.slice(0, 120),
+      after: { authorKind: input.authorKind },
+    }
+  )
   if (input.authorKind === "client") {
-    await notifyTeamOfClientComment({ db, notify }, input, task)
+    await notifyTeamOfClientComment({ db, notify, directory }, input, task)
   }
 
-  const nameById = await namesByIds(db, row.authorName ? [] : [row.authorId])
+  const nameById = await namesByIds(
+    directory,
+    input.organizationId,
+    row.authorName ? [] : [row.authorId]
+  )
   return mapComment(row, nameById)
 }
 
 async function notifyTeamOfClientComment(
-  { db, notify }: TaskCommentDependencies,
+  { db, notify, directory }: TaskCommentDependencies,
   input: {
     organizationId: string
     authorId: string
@@ -141,14 +164,12 @@ async function notifyTeamOfClientComment(
   })
   if (members.length === 0) return
 
-  const internalMembers = await db.member.findMany({
-    where: {
-      organizationId: input.organizationId,
-      userId: { in: members.map((member) => member.userId) },
-      clientId: null,
-    },
-    select: { userId: true },
-  })
+  const memberIds = new Set(members.map((member) => member.userId))
+  const internalMembers = (await directory.list(input.organizationId))
+    .filter(
+      (member) => member.clientId == null && memberIds.has(member.userId)
+    )
+    .map((member) => ({ userId: member.userId }))
 
   const preview =
     input.body.length > 120 ? `${input.body.slice(0, 117)}...` : input.body

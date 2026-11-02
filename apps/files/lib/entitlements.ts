@@ -1,31 +1,31 @@
-import { createOrganizationEntitlements } from "@workspace/organization/entitlements"
+import { hasEntitlement, upgradeRequired, type Entitlement } from "@workspace/organization/entitlements"
 
-import { planForOrganization } from "@workspace/billing/plans"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /**
- * App-side wiring for the shared organization plan checks: the package owns the
- * rules, this module binds them to the billing plan reader and the database the
- * app already uses.
+ * The files app's plan checks. Copilot resolves the plan and returns the
+ * enforced entitlements; this app owns no billing row.
  */
-const entitlements = createOrganizationEntitlements({
-  db: prisma,
-  planForOrganization,
-})
+export async function requireEntitlement(
+  organizationId: string,
+  entitlement: Entitlement
+): Promise<void> {
+  const entitlements = await identity.getEntitlements(organizationId)
+  if (!hasEntitlement(entitlements as never, entitlement)) {
+    throw upgradeRequired(entitlement)
+  }
+}
 
-export const {
-  resolvePlan,
-  getOrganizationPlan,
-  getOrganizationEntitlements,
-  can,
-  requireEntitlement,
-  seatsFull,
-} = entitlements
+export async function storageQuotaBytes(
+  organizationId: string
+): Promise<number> {
+  const entitlements = await identity.getEntitlements(organizationId)
+  return entitlements.storageBytes
+}
 
 export {
   entitlementsFor,
   hasEntitlement,
-  seatLimitReached,
   upgradeRequired,
   type Entitlement,
   type Entitlements,

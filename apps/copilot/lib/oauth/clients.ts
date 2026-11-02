@@ -50,6 +50,23 @@ const DOMAIN_KEYS = [
   "employees",
 ] as const
 
+/**
+ * Cross-domain calls a domain app makes on behalf of its own user. The target
+ * app still applies the delegated context; this list only decides which
+ * audiences and scopes the app's client credentials may request.
+ */
+const CROSS_DOMAIN_CALLS: Record<
+  (typeof DOMAIN_KEYS)[number],
+  { audiences: (typeof DOMAIN_KEYS)[number][]; write: boolean }
+> = {
+  projects: { audiences: [], write: false },
+  calendars: { audiences: ["projects"], write: false },
+  files: { audiences: [], write: false },
+  messages: { audiences: [], write: false },
+  clients: { audiences: ["projects", "files"], write: true },
+  employees: { audiences: ["projects", "clients"], write: true },
+}
+
 function clientId(key: AppKey): string {
   return `asynchrone-${key}`
 }
@@ -65,6 +82,7 @@ function userClient(
 ): OAuthClientManifestEntry {
   const origin = appOrigin(key)
   const client = envNames(key)
+  const crossDomain = CROSS_DOMAIN_CALLS[key]
   return {
     key,
     clientId: clientId(key),
@@ -79,9 +97,20 @@ function userClient(
     scopes: [...APP_USER_SCOPES],
     clientCredentialsScopes: [
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
+      ...(crossDomain.audiences.length > 0
+        ? [
+            SERVICE_SCOPES.domainRead,
+            ...(crossDomain.write ? [SERVICE_SCOPES.domainWrite] : []),
+          ]
+        : []),
     ],
-    resources: [internalAudience(key), internalAudience("copilot")],
+    resources: [
+      internalAudience(key),
+      internalAudience("copilot"),
+      ...crossDomain.audiences.map((target) => internalAudience(target)),
+    ],
     skipConsent: true,
     enableEndSession: true,
     tokenEndpointAuthMethod: "client_secret_basic",

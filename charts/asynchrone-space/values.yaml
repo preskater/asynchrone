@@ -10,24 +10,24 @@
 #                                           BETTER_AUTH_SECRET, CRON_SECRET, optional
 #                                           OPENAI_API_KEY, RESEND_API_KEY,
 #                                           GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET
-#   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as Copilot until
-#                                           #190), PROJECTS_OAUTH_CLIENT_ID,
+#   asynchrone-space-projects-secrets:      PROJECTS_DATABASE_URL (its own database),
+#                                           PROJECTS_OAUTH_CLIENT_ID,
 #                                           PROJECTS_OAUTH_CLIENT_SECRET, CRON_SECRET
 #                                           (the projects app owns repository-sync)
-#   asynchrone-space-calendars-secrets:     DATABASE_URL (the same database as Copilot until
-#                                           #190), CALENDARS_OAUTH_CLIENT_ID,
+#   asynchrone-space-calendars-secrets:     CALENDARS_DATABASE_URL (its own database),
+#                                           CALENDARS_OAUTH_CLIENT_ID,
 #                                           CALENDARS_OAUTH_CLIENT_SECRET
-#   asynchrone-space-files-secrets:         DATABASE_URL (the same database as Copilot until
-#                                           #190), CRON_SECRET, FILES_OAUTH_CLIENT_ID,
+#   asynchrone-space-files-secrets:         FILES_DATABASE_URL (its own database),
+#                                           CRON_SECRET, FILES_OAUTH_CLIENT_ID,
 #                                           FILES_OAUTH_CLIENT_SECRET
-#   asynchrone-space-messages-secrets:      DATABASE_URL (the same database as Copilot until
-#                                           #190/#171), MESSAGES_OAUTH_CLIENT_ID,
+#   asynchrone-space-messages-secrets:      MESSAGES_DATABASE_URL (its own database),
+#                                           MESSAGES_OAUTH_CLIENT_ID,
 #                                           MESSAGES_OAUTH_CLIENT_SECRET
-#   asynchrone-space-clients-secrets:       DATABASE_URL (the same database as Copilot until
-#                                           #171/#190), CLIENTS_OAUTH_CLIENT_ID,
+#   asynchrone-space-clients-secrets:       CLIENTS_DATABASE_URL (its own database),
+#                                           CLIENTS_OAUTH_CLIENT_ID,
 #                                           CLIENTS_OAUTH_CLIENT_SECRET
-#   asynchrone-space-employees-secrets:     DATABASE_URL (the same database as Copilot until
-#                                           #171/#190), EMPLOYEES_OAUTH_CLIENT_ID,
+#   asynchrone-space-employees-secrets:     EMPLOYEES_DATABASE_URL (its own database),
+#                                           EMPLOYEES_OAUTH_CLIENT_ID,
 #                                           EMPLOYEES_OAUTH_CLIENT_SECRET
 #   asynchrone-space-control-tower-secrets: CONTROL_TOWER_DATABASE_URL,
 #                                           CONTROL_TOWER_BETTER_AUTH_SECRET
@@ -596,8 +596,8 @@ control-tower:
 # ---------------------------------------------------------------------------
 migrate:
   enabled: true
-  # The referenced secret must contain DATABASE_URL (the monolith, until #185)
-  # and IDENTITY_DATABASE_URL, PROJECTS_DATABASE_URL, CALENDARS_DATABASE_URL,
+  # The referenced secret must contain DATABASE_URL (the migration/split
+  # tooling) and IDENTITY_DATABASE_URL, PROJECTS_DATABASE_URL, CALENDARS_DATABASE_URL,
   # FILES_DATABASE_URL, MESSAGES_DATABASE_URL, CLIENTS_DATABASE_URL,
   # EMPLOYEES_DATABASE_URL and CONTROL_TOWER_DATABASE_URL. It defaults to the
   # Copilot Secret.

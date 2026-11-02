@@ -2,6 +2,7 @@ import { ProjectRepository } from "@workspace/projects/repository"
 import { ProjectService } from "@workspace/projects/service"
 
 import { recordUserAudit } from "@/lib/audit"
+import { memberDirectory } from "@/lib/identity"
 import { repositoryIntegrationService } from "@/lib/integrations"
 import { createNotificationService } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
@@ -13,9 +14,9 @@ import { prisma } from "@/lib/prisma"
  * This file binds the database client, the audit writer, the notification
  * inbox and the repository integration; the package never imports the app.
  */
-export const notificationService = createNotificationService(prisma)
+export const notificationService = createNotificationService()
 
-export const projectRepository = new ProjectRepository(prisma)
+export const projectRepository = new ProjectRepository(prisma, memberDirectory)
 
 /**
  * Repository sync is built before the service so the service can push task
@@ -26,6 +27,7 @@ export const projectService = new ProjectService(projectRepository, prisma, {
   audit: recordUserAudit,
   notify: (args) => notificationService.notify(args),
   repository: repositoryIntegrationService,
+  directory: memberDirectory,
 })
 
 export { ProjectRepository, ProjectService }

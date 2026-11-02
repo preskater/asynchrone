@@ -1,18 +1,14 @@
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-messages"
+
+import type { MessagingDirectory } from "./deps"
 
 /**
- * The slice of a Prisma client the messaging domain needs.
+ * The slice of the messaging database the domain needs.
  *
- * The package never opens a connection: the owning app binds its own client.
- * `apps/messages` owns the screens since #162 but still binds the shared
- * monolith client (the documented transitional binding) because of the
- * identity reads below; `apps/copilot` keeps an in-process binding for the
- * assistant, MCP and search until #190.
- *
- * `member` and `user` are identity tables the presence indicator and the DM
- * title still read directly. They move behind the identity internal API when
- * the domain moves to `asynchrone_messages`; until then the structural port
- * keeps the dependency explicit (#171/#190).
+ * The package never opens a connection: the owning app binds its generated
+ * `asynchrone_messages` client. Presence and the DM title come from the
+ * identity internal API through `MessagingDirectory`; no identity table is in
+ * this database.
  */
 export type MessagingDb = Pick<
   PrismaClient,
@@ -21,8 +17,7 @@ export type MessagingDb = Pick<
   | "message"
   | "messageReaction"
   | "messageAttachment"
-  | "member"
-  | "user"
+  | "uploadSession"
   | "$transaction"
   | "$queryRaw"
 >
@@ -39,7 +34,10 @@ export const messageInclude = {
 }
 
 export class MessagingRepository {
-  constructor(private readonly db: MessagingDb) {}
+  constructor(
+    private readonly db: MessagingDb,
+    private readonly directory: MessagingDirectory
+  ) {}
 
   listConversations(organizationId: string) {
     return this.db.conversation.findMany({
@@ -286,24 +284,15 @@ export class MessagingRepository {
 
   /** Every organization member, for the coarse presence indicator. */
   listPresenceCandidates(organizationId: string) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null },
-      select: { userId: true, user: { select: { lastSeenAt: true } } },
-    })
+    return this.directory.listPresence(organizationId)
   }
 
   /** The display name a direct message is titled with. */
   findMemberName(organizationId: string, userId: string) {
-    return this.db.member.findFirst({
-      where: { organizationId, userId },
-      select: { user: { select: { name: true } } },
-    })
+    return this.directory.findName(organizationId, userId)
   }
 
   touchPresence(userId: string) {
-    return this.db.user.update({
-      where: { id: userId },
-      data: { lastSeenAt: new Date() },
-    })
+    return this.directory.touchPresence(userId)
   }
 }

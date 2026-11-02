@@ -246,6 +246,7 @@ export function ProjectStoreProvider({
           clientVisible: true,
           clientDiscussion: "read_write",
           clientTaskComments: "read_write",
+          isBillable: true,
           memberIds: input.memberIds?.length
             ? input.memberIds
             : [currentUserId],

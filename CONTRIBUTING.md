@@ -38,8 +38,8 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    docker compose up -d postgres
    ```
 
-   (If you already run PostgreSQL locally, skip this and point `DATABASE_URL`
-   at it instead.)
+   (If you already run PostgreSQL locally, skip this and point each
+   `*_DATABASE_URL` — or `DATABASE_URL` as the fallback — at it instead.)
 
 3. **Configure environment variables.** Copy the example file and fill in the
    values:
@@ -48,8 +48,11 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    cp apps/copilot/.env.example apps/copilot/.env
    ```
 
-   At minimum, set `DATABASE_URL` and a `BETTER_AUTH_SECRET` (any random
-   string). An `OPENAI_API_KEY` is only needed for AI assistant features.
+   At minimum, set `IDENTITY_DATABASE_URL` (or `DATABASE_URL`) and a
+   `BETTER_AUTH_SECRET` (any random string). Each domain app reads its own
+   `apps/<app>/.env` (`*_APP_URL`, `*_OAUTH_CLIENT_ID/SECRET` and its
+   `*_DATABASE_URL`); see the matching `.env.example`. An `OPENAI_API_KEY` is
+   only needed for AI assistant features.
 
 4. **Create the per-app databases, apply migrations and generate the Prisma
    clients:**
@@ -58,6 +61,7 @@ By participating you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
    npm run db:create
    npm run migrate:deploy
    npm run verify:migrations
+   npm run generate:all
    npm run generate --workspaces --if-present
    ```
 
@@ -105,8 +109,9 @@ workspaces.
 | `npm run lint`                                       | Lint all workspaces.                                                                              |
 | `npm run typecheck`                                  | Type-check all workspaces.                                                                        |
 | `npm run format`                                     | Format with Prettier.                                                                             |
-| `npm run test:unit --workspace=copilot`                  | Vitest unit tests next to the app code.                                                           |
-| `npm run test:unit --workspace=@workspace/contracts` | Contract/client tests (repeat for `@workspace/audit`, `sagas`, `search`, `oidc`, `service-auth`). |
+| `npm run test:unit`                                  | Every workspace's Vitest suite (Turbo).                                                           |
+| `npm run test:e2e --workspace=<app>`                  | Per-app Playwright against migrated per-app databases.                                            |
+| `npm run test:e2e --workspace=@workspace/e2e`         | Cross-app OIDC, portal and failure-injection suite.                                               |
 | `npm run test:e2e --workspace=copilot`                   | Playwright against a migrated database.                                                           |
 | `npm run check:boundaries`                           | Enforce workspace and database ownership.                                                         |
 | `npm run verify:prisma-schemas`                      | Validate every generated Prisma schema.                                                           |
@@ -130,7 +135,7 @@ package; add a test beside the module you change.
      && npm run build
    ```
 
-   Add the relevant `test:unit` workspaces when you touch runtime code.
+   Add `npm run test:unit` when you touch runtime code.
 
 4. Commit using [Conventional Commits](https://www.conventionalcommits.org/)
    prefixes (`feat:`, `fix:`, `docs:`, `chore:`, …), matching the existing git

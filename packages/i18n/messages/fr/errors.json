@@ -112,5 +112,6 @@
   "accountPasswordInvalid": "Le mot de passe est incorrect.",
   "accountPlatformOperator": "Les comptes d'opérateur de la plateforme ne peuvent pas être supprimés ici. Demandez d'abord à un autre administrateur de retirer votre rôle plateforme.",
   "accountSoleOwner": "Vous êtes le seul propriétaire de {organizations}. Transférez la propriété ou supprimez l'organisation d'abord.",
-  "accountImpersonated": "Impossible de supprimer ce compte depuis une session ouverte par la tour de contrôle."
+  "accountImpersonated": "Impossible de supprimer ce compte depuis une session ouverte par la tour de contrôle.",
+  "accountDeletionPartial": "Certaines applications n’ont pas encore pu supprimer le compte. Réessayez."
 }

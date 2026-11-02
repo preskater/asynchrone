@@ -2,15 +2,17 @@
 
 import { headers } from "next/headers"
 
-import { deleteAccount } from "@/lib/account/deletion-service"
+import { assertAccountDeletable } from "@/lib/account/deletion-service"
 import { auth } from "@/lib/auth"
 import { withAction } from "@workspace/core/action"
 import {
+  ConflictError,
   ForbiddenError,
   UnauthorizedError,
   ValidationError,
 } from "@workspace/core/errors"
 import { prisma } from "@/lib/prisma"
+import { deleteUserAcrossApps } from "@/lib/sagas/service"
 
 export const deleteAccountAction = withAction(
   async (input: { email: string; password?: string }) => {
@@ -42,6 +44,13 @@ export const deleteAccountAction = withAction(
       }
     }
 
-    await deleteAccount(session.user.id, input.email)
+    await assertAccountDeletable(session.user.id, input.email)
+    const result = await deleteUserAcrossApps(session.user.id)
+    if (result.status !== "completed") {
+      throw new ConflictError(
+        "Some apps could not delete the account yet. Please retry.",
+        { code: "account_deletion_partial" }
+      )
+    }
   }
 )

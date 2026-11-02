@@ -74,7 +74,10 @@
         "updated": "Modèle de tâche modifié",
         "deleted": "Modèle de tâche supprimé"
       },
-      "update": "Projet collaborateur modifié"
+      "update": "Projet collaborateur modifié",
+      "message": {
+        "added": "Message de projet envoyé"
+      }
     },
     "task": {
       "created": "Tâche créée",
@@ -217,6 +220,40 @@
     "leave": {
       "create": "Demande de congé créée",
       "cancel": "Demande de congé annulée"
+    },
+    "calendar": {
+      "created": "Calendrier créé",
+      "updated": "Calendrier mis à jour",
+      "event": {
+        "created": "Événement créé",
+        "updated": "Événement mis à jour",
+        "deleted": "Événement supprimé",
+        "responded": "Réponse à l’événement modifiée"
+      }
+    },
+    "meeting": {
+      "settings": {
+        "updated": "Paramètres de réunion mis à jour"
+      },
+      "request": {
+        "created": "Réunion demandée",
+        "accepted": "Réunion acceptée",
+        "declined": "Réunion refusée",
+        "cancelled": "Réunion annulée"
+      }
+    },
+    "message": {
+      "sent": "Message envoyé",
+      "edited": "Message modifié",
+      "deleted": "Message supprimé",
+      "replied": "Réponse envoyée",
+      "reaction": {
+        "toggled": "Réaction modifiée"
+      }
+    },
+    "conversation": {
+      "created": "Conversation créée",
+      "updated": "Conversation mise à jour"
     }
   },
   "entities": {

@@ -13,6 +13,7 @@ export interface E2EDomainApp {
   port: number
   clientId: string
   clientSecret: string
+  url: string
 }
 
 export const E2E_DOMAIN_APPS: E2EDomainApp[] = [
@@ -21,18 +22,21 @@ export const E2E_DOMAIN_APPS: E2EDomainApp[] = [
     port: 3004,
     clientId: "e2e-projects-client",
     clientSecret: "e2e-projects-client-secret",
+    url: "http://localhost:3004",
   },
   {
     key: "files",
     port: 3006,
     clientId: "e2e-files-client",
     clientSecret: "e2e-files-client-secret",
+    url: "http://localhost:3006",
   },
   {
     key: "clients",
     port: 3008,
     clientId: "e2e-clients-client",
     clientSecret: "e2e-clients-client-secret",
+    url: "http://localhost:3008",
   },
 ]
 

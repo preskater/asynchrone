@@ -4,14 +4,40 @@
   "tasks": {
     "generate": {
       "cache": false,
-      "inputs": ["prisma/schema.prisma", "prisma.config.ts", "package.json"],
-      "outputs": ["lib/generated/**"],
-      "env": ["DATABASE_URL"]
+      "inputs": [
+        "prisma/schema.prisma",
+        "prisma.config.ts",
+        "package.json"
+      ],
+      "outputs": [
+        "lib/generated/**"
+      ],
+      "env": [
+        "DATABASE_URL",
+        "IDENTITY_DATABASE_URL",
+        "PROJECTS_DATABASE_URL",
+        "CALENDARS_DATABASE_URL",
+        "FILES_DATABASE_URL",
+        "MESSAGES_DATABASE_URL",
+        "CLIENTS_DATABASE_URL",
+        "EMPLOYEES_DATABASE_URL",
+        "CONTROL_TOWER_DATABASE_URL"
+      ]
     },
     "build": {
-      "dependsOn": ["^build", "^generate"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "dependsOn": [
+        "^build",
+        "^generate"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "!.next/dev/**"
+      ],
       "env": [
         "DATABASE_URL",
         "DATABASE_POOL_MAX",
@@ -88,27 +114,39 @@
       ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "format": {
-      "dependsOn": ["^format"]
+      "dependsOn": [
+        "^format"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "generate"]
+      "dependsOn": [
+        "^typecheck",
+        "generate"
+      ]
     },
     "test:contracts": {
-      "dependsOn": ["^generate"],
+      "dependsOn": [
+        "^generate"
+      ],
       "cache": false,
       "env": [
         "DATABASE_URL",
         "DATABASE_POOL_MAX",
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
-        "CONTROL_TOWER_URL"
+        "CONTROL_TOWER_URL",
+        "IDENTITY_DATABASE_URL"
       ]
     },
     "dev": {
-      "dependsOn": ["^generate"],
+      "dependsOn": [
+        "^generate"
+      ],
       "cache": false,
       "persistent": true,
       "env": [
@@ -185,6 +223,13 @@
         "STRIPE_PRICE_TEAM_YEARLY",
         "STRIPE_AUTOMATIC_TAX"
       ]
+    },
+    "test:unit": {
+      "dependsOn": [
+        "^generate",
+        "^build"
+      ],
+      "cache": false
     }
   }
 }

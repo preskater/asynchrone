@@ -30,6 +30,7 @@ describe("OAuth client manifest", () => {
     ])
     expect(projects?.clientCredentialsScopes).toEqual([
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
     ])
   })

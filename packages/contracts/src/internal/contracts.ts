@@ -21,13 +21,26 @@ export function internalPath(...segments: string[]): string {
 }
 
 export const INTERNAL_ROUTES = {
+  identityWorkspace: internalPath("workspace"),
   identityOrganization: (organizationId: string) =>
     internalPath("organizations", organizationId),
   identityMembers: (organizationId: string) =>
     internalPath("organizations", organizationId, "members"),
   identityEntitlements: (organizationId: string) =>
     internalPath("organizations", organizationId, "entitlements"),
+  identityAppearance: (organizationId: string) =>
+    internalPath("organizations", organizationId, "appearance"),
+  identityPresence: (organizationId: string) =>
+    internalPath("organizations", organizationId, "presence"),
   identityUser: (userId: string) => internalPath("users", userId),
+  identityMember: (organizationId: string, userId: string) =>
+    internalPath("organizations", organizationId, "members", userId),
+  identityPortalAccess: (organizationId: string) =>
+    internalPath("organizations", organizationId, "portal-access"),
+  identityUserIntegrationToken: (userId: string, provider: string) =>
+    internalPath("users", userId, "integration-tokens", provider),
+  identityUserPresence: (userId: string) =>
+    internalPath("users", userId, "presence"),
   audit: internalPath("audit"),
   auditExport: internalPath("audit", "export"),
   auditFacets: internalPath("audit", "facets"),
@@ -69,6 +82,7 @@ export const INTERNAL_ROUTES = {
 
 export const SERVICE_SCOPES = {
   identityRead: "internal:identity:read",
+  identityWrite: "internal:identity:write",
   identityAdmin: "internal:identity:admin",
   auditRead: "internal:audit:read",
   auditWrite: "internal:audit:write",
@@ -118,8 +132,65 @@ export const MemberSchema = UserSchema.extend({
   role: MemberRoleSchema,
   /** Set for client-portal accounts; they never enter the internal workspace. */
   clientId: z.string().nullable().optional(),
+  /** Membership creation time, used by member pickers that keep insertion order. */
+  createdAt: z.coerce.date().optional(),
 })
 export type Member = z.infer<typeof MemberSchema>
+
+export const AddWorkspaceMemberSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: z.string().trim().email(),
+  role: MemberRoleSchema,
+})
+export type AddWorkspaceMember = z.infer<typeof AddWorkspaceMemberSchema>
+
+export const UpdateWorkspaceMemberSchema = z.object({
+  role: MemberRoleSchema,
+})
+export type UpdateWorkspaceMember = z.infer<
+  typeof UpdateWorkspaceMemberSchema
+>
+
+export const PresenceEntrySchema = z.object({
+  userId: z.string().min(1),
+  lastSeenAt: z.coerce.date().nullable(),
+})
+export type PresenceEntry = z.infer<typeof PresenceEntrySchema>
+
+export const OrganizationAppearanceSchema = z.object({
+  metadata: z.string().nullable(),
+})
+export type OrganizationAppearanceMetadata = z.infer<
+  typeof OrganizationAppearanceSchema
+>
+
+export const IntegrationTokenSchema = z.object({
+  accessToken: z.string().nullable(),
+})
+export type IntegrationToken = z.infer<typeof IntegrationTokenSchema>
+
+/** The read-only portal access list the clients app renders on a company. */
+export const PortalAccessSchema = z.object({
+  members: z.array(
+    z.object({
+      memberId: z.string().min(1),
+      userId: z.string().min(1),
+      name: z.string(),
+      email: z.string().email(),
+      createdAt: z.string().min(1),
+    })
+  ),
+  invites: z.array(
+    z.object({
+      id: z.string().min(1),
+      email: z.string().email(),
+      name: z.string().optional(),
+      createdAt: z.string().min(1),
+      invitationId: z.string().optional(),
+    })
+  ),
+})
+export type PortalAccess = z.infer<typeof PortalAccessSchema>
 
 export const OrganizationSchema = z.object({
   id: z.string().min(1),
@@ -143,6 +214,53 @@ export const EntitlementsSchema = z.object({
 })
 export type Entitlements = z.infer<typeof EntitlementsSchema>
 
+export const WorkspaceUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  email: z.string().email(),
+  image: z.string().nullable().optional(),
+  twoFactorEnabled: z.boolean(),
+})
+export type WorkspaceUser = z.infer<typeof WorkspaceUserSchema>
+
+export const WorkspaceSessionSchema = z.object({
+  id: z.string().min(1),
+  impersonatedBy: z.string().nullable(),
+  createdAt: z.coerce.date(),
+})
+export type WorkspaceSession = z.infer<typeof WorkspaceSessionSchema>
+
+export const WorkspaceOrganizationSchema = OrganizationSchema.extend({
+  role: MemberRoleSchema,
+  clientId: z.string().nullable(),
+})
+export type WorkspaceOrganization = z.infer<
+  typeof WorkspaceOrganizationSchema
+>
+
+/**
+ * One read for a domain app's workspace gate: the Copilot sign-in, the user,
+ * the route organization's membership, every organization the user can open,
+ * the enforced entitlements and the organization metadata the shell needs.
+ *
+ * The caller supplies the `sid` from its own verified OIDC session; the target
+ * app re-checks the token claims before trusting this response.
+ */
+export const WorkspaceSchema = z.object({
+  user: WorkspaceUserSchema,
+  session: WorkspaceSessionSchema,
+  organization: OrganizationSchema,
+  member: MemberSchema,
+  organizations: z.array(WorkspaceOrganizationSchema),
+  entitlements: EntitlementsSchema,
+  /** The stored organization 2FA policy (only enforced when entitled). */
+  requireTwoFactor: z.boolean(),
+  storageQuotaBytes: z.number().int().nonnegative(),
+  deletionScheduledAt: z.coerce.date().nullable(),
+  metadata: z.string().nullable(),
+})
+export type Workspace = z.infer<typeof WorkspaceSchema>
+
 export const IdentityContextSchema = z.object({
   organization: OrganizationSchema,
   member: MemberSchema,
@@ -164,6 +282,14 @@ export const SearchQuerySchema = z.object({
   organizationId: z.string().min(1),
   query: z.string().trim().min(1).max(200),
   limit: z.number().int().min(1).max(50).default(20),
+  /** Route context for the result links; the caller already rendered them. */
+  organizationSlug: z.string().min(1).optional(),
+  locale: z.string().min(2).max(8).optional(),
+  /** The acting user, so per-user visibility is applied by the target app. */
+  userId: z.string().min(1).optional(),
+  userName: z.string().optional(),
+  userEmail: z.string().email().optional(),
+  role: MemberRoleSchema.optional(),
 })
 export type SearchQuery = z.infer<typeof SearchQuerySchema>
 
@@ -176,9 +302,13 @@ export const NotificationInputSchema = z.object({
   organizationId: z.string().min(1),
   userId: z.string().min(1),
   type: z.string().min(1),
+  /** The actor whose action triggered the notification, when there is one. */
+  actorId: z.string().nullable().optional(),
   title: z.string().min(1),
   body: z.string().optional(),
   url: z.string().optional(),
+  /** Type-specific interpolation values the inbox renders. */
+  data: z.record(z.string(), z.unknown()).optional(),
   /** Makes retries safe; the receiver must deduplicate on this key. */
   idempotencyKey: z.string().min(1),
 })

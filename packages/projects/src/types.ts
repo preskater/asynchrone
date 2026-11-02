@@ -137,6 +137,10 @@ export interface Project {
   /** Shell counters, computed without loading tasks. */
   taskCount?: number
   doneTaskCount?: number
+  plannedHours?: number | null
+  isBillable: boolean
+  startDate?: string | null
+  endDate?: string | null
   createdAt: string
   dueDate?: string
 }

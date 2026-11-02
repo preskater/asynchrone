@@ -4,27 +4,20 @@ import {
   type OrganizationAppearance,
 } from "@workspace/appearance"
 
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /**
  * Organization appearance for the calendars shell.
  *
  * Appearance lives in organization metadata, which the identity database owns.
- * The app reads it through the shared client until #190 moves the preferences
- * behind Copilot's internal API.
+ * This app reads it through Copilot's internal API; only Copilot writes it.
  */
 const store: AppearanceStore = {
   async findMetadata(organizationId) {
-    return prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { metadata: true },
-    })
+    return identity.getAppearance(organizationId)
   },
-  async updateMetadata(organizationId, metadata) {
-    await prisma.organization.update({
-      where: { id: organizationId },
-      data: { metadata },
-    })
+  async updateMetadata() {
+    throw new Error("Organization appearance is managed in Copilot.")
   },
 }
 

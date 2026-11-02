@@ -4,9 +4,7 @@ import type { RequestContext } from "@workspace/core/context"
 import { requirePermission } from "@/lib/core/auth-context"
 import { ConflictError, ValidationError } from "@workspace/core/errors"
 import { sendOrganizationDeletedEmail } from "@/lib/email"
-import { snapshotForOrganization } from "@/lib/files"
 import { unlinkLargeObject } from "@/lib/large-object"
-import { snapshotMessagingForOrganization } from "@/lib/messaging"
 import { prisma } from "@/lib/prisma"
 
 /** Matches the privacy policy: data is removed within 30 days of the request. */
@@ -126,13 +124,8 @@ export async function deleteOrganization(
   })
   if (!org) return false
 
-  // The files app owns the file/version/upload bytes; list them before the
-  // delete cascades and unlink them after it commits.
-  const fileObjects = await snapshotForOrganization(organizationId)
-  // The messages app owns the attachment bytes; same list-before-delete rule.
-  const messagingObjects =
-    await snapshotMessagingForOrganization(organizationId)
-
+  // Domain apps delete their own rows and unlink their own large objects in
+  // the saga; identity only owns the data-export archives.
   const [exports, owners, memberCount] = await Promise.all([
     prisma.dataExport.findMany({
       where: { organizationId, oid: { not: null } },
@@ -144,38 +137,23 @@ export async function deleteOrganization(
     }),
     prisma.member.count({ where: { organizationId } }),
   ])
-  const oids = [
-    ...new Set([
-      ...fileObjects.oids,
-      ...messagingObjects.oids,
-      ...exports.map(({ oid }) => Number(oid)),
-    ]),
-  ]
+  const oids = [...new Set(exports.map(({ oid }) => Number(oid)))]
 
   const deleted = await prisma.$transaction(async (tx) => {
     // Conditional delete: a cancel that lands first wins.
     const { count } = await tx.organization.deleteMany({ where })
     if (count === 0) return false
-    await tx.uploadSession.deleteMany({ where: { organizationId } })
     await tx.platformHandoff.deleteMany({ where: { organizationId } })
-    await tx.platformAuditEvent.create({
-      data: {
-        actorId: "system",
-        actorEmail: "system",
-        actorRole: "system",
-        action: "organization.deleted",
-        targetType: "organization",
-        targetId: organizationId,
-        organizationId,
-        before: {
-          name: org.name,
-          slug: org.slug,
-          requestedById: org.deletionRequestedById,
-          scheduledFor: org.deletionScheduledAt?.toISOString() ?? null,
-          members: memberCount,
-          largeObjects: oids.length,
-        },
-      },
+    // The platform audit trail lives in the control tower; log the proof here
+    // and leave the durable platform row to the operator's own database.
+    console.info("[organization-deletion] identity deleted", {
+      organizationId,
+      name: org.name,
+      slug: org.slug,
+      requestedById: org.deletionRequestedById,
+      scheduledFor: org.deletionScheduledAt?.toISOString() ?? null,
+      members: memberCount,
+      largeObjects: oids.length,
     })
     return true
   })
@@ -183,8 +161,6 @@ export async function deleteOrganization(
 
   // ponytail: an unlink that fails here leaves an orphan large object; the
   // verify:organization-deletion script reports them. Add a sweep if it happens.
-  await fileObjects.unlink()
-  await messagingObjects.unlink()
   for (const { oid } of exports) {
     const value = Number(oid)
     await unlinkLargeObject(value).catch((error) => {

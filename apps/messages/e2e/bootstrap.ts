@@ -16,7 +16,7 @@ import {
   SERVICE_SCOPES,
   internalAudience,
 } from "@workspace/contracts"
-import { prisma } from "@workspace/db"
+import { prisma } from "@workspace/db-identity"
 
 import {
   E2E_OAUTH_CLIENT_ID,
@@ -42,6 +42,7 @@ const resources = [
     name: "Copilot",
     scopes: [
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
       SERVICE_SCOPES.identityAdmin,
       SERVICE_SCOPES.auditRead,
@@ -75,6 +76,12 @@ const client = await prisma.oauthClient.upsert({
   where: { clientId: E2E_OAUTH_CLIENT_ID },
   update: {
     clientSecret: hashClientSecret(E2E_OAUTH_CLIENT_SECRET),
+    scopes: [...APP_USER_SCOPES],
+    clientCredentialsScopes: [
+      SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
+      SERVICE_SCOPES.notificationsWrite,
+    ],
     redirectUris: [`${E2E_MESSAGES_URL}/api/auth/callback`],
     postLogoutRedirectUris: [E2E_MESSAGES_URL],
     backchannelLogoutUri: `${E2E_MESSAGES_URL}/api/auth/backchannel-logout`,
@@ -92,6 +99,7 @@ const client = await prisma.oauthClient.upsert({
     scopes: [...APP_USER_SCOPES],
     clientCredentialsScopes: [
       SERVICE_SCOPES.identityRead,
+      SERVICE_SCOPES.identityWrite,
       SERVICE_SCOPES.notificationsWrite,
     ],
     redirectUris: [`${E2E_MESSAGES_URL}/api/auth/callback`],
@@ -118,7 +126,7 @@ for (const resource of resources) {
     },
     update: {},
     create: {
-      id: `oauth_client_resource_e2e_${client.clientId}_${resource.name.toLowerCase()}`,
+      id: `oauth_client_resource_e2e_${client.clientId}_${resource.identifier.replace(/[^a-z0-9]+/gi, "_")}`,
       clientId: client.clientId,
       resourceId: resource.identifier,
       createdAt: now,

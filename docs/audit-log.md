@@ -20,7 +20,7 @@ address, and what changed. The decision is recorded in
 | Internal audit API           | `apps/copilot/app/internal/v1/audit/**`, `packages/audit/src/http.ts`            |
 | Settings → Audit log         | `apps/copilot/components/audit/*`, tab `?tab=audit`                              |
 | Daily cleanup                | `apps/copilot/app/api/cron/audit-retention/route.ts` (CronJob `audit-retention`) |
-| Manual check                 | `npm run verify:audit-log --workspace=copilot` (needs a live database)           |
+| Manual check                 | Each app mounts `/internal/v1/audit*`; `apps/copilot/e2e/audit-log.spec.ts` and the cross-app audit fan-out cover the trail. |
 
 ## Writing a row
 
@@ -65,9 +65,7 @@ endpoints rather than a server action. They are covered by the `after` hook in
 `organizationHooks` only receive the target member, which is not enough for an
 audit trail).
 
-Content additions — task comments, messages, chat — are deliberately not
-audited: the project activity feed covers them and they would drown the
-security-relevant trail.
+Project messages and task comments write `project.message.added` / `task.comment.added`; they remain visible in the project activity feed too. Chat messages, calendar events and meeting requests write their own audit rows in the owning app; the project, client and employee mutations already did.
 
 ## Reading it
 

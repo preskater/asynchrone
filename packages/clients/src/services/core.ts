@@ -126,14 +126,14 @@ export class ClientsServiceCore {
 
   protected mapMembers(rows: MemberRow[]): ClientMemberOptionData[] {
     return rows.map((row) => ({
-      id: row.user.id,
-      name: row.user.name,
-      email: row.user.email,
+      id: row.userId,
+      name: row.name,
+      email: row.email,
     }))
   }
 
   protected nameById(memberRows: MemberRow[]): Map<string, string> {
-    return new Map(memberRows.map((row) => [row.user.id, row.user.name]))
+    return new Map(memberRows.map((row) => [row.userId, row.name]))
   }
 
   protected mapFieldDefinition(row: FieldRow): ClientFieldDefinitionData {
@@ -461,12 +461,12 @@ export class ClientsServiceCore {
 
   /** Counters shared by the list and detail pages, computed in the database. */
   protected async loadClientStatMaps(
-    organizationId: string
+    ctx: RequestContext
   ): Promise<ClientStatMaps> {
     const [contactCounts, dealCounts, projectCounts] = await Promise.all([
-      this.repo.contactCountsByClient(organizationId),
-      this.repo.openDealCountsByClient(organizationId),
-      this.repo.projectCountsByClient(organizationId),
+      this.repo.contactCountsByClient(ctx.organizationId),
+      this.repo.openDealCountsByClient(ctx.organizationId),
+      this.repo.projectCountsByClient(ctx),
     ])
     return {
       contacts: new Map(
@@ -479,7 +479,7 @@ export class ClientsServiceCore {
         ])
       ),
       projects: new Map(
-        projectCounts.map((row) => [row.clientId ?? "", row._count._all])
+        projectCounts.map((row) => [row.clientId ?? "", row.count])
       ),
     }
   }

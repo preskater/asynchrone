@@ -6,7 +6,6 @@ import type {
   PortalMeetings,
   PortalNotify,
   PortalProjects,
-  PortalStorage,
 } from "./deps"
 import { PortalRepository, type PortalDb } from "./repository"
 import { PortalService } from "./service"
@@ -14,8 +13,6 @@ import { PortalService } from "./service"
 export interface PortalRuntimeOptions {
   /** Copilot's identity client (the portal keeps its routes there). */
   db: PortalDb
-  /** The large-object store bound to Copilot's pool (`@workspace/storage`). */
-  storage: PortalStorage
   /** Copilot's `@workspace/files` service, quota and usage readers. */
   files: PortalFiles
   /** Projects app reads through its internal API. */
@@ -51,7 +48,6 @@ export function createPortalRuntime(
   const repository = new PortalRepository(options.db)
   const service = new PortalService({
     repository,
-    storage: options.storage,
     files: options.files,
     projects: options.projects,
     clientDocuments: options.clientDocuments,

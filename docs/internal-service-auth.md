@@ -89,7 +89,10 @@ route uses `requireAppService(request, scope)`; the delegated operations use
 | Caller        | Target      | Scopes                                                                                                                                          |
 | ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Copilot       | domain apps | `internal:domain:read`, `internal:domain:write`, `internal:audit:read`, `internal:search:read`, `internal:export:read`, `internal:delete:write` |
-| Domain apps   | Copilot     | `internal:identity:read`, `internal:notifications:write`                                                                                        |
+| Domain apps   | Copilot     | `internal:identity:read`, `internal:identity:write`, `internal:notifications:write`                                                             |
+| Clients/employees | projects | `internal:domain:read`, `internal:domain:write`                                                                                                |
+| Clients       | files       | `internal:domain:read`                                                                                                                          |
+| Calendars     | projects    | `internal:domain:read`                                                                                                                          |
 | Control tower | Copilot     | `internal:identity:read`, `internal:identity:admin`                                                                                             |
 
 `SERVICE_SCOPES` in `@workspace/contracts` is the source of truth.

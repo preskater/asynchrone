@@ -68,9 +68,9 @@ export class EmployeeExportsService extends EmployeesServiceCore {
           parseDateKey(range.end)
         ),
         this.loadMembers(ctx.organizationId),
-        this.repo.listClients(ctx.organizationId),
+        this.repo.listClients(ctx),
         this.repo.listActivities(ctx.organizationId),
-        this.repo.listProjects(ctx.organizationId),
+        this.repo.listProjects(ctx),
       ])
     const clientById = new Map(clientRows.map((row) => [row.id, row.name]))
     const activityById = new Map(activityRows.map((row) => [row.id, row.name]))
@@ -175,8 +175,8 @@ export class EmployeeExportsService extends EmployeesServiceCore {
     const [rows, memberInfo, projectRows, clientRows] = await Promise.all([
       this.repo.listAllocationEntries(ctx.organizationId),
       this.loadMembers(ctx.organizationId),
-      this.repo.listProjects(ctx.organizationId),
-      this.repo.listClients(ctx.organizationId),
+      this.repo.listProjects(ctx),
+      this.repo.listClients(ctx),
     ])
     const memberById = new Map(memberInfo.members.map((m) => [m.id, m]))
     const projectById = new Map(projectRows.map((row) => [row.id, row]))

@@ -1,23 +1,26 @@
 "use server"
 
-import { withAction } from "@workspace/core/action"
+import { z } from "zod"
 
-import { projectService } from "@/lib/projects"
+import { withAction } from "@workspace/core/action"
+import type { Task } from "@workspace/projects/types"
+
+import { callDomain, delegatedContext } from "@/lib/internal/domain-client"
 import { getRequestContext } from "@/lib/request-context"
 
 /**
  * Task due dates for the calendar overlay.
  *
- * The calendar shows task chips on their due date. Until #190 exposes the
- * projects internal API, the calendars app reads the bounded task list through
- * the shared client (see `lib/prisma.ts` and `lib/projects/index.ts`) — the
- * same transitional gap the projects pilot records.
+ * The projects app owns tasks; this read goes through its delegated internal
+ * API, so no projects table is reachable from the calendars database.
  */
 export const loadProjectTasksAction = withAction(async () => {
   const ctx = await getRequestContext()
-  const { tasks } = await projectService.listWorkspace(ctx, {
-    taskLimit: 500,
-    activityLimit: 0,
-  })
-  return tasks
+  return callDomain(
+    "projects",
+    "list-calendar-tasks",
+    delegatedContext(ctx),
+    {},
+    z.array(z.unknown())
+  ) as Promise<Task[]>
 })

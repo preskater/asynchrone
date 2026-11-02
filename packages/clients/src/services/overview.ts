@@ -46,7 +46,7 @@ export class ClientOverviewService extends ClientsServiceCore {
       this.repo.listDealsPage(ctx.organizationId, { take: limit + 1 }),
       this.repo.listActivities(ctx.organizationId, { take: activityLimit + 1 }),
       this.repo.listFieldDefinitions(ctx.organizationId),
-      this.loadClientStatMaps(ctx.organizationId),
+      this.loadClientStatMaps(ctx),
       this.loadContactDealCounts(ctx.organizationId),
       this.repo.stageDealStats(ctx.organizationId),
       this.repo.clientStatusCounts(ctx.organizationId),
@@ -179,8 +179,8 @@ export class ClientOverviewService extends ClientsServiceCore {
       this.repo.listClientOptions(ctx.organizationId),
       this.repo.listContactsForClient(ctx.organizationId, clientId),
       this.repo.listDealsByClient(ctx.organizationId, clientId),
-      this.repo.listProjectsForClient(ctx.organizationId, clientId),
-      this.repo.listDocuments(ctx.organizationId, "client", clientId),
+      this.repo.listProjectsForClient(ctx, clientId),
+      this.repo.listDocuments(ctx, "client", clientId),
     ])
     if (!row) throw new NotFoundError("Client")
     const nameById = this.nameById(memberRows)
@@ -261,7 +261,7 @@ export class ClientOverviewService extends ClientsServiceCore {
         this.repo.listFieldDefinitions(ctx.organizationId),
         this.repo.listClientOptions(ctx.organizationId),
         this.repo.listDealsByContact(ctx.organizationId, contactId),
-        this.repo.listDocuments(ctx.organizationId, "contact", contactId),
+        this.repo.listDocuments(ctx, "contact", contactId),
       ])
     if (!row) throw new NotFoundError("Contact")
     const nameById = this.nameById(memberRows)
@@ -327,7 +327,7 @@ export class ClientOverviewService extends ClientsServiceCore {
       this.repo.listClientOptions(ctx.organizationId),
       this.repo.listContactOptions(ctx.organizationId),
       this.repo.listPipelines(ctx.organizationId),
-      this.repo.listDocuments(ctx.organizationId, "deal", dealId),
+      this.repo.listDocuments(ctx, "deal", dealId),
       this.repo.stageDealStats(ctx.organizationId),
     ])
     if (!row) throw new NotFoundError("Deal")

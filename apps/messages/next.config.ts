@@ -17,7 +17,7 @@ export default createNextConfig({
   transpilePackages: [
     "@workspace/audit",
     "@workspace/contracts",
-    "@workspace/db",
+    "@workspace/db-messages",
     "@workspace/db-core",
     "@workspace/files",
     "@workspace/messaging",

@@ -27,6 +27,7 @@ export type ServiceErrorCode =
   | "upload_offset_mismatch"
   | "upload_size_mismatch"
   | "upload_checksum_mismatch"
+  | "upload_not_transient"
   | "role_cannot_modify_calendars"
   | "role_cannot_send_messages"
   | "label_color_already_used"
@@ -92,6 +93,7 @@ export type ServiceErrorCode =
   | "account_platform_operator"
   | "account_sole_owner"
   | "account_impersonated"
+  | "account_deletion_partial"
 
 export type ErrorCode = AppErrorCode | ServiceErrorCode
 

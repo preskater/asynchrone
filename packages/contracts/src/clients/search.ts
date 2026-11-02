@@ -40,13 +40,29 @@ export class SearchClient {
     organizationId: string,
     query: string,
     limit = 20,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    context: {
+      organizationSlug?: string
+      locale?: string
+      userId?: string
+      userName?: string
+      userEmail?: string
+      role?: string
+    } = {}
   ): Promise<SearchResponse> {
     const search = new URLSearchParams({
       organizationId,
       q: query,
       limit: String(limit),
     })
+    if (context.organizationSlug) {
+      search.set("organizationSlug", context.organizationSlug)
+    }
+    if (context.locale) search.set("locale", context.locale)
+    if (context.userId) search.set("userId", context.userId)
+    if (context.userName) search.set("userName", context.userName)
+    if (context.userEmail) search.set("userEmail", context.userEmail)
+    if (context.role) search.set("role", context.role)
     const response = await (this.options.fetchImpl ?? fetch)(
       new URL(`${INTERNAL_ROUTES.search}?${search}`, this.options.baseUrl),
       {

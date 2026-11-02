@@ -94,17 +94,7 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        run: |
-          npm run test:unit --workspace=copilot
-          npm run test:unit --workspace=projects
-          npm run test:unit --workspace=calendars
-          npm run test:unit --workspace=files
-          npm run test:unit --workspace=messages
-          npm run test:unit --workspace=clients
-          npm run test:unit --workspace=employees
-          npm run test:unit --workspace=@workspace/db-core
-          npm run test:unit --workspace=@workspace/observability
-          npm run test:unit --workspace=@workspace/service-auth
+        run: npm run test:unit
 
   # Cross-domain contracts: package exports, member directory, notifications,
   # per-organization recents, search, export/deletion sagas and the
@@ -149,9 +139,7 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -251,16 +239,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-projects
-          npm run generate --workspace=@workspace/db-calendars
-          npm run generate --workspace=@workspace/db-files
-          npm run generate --workspace=@workspace/db-messages
-          npm run generate --workspace=@workspace/db-clients
-          npm run generate --workspace=@workspace/db-employees
-          npm run generate --workspace=@workspace/db-control-tower
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -339,10 +318,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-projects
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -418,10 +394,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-messages
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -496,9 +469,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -573,9 +544,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -654,16 +623,7 @@ jobs:
       # every generated client they (or a shared package) needs must exist
       # before the build step runs.
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-projects
-          npm run generate --workspace=@workspace/db-calendars
-          npm run generate --workspace=@workspace/db-files
-          npm run generate --workspace=@workspace/db-messages
-          npm run generate --workspace=@workspace/db-clients
-          npm run generate --workspace=@workspace/db-employees
-          npm run generate --workspace=@workspace/db-control-tower
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -747,16 +707,7 @@ jobs:
       # every generated client they (or a shared package) needs must exist
       # before the build step runs.
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-projects
-          npm run generate --workspace=@workspace/db-calendars
-          npm run generate --workspace=@workspace/db-files
-          npm run generate --workspace=@workspace/db-messages
-          npm run generate --workspace=@workspace/db-clients
-          npm run generate --workspace=@workspace/db-employees
-          npm run generate --workspace=@workspace/db-control-tower
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy
@@ -862,16 +813,7 @@ jobs:
         run: npm run db:create
 
       - name: Generate Prisma clients
-        run: |
-          npm run generate --workspace=@workspace/db
-          npm run generate --workspace=@workspace/db-identity
-          npm run generate --workspace=@workspace/db-projects
-          npm run generate --workspace=@workspace/db-calendars
-          npm run generate --workspace=@workspace/db-files
-          npm run generate --workspace=@workspace/db-messages
-          npm run generate --workspace=@workspace/db-clients
-          npm run generate --workspace=@workspace/db-employees
-          npm run generate --workspace=@workspace/db-control-tower
+        run: npm run generate:all
 
       - name: Apply monolith migrations
         run: npx prisma migrate deploy

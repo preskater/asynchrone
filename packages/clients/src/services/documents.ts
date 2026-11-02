@@ -41,7 +41,7 @@ export class ClientDocumentsService extends ClientsServiceCore {
       throw new NotFoundError(this.entityLabel(entity))
     }
     const [rows, nameById] = await Promise.all([
-      this.repo.listDocuments(ctx.organizationId, entity, entityId),
+      this.repo.listDocuments(ctx, entity, entityId),
       this.memberNameById(ctx.organizationId),
     ])
     return rows.map((row) => this.mapDocument(row, nameById))
@@ -54,7 +54,7 @@ export class ClientDocumentsService extends ClientsServiceCore {
     const access = this.accessFor(ctx)
     requireEdit(access)
     const [file, exists] = await Promise.all([
-      this.repo.findFileForLink(ctx.organizationId, input.fileId),
+      this.repo.findFileForLink(ctx, input.fileId),
       this.entityExists(ctx.organizationId, input.entity, input.entityId),
     ])
     if (!exists) throw new NotFoundError(this.entityLabel(input.entity))
@@ -75,8 +75,7 @@ export class ClientDocumentsService extends ClientsServiceCore {
         code: "file_already_linked",
       })
     }
-    const row = await this.repo.createDocument({
-      organizationId: ctx.organizationId,
+    const row = await this.repo.createDocument(ctx, {
       fileId: input.fileId,
       entity: input.entity,
       entityId: input.entityId,
@@ -102,7 +101,7 @@ export class ClientDocumentsService extends ClientsServiceCore {
   ): Promise<{ id: string }> {
     const access = this.accessFor(ctx)
     requireEdit(access)
-    const row = await this.repo.findDocument(ctx.organizationId, id)
+    const row = await this.repo.findDocument(ctx, id)
     if (!row) throw new NotFoundError("Document")
     await this.repo.deleteDocument(id)
     await this.repo.createAudit([
@@ -124,9 +123,10 @@ export class ClientDocumentsService extends ClientsServiceCore {
   ): Promise<ClientDocumentData> {
     const access = this.accessFor(ctx)
     requireEdit(access)
-    const row = await this.repo.findDocument(ctx.organizationId, input.id)
+    const row = await this.repo.findDocument(ctx, input.id)
     if (!row) throw new NotFoundError("Document")
     const updated = await this.repo.updateDocumentVisibility(
+      ctx,
       input.id,
       input.visibility
     )
@@ -153,13 +153,13 @@ export class ClientDocumentsService extends ClientsServiceCore {
   async fetchFileOptions(ctx: RequestContext): Promise<ClientFileOptionData[]> {
     const access = this.accessFor(ctx)
     requireEdit(access)
-    const rows = await this.repo.listFileOptions(ctx.organizationId)
+    const rows = await this.repo.listFileOptions(ctx)
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
       kind: row.kind,
       mimeType: text(row.mimeType),
-      modifiedAt: row.modifiedAt.toISOString(),
+      modifiedAt: row.modifiedAt ?? new Date(0).toISOString(),
     }))
   }
 }

@@ -74,7 +74,7 @@ export class ClientCompaniesService extends ClientsServiceCore {
         this.repo.listMembers(ctx.organizationId),
         this.repo.clientContactCount(ctx.organizationId, id),
         this.repo.clientOpenDealStats(ctx.organizationId, id),
-        this.repo.clientProjectCount(ctx.organizationId, id),
+        this.repo.clientProjectCount(ctx, id),
       ])
     if (!row) throw new NotFoundError("Client")
     const nameById = this.nameById(memberRows)
@@ -106,7 +106,7 @@ export class ClientCompaniesService extends ClientsServiceCore {
         take: limit + 1,
       }),
       this.repo.listMembers(ctx.organizationId),
-      this.loadClientStatMaps(ctx.organizationId),
+      this.loadClientStatMaps(ctx),
     ])
     const nameById = this.nameById(memberRows)
     const page = toPage(rows, limit, (row) => encodeCursor([row.name, row.id]))

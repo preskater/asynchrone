@@ -20,6 +20,8 @@ import {
 } from "@workspace/clients/schemas"
 
 import { clientsService } from "@/lib/clients"
+import { clientFiles } from "@/lib/clients/ports"
+import { memberDirectory } from "@/lib/identity"
 import { recordUserAudit } from "@/lib/audit"
 import { prisma } from "@/lib/prisma"
 
@@ -44,6 +46,13 @@ const portalDocumentInput = z.object({
   sizeBytes: z.number().int().nonnegative(),
 })
 
+const clientBasicsInput = z.object({
+  id: z.string().min(1).optional(),
+  name: z.string().trim().min(1).max(200),
+  contactEmail: z.string().email().nullable().optional(),
+  isActive: z.boolean(),
+})
+
 function portalClientId(context: DelegatedContext): string {
   const clientId = context.portal?.clientId
   if (!clientId)
@@ -58,6 +67,37 @@ export async function dispatchDomain(
   const ctx = requestContext(call.context)
 
   switch (operation) {
+    case "list-client-directory": {
+      return prisma.client.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: {
+          id: true,
+          name: true,
+          contactEmail: true,
+          isActive: true,
+        },
+        orderBy: { name: "asc" },
+      })
+    }
+    case "save-client-basics": {
+      const input = clientBasicsInput.parse(call.input)
+      const data = {
+        name: input.name,
+        contactEmail: input.contactEmail ?? null,
+        isActive: input.isActive,
+      }
+      const row = input.id
+        ? await prisma.client.update({ where: { id: input.id }, data })
+        : await prisma.client.create({
+            data: { ...data, organizationId: ctx.organizationId },
+          })
+      return {
+        id: row.id,
+        name: row.name,
+        contactEmail: row.contactEmail,
+        isActive: row.isActive,
+      }
+    }
     case "get-clients-overview":
       return clientsService.getOverview(ctx)
     case "get-client":
@@ -116,32 +156,40 @@ export async function dispatchDomain(
           entity: "client",
           entityId: clientId,
           visibility: "client",
-          file: { trashed: false },
         },
         select: {
           id: true,
           fileId: true,
           addedBy: true,
-          file: { select: { name: true, sizeBytes: true } },
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
       })
-      const names = await prisma.user.findMany({
-        where: { id: { in: [...new Set(links.map((link) => link.addedBy))] } },
-        select: { id: true, name: true },
+      const [files, members] = await Promise.all([
+        clientFiles.byIds(
+          ctx,
+          links.map((link) => link.fileId)
+        ),
+        memberDirectory.list(ctx.organizationId),
+      ])
+      const fileById = new Map(files.map((file) => [file.id, file]))
+      const nameById = new Map(
+        members.map((member) => [member.userId, member.name])
+      )
+      return links.flatMap((link) => {
+        const file = fileById.get(link.fileId)
+        if (!file || file.trashed) return []
+        return [
+          {
+            id: link.id,
+            fileId: link.fileId,
+            name: file.name,
+            sizeBytes: file.sizeBytes ?? undefined,
+            createdAt: link.createdAt.toISOString(),
+            addedByName: nameById.get(link.addedBy),
+          },
+        ]
       })
-      const nameById = new Map(names.map((user) => [user.id, user.name]))
-      return links.map((link) => ({
-        id: link.id,
-        fileId: link.fileId,
-        name: link.file.name,
-        sizeBytes: link.file.sizeBytes
-          ? Number(link.file.sizeBytes)
-          : undefined,
-        createdAt: link.createdAt.toISOString(),
-        addedByName: nameById.get(link.addedBy),
-      }))
     }
     case "portal-get-document": {
       const clientId = portalClientId(call.context)
@@ -156,27 +204,16 @@ export async function dispatchDomain(
           visibility: "client",
           fileId,
         },
-        select: {
-          file: {
-            select: {
-              name: true,
-              oid: true,
-              mimeType: true,
-              trashed: true,
-              sizeBytes: true,
-            },
-          },
-        },
+        select: { id: true },
       })
       if (!link) return null
+      const file = await clientFiles.find(ctx, fileId)
+      if (!file) return null
       return {
-        name: link.file.name,
-        mimeType: link.file.mimeType ?? undefined,
-        oid: link.file.oid === null ? null : link.file.oid.toString(),
-        trashed: link.file.trashed,
-        sizeBytes: link.file.sizeBytes
-          ? Number(link.file.sizeBytes)
-          : undefined,
+        name: file.name,
+        mimeType: file.mimeType ?? undefined,
+        trashed: file.trashed,
+        sizeBytes: file.sizeBytes ?? undefined,
       }
     }
     case "portal-create-document": {

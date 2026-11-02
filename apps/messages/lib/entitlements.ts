@@ -1,29 +1,27 @@
-import { createOrganizationEntitlements } from "@workspace/organization/entitlements"
+import { hasEntitlement, upgradeRequired, type Entitlement } from "@workspace/organization/entitlements"
 
-import { planForOrganization } from "@workspace/billing/plans"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /**
- * Plan checks for the messages app.
- *
- * Attachments reuse the files upload service, which asks for the storage
- * quota entitlement; every check reads the plan through the shared resolver
- * (`resolvePlan` in `@workspace/organization`). Until #190 the app reads the
- * identity tables through the shared client (see `lib/prisma.ts`).
+ * The files app's plan checks. Copilot resolves the plan and returns the
+ * enforced entitlements; this app owns no billing row.
  */
-const entitlements = createOrganizationEntitlements({
-  db: prisma,
-  planForOrganization,
-})
+export async function requireEntitlement(
+  organizationId: string,
+  entitlement: Entitlement
+): Promise<void> {
+  const entitlements = await identity.getEntitlements(organizationId)
+  if (!hasEntitlement(entitlements as never, entitlement)) {
+    throw upgradeRequired(entitlement)
+  }
+}
 
-export const {
-  resolvePlan,
-  getOrganizationPlan,
-  getOrganizationEntitlements,
-  can,
-  requireEntitlement,
-  seatsFull,
-} = entitlements
+export async function storageQuotaBytes(
+  organizationId: string
+): Promise<number> {
+  const entitlements = await identity.getEntitlements(organizationId)
+  return entitlements.storageBytes
+}
 
 export {
   entitlementsFor,

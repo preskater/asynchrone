@@ -105,8 +105,9 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secre
   --from-literal=CRON_SECRET='<random-token>'
 ```
 
-Copilot reads `DATABASE_URL`; the per-app `*_DATABASE_URL` keys are consumed by
-the migrate Job. Keep `BETTER_AUTH_SECRET` stable: it encrypts the JWKS rows in
+Copilot reads `IDENTITY_DATABASE_URL`; the per-app `*_DATABASE_URL` keys are
+also consumed by the migrate Job. `DATABASE_URL` remains only for the migration
+and data-split tooling. Keep `BETTER_AUTH_SECRET` stable: it encrypts the JWKS rows in
 the database. If it is rotated, clear the `jwks` table so new keys are generated.
 
 Add optional keys to `asynchrone-space-copilot-secrets` as needed:
@@ -134,9 +135,9 @@ requires `STRIPE_SECRET_KEY`. The app refuses to boot on a half-configured pair.
 
 ### Domain apps
 
-Each domain app has its own Secret. Its `DATABASE_URL` is the same database
-Copilot uses until #190/#171 (the domain packages still read identity rows), and
-it carries the provisioned OAuth client pair. Generate the pairs with
+Each domain app has its own Secret with its own database URL and the
+provisioned OAuth client pair. Identity and cross-domain reads go through the
+internal APIs (#171). Generate the pairs with
 `npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth`.
 
 ```bash
@@ -149,7 +150,7 @@ for app in projects calendars files messages clients employees; do
   if [ "$app" = "files" ]; then EXTRA+=(--from-literal=CRON_SECRET='<random-token>'); fi
 
   kubectl -n asynchrone-space create secret generic "asynchrone-space-${app}-secrets" \
-    --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+    --from-literal="${PREFIX}_DATABASE_URL=postgresql://user:pass@db:5432/asynchrone_${app}?schema=public" \
     --from-literal="${PREFIX}_OAUTH_CLIENT_ID=$(grep ^${PREFIX}_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
     --from-literal="${PREFIX}_OAUTH_CLIENT_SECRET=$(grep ^${PREFIX}_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)" \
     --from-literal=SENTRY_DSN="$SENTRY_DSN" \
@@ -294,9 +295,9 @@ No app owns another app's CronJob. The ownership matrix is:
 | `repository-sync`       | projects | `0 * * * *`    | `/api/cron/repository-sync`       |
 | `uploads-sweep`         | files    | `0 3 * * *`    | `/api/files/uploads/sweep`        |
 
-The repository webhook route (`/api/webhooks/repositories/:id`) stays in Copilot
-until #190; only the scheduled reconciliation moved to projects. The portal has
-no image and no host: it is part of Copilot (`copilot.asynchrone.space/portal`).
+The repository webhook route (`/api/webhooks/repositories/:id`) and the hourly
+reconciliation live in projects. The portal has no image and no host: it is part
+of Copilot (`copilot.asynchrone.space/portal`).
 
 ## Configuration
 

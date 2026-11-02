@@ -6,7 +6,7 @@ import { RecentsProvider } from "@workspace/app-shell/recents"
 import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { appOrigin } from "@workspace/contracts/server"
 import { EntitlementsProvider } from "@workspace/organization/use-entitlements"
-import { toMemberDirectoryEntry } from "@workspace/organization/directory"
+import { toDirectoryEntry } from "@workspace/organization/directory"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 import { MessagesSidebar } from "@/components/app-sidebar"
@@ -19,8 +19,7 @@ import {
   toRequestContext,
 } from "@/lib/auth/workspace"
 import { messagingService } from "@/lib/messaging"
-import { listUserOrganizations } from "@/lib/organization"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 
 /**
  * The workspace shell for the messages host.
@@ -44,24 +43,19 @@ export default async function OrgLayout({
   })
   const ctx = toRequestContext(workspace)
 
-  const [initialData, appearance, memberships, memberRows] = await Promise.all([
+  const [initialData, appearance, memberRows] = await Promise.all([
     messagingService.list(ctx),
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
-    prisma.member.findMany({
-      where: { organizationId: workspace.organization.id, clientId: null },
-      include: { user: true },
-      orderBy: { createdAt: "asc" },
-    }),
+    identity.listMembers(workspace.organization.id),
   ])
 
   // Conversation members are user ids; organization members never carry the
   // client role, but the directory type keeps it for portal rows.
-  const members = memberRows.map(toMemberDirectoryEntry).map((member) => ({
-    id: member.id,
+  const members = memberRows.map(toDirectoryEntry).map((member) => ({
+    id: member.userId,
     name: member.name,
     email: member.email,
-    avatarUrl: member.avatarUrl,
+    avatarUrl: member.avatarUrl ?? undefined,
     role: (member.role === "client" ? "member" : member.role) as
       "owner" | "admin" | "member" | "viewer",
   }))
@@ -69,7 +63,7 @@ export default async function OrgLayout({
   const t = await getTranslations("Common")
   const copilotUrl = appOrigin("copilot")
   const projectsUrl = appOrigin("projects")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
 
   return (
     <TooltipProvider>

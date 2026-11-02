@@ -87,6 +87,25 @@ function ports(
   return {
     audit: vi.fn(async () => undefined),
     notify: vi.fn(async () => undefined),
+    directory: {
+      list: vi.fn(async () => []),
+      find: vi.fn(async () => null),
+      findByEmail: vi.fn(async () => null),
+      countOwners: vi.fn(async () => 0),
+      add: vi.fn(async () => ({
+        userId: "u",
+        name: "User",
+        email: "user@example.com",
+        role: "member" as const,
+      })),
+      updateRole: vi.fn(async () => ({
+        userId: "u",
+        name: "User",
+        email: "user@example.com",
+        role: "member" as const,
+      })),
+      remove: vi.fn(async () => ({ id: "u" })),
+    },
     repository: {
       createTaskInRepository: vi.fn(async () => null),
       pushTaskStatus: vi.fn(async () => undefined),

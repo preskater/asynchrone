@@ -106,6 +106,40 @@ model MessageAttachment {
   @@map("messageAttachment")
 }
 
+model UploadSession {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  name           String
+  parentId       String?
+  kind           String   @default("other")
+  mimeType       String?
+  oid            BigInt
+  expectedSize   Int?
+  receivedBytes  Int      @default(0)
+  sha256         String?
+  transient      Boolean  @default(false)
+  status         String   @default("open")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  expiresAt      DateTime
+
+  @@index([organizationId, status])
+  @@index([expiresAt])
+  @@map("uploadSession")
+}
+
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  /// Epoch milliseconds: last request (Better Auth) or window start (app rows).
+  lastRequest BigInt
+
+  @@index([lastRequest])
+  @@map("rateLimit")
+}
+
 model OidcSession {
   id                   String   @id
   userId               String

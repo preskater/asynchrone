@@ -1,10 +1,12 @@
 import { createAuth } from "@workspace/auth/server"
+import { z } from "zod"
 
 import { recordSessionRevocation } from "./account/session-audit"
 import { recordTwoFactorChange } from "./account/two-factor-audit"
 import { recordAuthAuditEvent } from "./audit/auth-audit"
 import { rateLimit } from "./core/rate-limit"
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email"
+import { domainClient } from "./internal/domain"
 import { revokeAppSessions } from "./internal/app-sessions"
 import { ac, orgRoles } from "@workspace/organization/access"
 import {
@@ -83,15 +85,33 @@ export const auth = createAuth({
     buildOAuthClaims,
     twoFactorEnrollmentRequired,
     onOrganizationCreated: async ({ organization, user }) => {
-      await prisma.calendar.create({
-        data: {
-          organizationId: organization.id,
-          name: "Personal",
-          kind: "personal",
-          color: "blue",
-          members: { create: [{ userId: user.id }] },
-        },
+      // The calendars app owns the default calendar; create it through its
+      // internal API instead of writing another app's table.
+      const client = domainClient("calendars")
+      if (!client) return
+      const profile = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { name: true, email: true },
       })
+      if (!profile) return
+      await client
+        .call(
+          "ensure-personal-calendar",
+          {
+            userId: user.id,
+            userName: profile.name,
+            userEmail: profile.email,
+            organizationId: organization.id,
+            role: "owner",
+            impersonatedBy: null,
+            portal: null,
+          },
+          {},
+          z.unknown()
+        )
+        .catch((error) => {
+          console.error("[auth] could not create the default calendar", error)
+        })
     },
   },
   oauth: {

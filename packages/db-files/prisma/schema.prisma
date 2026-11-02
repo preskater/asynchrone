@@ -101,6 +101,17 @@ model FileActivity {
   @@map("fileActivity")
 }
 
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  /// Epoch milliseconds: last request (Better Auth) or window start (app rows).
+  lastRequest BigInt
+
+  @@index([lastRequest])
+  @@map("rateLimit")
+}
+
 model OidcSession {
   id                   String   @id
   userId               String

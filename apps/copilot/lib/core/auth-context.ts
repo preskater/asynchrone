@@ -1,6 +1,7 @@
 import { createAuthSession } from "@workspace/auth/session"
 
 import { auth } from "@/lib/auth"
+import { requireDomainClient } from "@/lib/internal/domain"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -16,4 +17,26 @@ export const {
   requirePermission,
   isPortalMember,
   getPortalContext,
-} = createAuthSession({ auth, db: prisma })
+} = createAuthSession({
+  auth,
+  db: prisma,
+  resolveClientName: async (organizationId, clientId) => {
+    try {
+      const client = await requireDomainClient("clients").getPortalClient({
+        userId: "portal",
+        userName: "Portal",
+        userEmail: "portal@asynchrone.space",
+        organizationId,
+        role: "client",
+        impersonatedBy: null,
+        portal: { clientId, clientName: "Portal" },
+      })
+      return client?.name ?? null
+    } catch (error) {
+      // The portal still works without the display name; never fail the
+      // session because the clients app is briefly unavailable.
+      console.error("[portal] client name unavailable", error)
+      return null
+    }
+  },
+})

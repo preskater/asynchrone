@@ -1,9 +1,16 @@
-import { meetingRequestInclude, type MeetingDb } from "./db"
+import {
+  meetingRequestInclude,
+  type MeetingDb,
+  type MeetingDirectory,
+} from "./db"
 
 const ACTIVE_STATUSES = ["pending", "accepted"]
 
 export class MeetingRepository {
-  constructor(private readonly db: MeetingDb) {}
+  constructor(
+    private readonly db: MeetingDb,
+    private readonly directory: MeetingDirectory
+  ) {}
 
   getSettings(organizationId: string) {
     return this.db.meetingSettings.findUnique({ where: { organizationId } })
@@ -287,19 +294,13 @@ export class MeetingRepository {
   }
 
   /** Internal members that receive new meeting requests. */
-  async listManagers(organizationId: string) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null },
-      select: { userId: true, role: true },
-    })
+  listManagers(organizationId: string) {
+    return this.directory.listManagers(organizationId)
   }
 
   /** Internal members among `userIds`, used to validate meeting attendees. */
   findInternalMembers(organizationId: string, userIds: string[]) {
-    return this.db.member.findMany({
-      where: { organizationId, clientId: null, userId: { in: userIds } },
-      select: { userId: true },
-    })
+    return this.directory.findInternalMembers(organizationId, userIds)
   }
 }
 

@@ -7,7 +7,7 @@ import { RecentsProvider } from "@workspace/app-shell/recents"
 import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { appOrigin } from "@workspace/contracts/server"
 import { EntitlementsProvider } from "@workspace/organization/use-entitlements"
-import { toMemberDirectoryEntry } from "@workspace/organization/directory"
+import { toDirectoryEntry } from "@workspace/organization/directory"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -19,9 +19,8 @@ import {
 } from "@/lib/auth/workspace"
 import { calendarService } from "@/lib/calendars"
 import { CalendarsProvider } from "@/lib/calendars/store"
-import { listUserOrganizations } from "@/lib/organization"
 import { PermissionsProvider } from "@/lib/permissions"
-import { prisma } from "@/lib/prisma"
+import { identity } from "@/lib/identity"
 import { WorkspaceNavProvider } from "@/lib/workspace-nav/store"
 
 /**
@@ -47,25 +46,23 @@ export default async function OrgLayout({
   })
   const ctx = toRequestContext(workspace)
 
-  const [initialData, appearance, memberships, memberRows] = await Promise.all([
+  const [initialData, appearance, memberRows] = await Promise.all([
     calendarService.listShell(ctx),
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
-    prisma.member.findMany({
-      where: { organizationId: workspace.organization.id, clientId: null },
-      include: { user: true },
-      orderBy: { createdAt: "asc" },
-    }),
+    identity.listMembers(workspace.organization.id),
   ])
 
   const t = await getTranslations("Common")
   const sidebar = await getTranslations("Sidebar")
   const copilotUrl = appOrigin("copilot")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
   // Organization members never carry the client role; the directory type keeps
   // it for portal rows, so normalize it for the workspace providers.
-  const members = memberRows.map(toMemberDirectoryEntry).map((member) => ({
-    ...member,
+  const members = memberRows.map(toDirectoryEntry).map((member) => ({
+    id: member.userId,
+    name: member.name,
+    email: member.email,
+    avatarUrl: member.avatarUrl ?? undefined,
     role: (member.role === "client" ? "member" : member.role) as
       "owner" | "admin" | "member" | "viewer",
   }))

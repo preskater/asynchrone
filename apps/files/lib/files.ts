@@ -8,23 +8,23 @@ import {
 import { recordUserAudit, recordUserAuditMany } from "@/lib/audit"
 import { assertRateLimit } from "@/lib/rate-limit"
 import { largeObjectStore } from "@/lib/large-object"
-import { requireEntitlement, resolvePlan } from "@/lib/entitlements"
+import { requireEntitlement, storageQuotaBytes } from "@/lib/entitlements"
 import { prisma } from "@/lib/prisma"
 
 /**
  * The files app's binding of `@workspace/files`: the package owns the file
- * rules, this module supplies the database client, the large-object store, the
- * audit writer, the plan checks and the shared rate limiter.
+ * rules, this module supplies its own database client, large-object store,
+ * audit writer, plan checks and the shared rate limiter.
  */
-const quota = createFileQuota({ db: prisma, resolvePlan })
+const quota = createFileQuota({ db: prisma, quotaBytes: storageQuotaBytes })
 
 /**
- * Large objects still referenced by another row. A file node, a file version
- * and a message attachment may point at the same oid; the sweep and the delete
- * path must not unlink bytes that are still in use.
+ * Large objects still referenced by a file or a version in this database.
+ * Message attachments are owned by the messages app and accounted for there,
+ * so the sweep here never needs another app's table.
  */
 async function referencedOids(oids: bigint[]): Promise<string[]> {
-  const [files, versions, attachments] = await Promise.all([
+  const [files, versions] = await Promise.all([
     prisma.fileNode.findMany({
       where: { oid: { in: oids } },
       select: { oid: true },
@@ -33,12 +33,8 @@ async function referencedOids(oids: bigint[]): Promise<string[]> {
       where: { oid: { in: oids } },
       select: { oid: true },
     }),
-    prisma.messageAttachment.findMany({
-      where: { oid: { in: oids } },
-      select: { oid: true },
-    }),
   ])
-  return [...files, ...versions, ...attachments]
+  return [...files, ...versions]
     .map((row) => row.oid)
     .filter((oid): oid is bigint => oid !== null)
     .map((oid) => oid.toString())

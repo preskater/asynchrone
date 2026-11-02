@@ -16,11 +16,7 @@ export {
   type UploadSessionDeps,
   type UploadSessionView,
 } from "./upload-session"
-export {
-  createFileQuota,
-  type FileQuotaOptions,
-  type QuotaPlanSource,
-} from "./storage"
+export { createFileQuota, type FileQuotaOptions } from "./storage"
 export {
   createFileObjects,
   type FileObjects,

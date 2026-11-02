@@ -17,7 +17,7 @@
     "@workspace/app-shell": "*",
     "@workspace/audit": "*",
     "@workspace/core": "*",
-    "@workspace/db": "*",
+    "@workspace/db-projects": "*",
     "@workspace/i18n": "*",
     "@workspace/integrations": "*",
     "@workspace/notifications": "*",

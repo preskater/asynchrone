@@ -21,13 +21,13 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const envFile = resolve(repoRoot, "apps/copilot/.env")
 if (existsSync(envFile)) loadEnv({ path: envFile, quiet: true })
 
-// The identity tables still live in the monolith database (the database split
-// is a maintenance operation, #185/#171): Copilot's Better Auth session writes
-// through `@workspace/db` while its admin and saga stores read
-// `IDENTITY_DATABASE_URL` first. Point both at the same database so the specs,
-// the probe and the apps agree on one set of rows.
-if (process.env.DATABASE_URL) {
-  process.env.IDENTITY_DATABASE_URL = process.env.DATABASE_URL
+// The identity database and the two relying-party databases are separate. A
+// local run may only export DATABASE_URL; fall back to it so the apps share one
+// development database, and let CI's explicit per-app URLs win.
+for (const key of ["IDENTITY_DATABASE_URL", "PROJECTS_DATABASE_URL", "CALENDARS_DATABASE_URL"]) {
+  if (!process.env[key] && process.env.DATABASE_URL) {
+    process.env[key] = process.env.DATABASE_URL
+  }
 }
 
 // CI runs the apps from their production builds: `next dev` compiles routes on
@@ -81,7 +81,7 @@ export default defineConfig({
   },
   // A local run uses `next dev`, which compiles a route on first request; the
   // default 5s assertion budget is shorter than a cold compile.
-  expect: { timeout: 20_000 },
+  expect: { timeout: 60_000 },
   webServer:
     process.env.E2E_CROSS_APP_EXTERNAL === "1"
       ? undefined

@@ -2,9 +2,11 @@ import { expect, test } from "@playwright/test"
 
 import { closeDatabase, deletionJobsForOrganization } from "./db"
 import {
+  E2E_CALENDARS_URL,
   E2E_COPILOT_OAUTH_CLIENT_ID,
   E2E_COPILOT_OAUTH_CLIENT_SECRET,
   E2E_COPILOT_URL,
+  E2E_PROJECTS_URL,
   E2E_UNAVAILABLE_APP_URL,
 } from "./env"
 import {
@@ -55,7 +57,6 @@ interface SearchProbe {
 }
 
 interface AuditProbe {
-  createdClient: string
   localEntries: number
   partial: boolean
   unavailableApps: string[]
@@ -87,27 +88,39 @@ test("a down app degrades search to a partial result instead of failing it", asy
   const account = await signUp(page)
   const env = probeEnvironment()
 
-  // Projects is configured but unreachable; every other domain answers
-  // in-process, so the shell still gets results and says the result is
-  // partial.
+  // Calendars is configured but unreachable while projects answers: the live
+  // app still contributes results and the fan-out reports the missing one.
   const withDown = runProbe<SearchProbe>(
     "search",
-    { ...probeArgs(account), appUrls: { projects: E2E_UNAVAILABLE_APP_URL } },
+    {
+      ...probeArgs(account),
+      appUrls: {
+        projects: E2E_PROJECTS_URL,
+        calendars: E2E_UNAVAILABLE_APP_URL,
+      },
+    },
     env
   )
   expect(withDown.partial).toBe(true)
-  expect(withDown.unavailableApps).toEqual(["projects"])
+  expect(withDown.unavailableApps).toEqual(["calendars"])
   expect(withDown.results.length).toBeGreaterThan(0)
-  expect(withDown.results.every((result) => result.app !== "projects")).toBe(
+  expect(
+    withDown.results.every((result) => result.app !== "calendars")
+  ).toBe(true)
+  expect(withDown.results.some((result) => result.app === "projects")).toBe(
     true
   )
-  expect(withDown.results.some((result) => result.app === "clients")).toBe(true)
 
-  // Without a configured remote app nothing is missing: the fan-out is not
-  // "partial" just because some domains are in-process.
+  // Every configured app answers: the fan-out is complete.
   const withoutDown = runProbe<SearchProbe>(
     "search",
-    { ...probeArgs(account), appUrls: {} },
+    {
+      ...probeArgs(account),
+      appUrls: {
+        projects: E2E_PROJECTS_URL,
+        calendars: E2E_CALENDARS_URL,
+      },
+    },
     env
   )
   expect(withoutDown.partial).toBe(false)
@@ -168,21 +181,33 @@ test("audit fan-out reports partial pages and a partial export", async ({
 
   const withDown = runProbe<AuditProbe>(
     "audit",
-    { ...probeArgs(account), appUrls: { projects: E2E_UNAVAILABLE_APP_URL } },
+    {
+      ...probeArgs(account),
+      appUrls: {
+        projects: E2E_PROJECTS_URL,
+        calendars: E2E_UNAVAILABLE_APP_URL,
+      },
+    },
     env
   )
   // Copilot's own rows are still returned; the missing app is reported.
   expect(withDown.localEntries).toBeGreaterThan(0)
   expect(withDown.partial).toBe(true)
-  expect(withDown.unavailableApps).toEqual(["projects"])
+  expect(withDown.unavailableApps).toEqual(["calendars"])
   // An export never claims to be complete while an app is unreachable.
   expect(withDown.exportEntries).toBeGreaterThan(0)
   expect(withDown.exportPartial).toBe(true)
-  expect(withDown.exportUnavailableApps).toEqual(["projects"])
+  expect(withDown.exportUnavailableApps).toEqual(["calendars"])
 
   const withoutDown = runProbe<AuditProbe>(
     "audit",
-    { ...probeArgs(account), appUrls: {} },
+    {
+      ...probeArgs(account),
+      appUrls: {
+        projects: E2E_PROJECTS_URL,
+        calendars: E2E_CALENDARS_URL,
+      },
+    },
     env
   )
   expect(withoutDown.partial).toBe(false)

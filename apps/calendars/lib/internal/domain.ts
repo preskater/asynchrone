@@ -10,6 +10,7 @@ import { ForbiddenError } from "@workspace/core/errors"
 import { createEventSchema } from "@workspace/calendars/schemas"
 import {
   acceptMeetingRequestSchema,
+  createMeetingRequestSchema,
   declineMeetingRequestSchema,
   updateMeetingSettingsSchema,
 } from "@workspace/meetings/schemas"
@@ -41,6 +42,8 @@ export async function dispatchDomain(
   switch (operation) {
     case "list-calendars":
       return calendarService.list(ctx)
+    case "ensure-personal-calendar":
+      return calendarService.listShell(ctx)
     case "create-event":
       return calendarService.createEvent(
         ctx,
@@ -71,6 +74,37 @@ export async function dispatchDomain(
         ctx,
         updateMeetingSettingsSchema.parse(call.input)
       )
+    case "portal-create-meeting": {
+      const portal = call.context.portal
+      if (!portal)
+        throw new ForbiddenError("A portal client context is required.")
+      return meetingService.createRequest(
+        {
+          userId: ctx.userId,
+          userName: ctx.userName,
+          organizationId: ctx.organizationId,
+          clientId: portal.clientId,
+          clientName: portal.clientName,
+        },
+        createMeetingRequestSchema.parse(call.input)
+      )
+    }
+    case "portal-cancel-meeting": {
+      const portal = call.context.portal
+      if (!portal)
+        throw new ForbiddenError("A portal client context is required.")
+      const input = z.object({ id: z.string().min(1) }).parse(call.input)
+      return meetingService.cancelRequest(
+        {
+          userId: ctx.userId,
+          userName: ctx.userName,
+          organizationId: ctx.organizationId,
+          clientId: portal.clientId,
+          clientName: portal.clientName,
+        },
+        input.id
+      )
+    }
     case "portal-get-meetings": {
       const portal = call.context.portal
       if (!portal)

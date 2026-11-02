@@ -1,6 +1,7 @@
 import { expect, type BrowserContext, type Page } from "@playwright/test"
 
-import { prisma } from "@workspace/db"
+import { prisma as identityPrisma } from "@workspace/db-identity"
+import { prisma } from "@workspace/db-messages"
 
 import { E2E_COPILOT_URL, E2E_MESSAGES_URL } from "./env"
 
@@ -46,8 +47,8 @@ export async function signUp(page: Page): Promise<E2EAccount> {
   expect(signUpRes.ok(), await signUpRes.text()).toBeTruthy()
 
   const organizationSlug = await createOrganization(page, "Message HQ")
-  const user = await prisma.user.findUniqueOrThrow({ where: { email } })
-  const organization = await prisma.organization.findUniqueOrThrow({
+  const user = await identityPrisma.user.findUniqueOrThrow({ where: { email } })
+  const organization = await identityPrisma.organization.findUniqueOrThrow({
     where: { slug: organizationSlug },
   })
 

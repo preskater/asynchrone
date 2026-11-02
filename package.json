@@ -19,7 +19,9 @@
     "migrate:deploy": "npm run migrate:deploy --workspace=@workspace/migrate",
     "migrate:status": "npm run migrate:status --workspace=@workspace/migrate",
     "verify:migrations": "node scripts/verify-migrations.mjs",
-    "split:databases": "node scripts/split-databases.mjs"
+    "split:databases": "node scripts/split-databases.mjs",
+    "generate:all": "npm run generate --workspace=@workspace/db && npm run generate --workspace=@workspace/db-identity && npm run generate --workspace=@workspace/db-projects && npm run generate --workspace=@workspace/db-calendars && npm run generate --workspace=@workspace/db-files && npm run generate --workspace=@workspace/db-messages && npm run generate --workspace=@workspace/db-clients && npm run generate --workspace=@workspace/db-employees && npm run generate --workspace=@workspace/db-control-tower",
+    "test:unit": "turbo run test:unit"
   },
   "devDependencies": {
     "@rolldown/binding-wasm32-wasi": "^1.2.15",

@@ -68,27 +68,25 @@ and a workspace package may not import an app. `failure.spec.ts` therefore
 spawns `apps/copilot/scripts/e2e-cross-app-probe.ts` with the domain origins the
 case needs (`appUrls`) and reads one `__PROBE__<json>` line. Everything runs the
 production code against the running apps and the real identity database. The
-only stub is the app that "recovers" in the deletion-retry case: the domain apps
-do not mount the saga routes yet (see the gaps below), so the probe starts a
+only stub is the app that "recovers" in the deletion-retry case: the probe
+points that app at a local server so it can simulate an outage and recovery,
+so the probe starts a
 local HTTP server that speaks the documented
 `DELETE /internal/v1/organizations/:id` contract and fails once before
-succeeding.
+succeeding. The real apps mount every other endpoint the probe uses
+(`/internal/v1/search`, `/internal/v1/audit*`,
+`/internal/v1/organizations/:id/export`).
 
 ## Databases
 
 The suite needs the monolith migrations plus the per-app migrations
 (`npm run db:create && npm run migrate:deploy && npm run verify:migrations`).
-Two transitional details matter:
-
-- Every app still binds `@workspace/db`, so `oidcSession` for all of them lives
-  in `DATABASE_URL`. The suite therefore models "the other app's table" with
-  `duplicateAppSession()` (same `sid`, second row) when it asserts the
-  revoke-by-`sid` contract. After the database cutover each app owns its table
-  and the helper can be dropped.
-- Copilot's Better Auth session writes through `DATABASE_URL` while its admin
-  and saga stores read `IDENTITY_DATABASE_URL` first. `playwright.config.ts`
-  pins both to `DATABASE_URL` for the suite, matching the pre-cutover state;
-  the CI job documents the same choice.
+Each app owns its `oidcSession` table: `playwright.config.ts` passes
+`IDENTITY_DATABASE_URL`, `PROJECTS_DATABASE_URL` and `CALENDARS_DATABASE_URL`
+to the three servers, and `e2e/db.ts` opens one connection per database.
+`oidcSessionsForUser()` merges the projects and calendars rows; mutating
+helpers find the owning database by session id. Copilot's Better Auth session
+lives only in the identity database.
 
 ## Notes
 
@@ -103,13 +101,12 @@ Two transitional details matter:
 
 ## Gaps
 
-- The domain apps do not mount `/internal/v1/{audit,search,organizations/:id}`
-  yet, so the audit and search fan-outs report every configured app as
-  unavailable (partial) and the deletion rollback is exercised against the
-  contract stub. Replace the stub with the real origins when the routes land.- The control-tower **UI** action is not driven; the impersonation spec calls
+- The control-tower **UI** action is not driven; the impersonation spec calls
   the same `IdentityAdminClient.createHandoff` endpoint the action calls, then
   drives the entire browser flow. The TOTP-gated console itself is covered by
   `verify:platform-authorization` and the control-tower auth invariant.
-- The cross-database export saga (`dataExportApp`) is not wired into the export
-  cron yet, so "partial export" is asserted on the audit export fan-out; the
-  export-readiness rule is pinned by `packages/sagas/src/saga.unit.test.ts`.
+- The cross-database export archive is covered by the per-app suites and the
+  cross-app deletion/export assertions; there is no browser download of a
+  finished cross-app archive in this suite yet. The per-app
+  `GET /internal/v1/organizations/:id/export` routes and the streaming
+  `files`/`messages` content routes are exercised by the export probe.

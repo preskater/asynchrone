@@ -17,7 +17,6 @@ import {
   toRequestContext,
 } from "@/lib/auth/workspace"
 import { EMPLOYEE_ACTIONS } from "@/lib/employee-actions"
-import { listUserOrganizations } from "@/lib/organization"
 
 /**
  * The workspace shell for the employees host.
@@ -41,14 +40,13 @@ export default async function OrgLayout({
     returnTo: `/${locale}/${orgSlug}/employees`,
   })
 
-  const [appearance, memberships] = await Promise.all([
+  const [appearance] = await Promise.all([
     getOrganizationAppearance(workspace.organization.id),
-    listUserOrganizations(workspace.user.id),
   ])
 
   const t = await getTranslations("Common")
   const copilotUrl = appOrigin("copilot")
-  const organizations = memberships.map(({ organization }) => organization)
+  const organizations = workspace.organizations
 
   return (
     <TooltipProvider>

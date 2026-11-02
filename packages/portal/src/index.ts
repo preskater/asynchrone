@@ -26,7 +26,6 @@ export type {
   PortalProjectPolicy,
   PortalProjectSummaryRow,
   PortalProjects,
-  PortalStorage,
   PortalTaskCommentInput,
 } from "./deps"
 export { PortalRepository, type PortalDb } from "./repository"

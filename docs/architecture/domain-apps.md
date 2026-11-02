@@ -37,13 +37,9 @@ under `*.asynchrone.space` (landing, Copilot, control tower) or
 Copilot runs the identity jobs, projects runs `repository-sync` and files runs
 `uploads-sweep`. See [Deploying with Helm](../deployment/helm.md).
 
-The clients and employees apps keep the documented transitional database
-binding: `@workspace/clients` still reads `member`/`user`/`fileNode`/`project`
-and `@workspace/employees` still reads `member`/`user`/`project`, so both bind
-`@workspace/db` until #171/#190 move those reads behind the identity and
-projects internal APIs. Their own `@workspace/db-clients` and
-`@workspace/db-employees` packages already carry the domain tables and
-`oidcSession`; no app imports two database packages.
+Every domain app binds exactly one `@workspace/db-<domain>` package. Identity
+rows (`member`, `user`, `account`) and other domains' rows are read through the
+versioned internal APIs, never through a shared Prisma client.
 The registry lives in `@workspace/contracts`:
 
 - `apps.ts` — keys, hosts, development ports, database names, audiences and
@@ -56,18 +52,11 @@ baked into an image or committed.
 
 ## Ownership rules
 
-1. A workspace owns its database and its Prisma client. A domain may only import
-   its own `@workspace/db-<domain>` package. The documented exception is the
-   transitional binding: `apps/projects`, `apps/calendars`, `apps/files`,
-   `apps/messages`, `apps/clients` and `apps/employees` still need identity rows
-   (`member`, `user`, `session`, `organization`) and other apps' tables (the
-   shared `rateLimit`/notification tables, the project task overlay, the files
-   upload sessions and large objects), so they bind the shared client
-   (`@workspace/db`) until #190/#171 moves those reads behind the internal API.
-   Each imports exactly one database package, and its own
-   `@workspace/db-<domain>` schema already carries `oidcSession`, `auditLog` and
-   its domain models, so the cutover only swaps the binding.
-2. A package never imports an app. An app never imports another app.3. Relative imports never escape their workspace.
+1. A workspace owns its database and its Prisma client. An app imports exactly
+   one `@workspace/db-<domain>` package; a domain package imports only its own.
+   Identity and other-domain data come from the internal APIs.
+2. A package never imports an app. An app never imports another app.
+3. Relative imports never escape their workspace.
 4. Every `@workspace/*` import is declared in the importer's `package.json`.
 5. Cross-domain reads and writes go through a versioned `/internal/v1/*`
    endpoint; no cross-database joins and no shared Prisma client.
@@ -92,7 +81,10 @@ organization, role and row-level rules.
 | Caller                                 | Target                                                               | Scopes                                                                                                                                          |
 | -------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `copilot`                              | `projects`, `calendars`, `files`, `messages`, `clients`, `employees` | `internal:domain:read`, `internal:domain:write`, `internal:audit:read`, `internal:search:read`, `internal:export:read`, `internal:delete:write` |
-| `projects` (and the other domain apps) | `copilot`                                                            | `internal:identity:read`, `internal:notifications:write`                                                                                        |
+| `projects` (and the other domain apps) | `copilot`                                                            | `internal:identity:read`, `internal:identity:write`, `internal:notifications:write`                                                             |
+| `clients`, `employees`                 | `projects`                                                           | `internal:domain:read`, `internal:domain:write`                                                                                                 |
+| `clients`                              | `files`                                                              | `internal:domain:read`                                                                                                                          |
+| `calendars`                            | `projects`                                                           | `internal:domain:read`                                                                                                                          |
 | `copilot`                              | `control-tower`                                                      | `internal:identity:read`                                                                                                                        |
 | `control-tower`                        | `copilot`                                                            | `internal:identity:read`, `internal:identity:admin`                                                                                             |
 
@@ -232,7 +224,7 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Clients and employees apps at `clients.copilot.asynchrone.space` and
       `employees.copilot.asynchrone.space` (#163)
 - [x] Assistant, MCP and portal moved onto the domain internal APIs (#190)
-- [ ] Control-tower DB cutover (milestone #1)
+- [x] Control-tower DB cutover (milestone #1)
 - [x] Calendars and files apps at `calendars.copilot.asynchrone.space` and
       `files.copilot.asynchrone.space`, with the upload sweep cron and meeting
       settings moved out of Copilot (#161)
@@ -240,6 +232,9 @@ also catches imports in files that are not currently reachable from a route.
       `employees.copilot.asynchrone.space` (#163)
 - [x] One generic Helm app chart instantiated per app, per-app images, wildcard
       DNS/TLS, per-app secrets and single-owner crons (#168)
+- [x] Every domain app cut over to its own database; identity reads use
+      `IdentityClient`, search/audit/export/deletion are mounted in each app and
+      the transitional `@workspace/db` binding is gone (#171)
 - [x] Cross-app OIDC and domain end-to-end coverage: sign-in, token refresh,
       organization-switch revocation, back-channel logout, impersonation
       handoff and TTL, audience binding and failure injection

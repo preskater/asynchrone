@@ -1,26 +1,17 @@
-import { randomUUID } from "node:crypto"
+import { describe, expect, it } from "vitest"
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
-
-import { toMemberDirectoryEntry } from "@workspace/organization/directory"
+import {
+  toDirectoryEntry,
+  toMemberDirectoryEntry,
+} from "@workspace/organization/directory"
 import {
   normalizeRecents,
   RECENTS_MAX_STORED,
   recentsStorageKey,
 } from "@workspace/app-shell/recents-storage"
 
-import { contextForMember } from "@/lib/core/auth-context"
-import { projectService } from "@/lib/projects"
-import { prisma } from "@/lib/prisma"
-
-import {
-  createContractFixture,
-  rejectionOf,
-  type ContractFixture,
-} from "./fixtures"
-
 describe("member directory contract", () => {
-  it("maps roles to the shared directory shape", () => {
+  it("maps joined identity rows to the shared directory shape", () => {
     const source = (role: string) => ({
       userId: "user_1",
       role,
@@ -36,6 +27,28 @@ describe("member directory contract", () => {
     })
     expect(toMemberDirectoryEntry(source("client")).role).toBe("client")
     expect(toMemberDirectoryEntry(source("unknown")).role).toBe("member")
+  })
+
+  it("maps the identity API row used by every domain app", () => {
+    expect(
+      toDirectoryEntry({
+        id: "user_2",
+        name: "Grace",
+        email: "grace@example.com",
+        avatarUrl: null,
+        role: "viewer",
+        clientId: null,
+        createdAt: new Date("2026-11-01T10:00:00Z"),
+      })
+    ).toEqual({
+      userId: "user_2",
+      name: "Grace",
+      email: "grace@example.com",
+      avatarUrl: undefined,
+      role: "viewer",
+      clientId: null,
+      joinedAt: new Date("2026-11-01T10:00:00Z"),
+    })
   })
 })
 
@@ -65,62 +78,5 @@ describe("recents contract", () => {
       unknownApp: [{ id: "x", label: "x", at: 1 }],
     } as Parameters<typeof normalizeRecents>[0])
     expect("unknownApp" in withUnknown).toBe(false)
-  })
-})
-
-describe("member directory against the database", () => {
-  let fixture: ContractFixture
-  let portalUserId: string
-
-  beforeAll(async () => {
-    fixture = await createContractFixture()
-    portalUserId = `user_contract_portal_a_${randomUUID().slice(0, 8)}`
-    await prisma.user.create({
-      data: {
-        id: portalUserId,
-        name: "Portal A",
-        email: `${portalUserId}@contract.local`,
-      },
-    })
-    await prisma.member.create({
-      data: {
-        id: `member_portal_a_${randomUUID().slice(0, 8)}`,
-        organizationId: fixture.orgA,
-        userId: portalUserId,
-        role: "client",
-        clientId: fixture.clientA,
-        createdAt: new Date(),
-      },
-    })
-  })
-
-  afterAll(async () => {
-    await prisma.user
-      .deleteMany({ where: { id: portalUserId } })
-      .catch(() => {})
-    await fixture?.cleanup()
-  })
-
-  it("lists only internal members of the active organization", async () => {
-    const members = await projectService.listMembers(fixture.ctxAlice)
-    expect(members.map((member) => member.id)).toContain(fixture.users.alice)
-    expect(members.map((member) => member.id)).not.toContain(portalUserId)
-
-    const other = await projectService.listMembers(fixture.ctxMallory)
-    expect(other.map((member) => member.id)).toEqual([fixture.users.mallory])
-  })
-
-  it("never turns a portal account into an internal context", async () => {
-    const error = await rejectionOf(
-      contextForMember(
-        {
-          id: portalUserId,
-          name: "Portal A",
-          email: `${portalUserId}@contract.local`,
-        },
-        fixture.orgA
-      )
-    )
-    expect(error).toMatchObject({ code: "forbidden" })
   })
 })

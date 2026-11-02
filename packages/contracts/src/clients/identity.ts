@@ -1,14 +1,29 @@
 import {
+  AddWorkspaceMemberSchema,
   INTERNAL_ROUTES,
+  IntegrationTokenSchema,
   InternalErrorSchema,
   MemberSchema,
+  OrganizationAppearanceSchema,
   OrganizationSchema,
+  PortalAccessSchema,
+  PresenceEntrySchema,
   EntitlementsSchema,
+  SERVICE_SCOPES,
+  UpdateWorkspaceMemberSchema,
   UserSchema,
+  WorkspaceSchema,
+  type AddWorkspaceMember,
   type Entitlements,
   type IdentityUser,
+  type IntegrationToken,
   type Member,
   type Organization,
+  type OrganizationAppearanceMetadata,
+  type PortalAccess,
+  type PresenceEntry,
+  type UpdateWorkspaceMember,
+  type Workspace,
 } from "../internal/contracts"
 import { internalAudience } from "../apps"
 
@@ -61,20 +76,24 @@ export class IdentityClient {
     }
   }
 
-  private async token(): Promise<string> {
+  private async token(write = false): Promise<string> {
     return this.options.getToken({
       audience: this.audience,
-      scopes: ["internal:identity:read"],
+      scopes: [
+        write ? SERVICE_SCOPES.identityWrite : SERVICE_SCOPES.identityRead,
+      ],
     })
   }
 
   private async request<T>(
     path: string,
     schema: { parse: (value: unknown) => T },
-    init: RequestInit = {}
+    init: RequestInit = {},
+    options: { cache?: boolean } = {}
   ): Promise<T> {
+    const cacheable = options.cache !== false
     const now = this.options.now!()
-    const cached = this.cache.get(path)
+    const cached = cacheable ? this.cache.get(path) : undefined
     if (cached && cached.expiresAt > now) return cached.value as T
 
     const response = await (this.options.fetchImpl ?? fetch)(
@@ -83,7 +102,9 @@ export class IdentityClient {
         ...init,
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${await this.token()}`,
+          Authorization: `Bearer ${await this.token(
+            init.method !== undefined && init.method !== "GET"
+          )}`,
           ...(init.headers ?? {}),
         },
         cache: "no-store",
@@ -112,11 +133,34 @@ export class IdentityClient {
       )
     }
     const value = schema.parse((body as { data: unknown }).data)
-    this.cache.set(path, {
-      value,
-      expiresAt: this.options.now!() + (this.options.ttlMs ?? 30_000),
-    })
+    if (cacheable) {
+      this.cache.set(path, {
+        value,
+        expiresAt: this.options.now!() + (this.options.ttlMs ?? 30_000),
+      })
+    }
     return value
+  }
+
+  /** The workspace gate payload for a Copilot session and one organization. */
+  getWorkspace(input: {
+    sid: string
+    organizationId: string
+    locale?: string
+  }): Promise<Workspace> {
+    const search = new URLSearchParams({
+      sid: input.sid,
+      organizationId: input.organizationId,
+    })
+    if (input.locale) search.set("locale", input.locale)
+    return this.request(
+      `${INTERNAL_ROUTES.identityWorkspace}?${search.toString()}`,
+      WorkspaceSchema,
+      {},
+      // The workspace carries the live session and its impersonation age;
+      // caching it would let a revoked or expired session keep rendering.
+      { cache: false }
+    )
   }
 
   getOrganization(id: string): Promise<Organization> {
@@ -144,6 +188,103 @@ export class IdentityClient {
     return this.request(
       INTERNAL_ROUTES.identityEntitlements(encodeURIComponent(organizationId)),
       EntitlementsSchema
+    )
+  }
+
+  listPresence(organizationId: string): Promise<PresenceEntry[]> {
+    return this.request(
+      INTERNAL_ROUTES.identityPresence(encodeURIComponent(organizationId)),
+      PresenceEntrySchema.array()
+    )
+  }
+
+  getAppearance(organizationId: string): Promise<OrganizationAppearanceMetadata> {
+    return this.request(
+      INTERNAL_ROUTES.identityAppearance(encodeURIComponent(organizationId)),
+      OrganizationAppearanceSchema
+    )
+  }
+
+  addMember(
+    organizationId: string,
+    input: AddWorkspaceMember
+  ): Promise<Member> {
+    return this.request(
+      INTERNAL_ROUTES.identityMembers(encodeURIComponent(organizationId)),
+      MemberSchema,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(AddWorkspaceMemberSchema.parse(input)),
+      },
+      { cache: false }
+    )
+  }
+
+  updateMemberRole(
+    organizationId: string,
+    userId: string,
+    input: UpdateWorkspaceMember
+  ): Promise<Member> {
+    return this.request(
+      INTERNAL_ROUTES.identityMember(
+        encodeURIComponent(organizationId),
+        encodeURIComponent(userId)
+      ),
+      MemberSchema,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(UpdateWorkspaceMemberSchema.parse(input)),
+      },
+      { cache: false }
+    )
+  }
+
+  removeMember(organizationId: string, userId: string): Promise<{ id: string }> {
+    return this.request(
+      INTERNAL_ROUTES.identityMember(
+        encodeURIComponent(organizationId),
+        encodeURIComponent(userId)
+      ),
+      { parse: (value) => value as { id: string } },
+      { method: "DELETE" },
+      { cache: false }
+    )
+  }
+
+  getPortalAccess(
+    organizationId: string,
+    clientId: string
+  ): Promise<PortalAccess> {
+    const search = new URLSearchParams({ clientId })
+    return this.request(
+      `${INTERNAL_ROUTES.identityPortalAccess(
+        encodeURIComponent(organizationId)
+      )}?${search.toString()}`,
+      PortalAccessSchema
+    )
+  }
+
+  getIntegrationToken(
+    userId: string,
+    provider: string
+  ): Promise<IntegrationToken> {
+    return this.request(
+      INTERNAL_ROUTES.identityUserIntegrationToken(
+        encodeURIComponent(userId),
+        encodeURIComponent(provider)
+      ),
+      IntegrationTokenSchema
+    )
+  }
+
+  touchPresence(userId: string): Promise<{ at: Date }> {
+    return this.request(
+      INTERNAL_ROUTES.identityUserPresence(encodeURIComponent(userId)),
+      { parse: (value) => value as { at: Date } },
+      { method: "POST" },
+      { cache: false }
     )
   }
 

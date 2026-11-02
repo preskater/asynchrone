@@ -1,48 +1,52 @@
-import type { RequestContext } from "@workspace/core/context"
 import {
-  createFileQuota,
-  createFilesRuntime,
-  type FileAuditInput,
+  UploadSessionService,
+  type FileQuota,
+  type UploadRateLimit,
+  type UploadReferenceChecker,
 } from "@workspace/files"
 
-import { recordUserAudit, recordUserAuditMany } from "@/lib/audit"
-import { requireEntitlement, resolvePlan } from "@/lib/entitlements"
+import { storageQuotaBytes } from "@/lib/entitlements"
 import { largeObjectStore } from "@/lib/large-object"
 import { prisma } from "@/lib/prisma"
 import { assertRateLimit } from "@/lib/rate-limit"
 
 /**
- * The files upload service, bound by the messages app.
+ * Attachment uploads for the messages app.
  *
- * Attachments are uploaded through the files domain's chunked upload sessions
- * (`transient=1`) and live in PostgreSQL large objects (`@workspace/storage`).
- * Only that path is exposed on this host: message composers call it, and the
- * upload routes here refuse to create workspace file nodes.
+ * Message bytes live in the messages database as PostgreSQL large objects and
+ * never enter the files app: an attachment's `oid` would be meaningless in
+ * another database. Only the upload-session table (a transient session that
+ * returns the oid) is reused from `@workspace/files`.
  */
-const quota = createFileQuota({ db: prisma, resolvePlan })
+const quota: FileQuota = {
+  quotaBytes: storageQuotaBytes,
+  async usedBytes(organizationId) {
+    const result = await prisma.messageAttachment.aggregate({
+      where: { message: { conversation: { organizationId } } },
+      _sum: { sizeBytes: true },
+    })
+    return result._sum.sizeBytes ?? 0
+  },
+}
 
-async function referencedOids(oids: bigint[]): Promise<string[]> {
-  const attachments = await prisma.messageAttachment.findMany({
+const referencedOids: UploadReferenceChecker = async (oids) => {
+  const rows = await prisma.messageAttachment.findMany({
     where: { oid: { in: oids } },
     select: { oid: true },
   })
-  return attachments
+  return rows
     .map((row) => row.oid)
     .filter((oid): oid is bigint => oid !== null)
     .map((oid) => oid.toString())
 }
 
-export const filesRuntime = createFilesRuntime({
+const uploads = new UploadSessionService({
   db: prisma,
   storage: largeObjectStore,
   quota,
-  requireEntitlement,
-  assertRateLimit,
+  assertRateLimit: assertRateLimit as UploadRateLimit,
   referencedOids,
-  audit: {
-    recordUser: (ctx: RequestContext, input: FileAuditInput) =>
-      recordUserAudit(ctx, input),
-    recordUserMany: (ctx: RequestContext, inputs: FileAuditInput[]) =>
-      recordUserAuditMany(ctx, inputs),
-  },
 })
+
+/** The upload endpoints on this host only accept transient attachments. */
+export const filesRuntime = { uploads }

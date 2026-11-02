@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@workspace/db"
+import type { PrismaClient } from "@workspace/db-identity"
 
 /**
  * The slice of a Prisma client the portal domain needs.

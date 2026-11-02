@@ -18,7 +18,7 @@ import { signUp } from "./fixtures"
  */
 
 async function connect() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  const client = new Client({ connectionString: process.env.IDENTITY_DATABASE_URL ?? process.env.DATABASE_URL })
   await client.connect()
   return client
 }

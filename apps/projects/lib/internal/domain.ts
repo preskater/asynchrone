@@ -13,7 +13,9 @@ import {
   moveTaskSchema,
   updateTaskSchema,
 } from "@workspace/projects/schemas"
+import { setUserRepositoryTokenSchema } from "@workspace/projects/integrations/schemas"
 
+import { repositoryIntegrationService } from "@/lib/integrations"
 import { projectService } from "@/lib/projects"
 import {
   createProjectMessage,
@@ -44,6 +46,11 @@ function portalClientId(context: DelegatedContext): string {
 }
 
 const projectIdInput = z.object({ projectId: z.string().min(1) })
+const projectClientInput = z.object({
+  projectId: z.string().min(1),
+  clientId: z.string().min(1).nullable(),
+})
+const clientIdInput = z.object({ clientId: z.string().min(1) })
 const taskInput = z.object({ taskId: z.string().min(1) })
 const portalTaskInput = z.object({
   projectId: z.string().min(1),
@@ -102,6 +109,107 @@ export async function dispatchDomain(
       return projectService.list(ctx)
     case "get-project":
       return projectService.get(ctx, projectIdInput.parse(call.input).projectId)
+    case "list-calendar-tasks": {
+      const { tasks } = await projectService.listWorkspace(ctx, {
+        taskLimit: 500,
+        activityLimit: 0,
+      })
+      return tasks
+    }
+    case "list-project-options": {
+      const { projects } = await projectService.listShell(ctx)
+      return projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        clientId: project.clientId ?? null,
+        clientName: project.clientName ?? null,
+        isBillable: project.isBillable,
+        plannedHours: project.plannedHours ?? null,
+        startDate: project.startDate ?? null,
+        endDate: project.endDate ?? null,
+      }))
+    }
+    case "list-user-repository-tokens":
+      return repositoryIntegrationService.listUserTokens(ctx)
+    case "set-user-repository-token":
+      return repositoryIntegrationService.setUserToken(
+        ctx,
+        setUserRepositoryTokenSchema.parse(call.input)
+      )
+    case "remove-user-repository-token": {
+      const provider = z
+        .object({ provider: z.string().min(1) })
+        .parse(call.input)
+      return repositoryIntegrationService.removeUserToken(
+        ctx,
+        provider.provider as never
+      )
+    }
+    case "update-project-employee": {
+      const input = z
+        .object({
+          projectId: z.string().min(1),
+          clientId: z.string().min(1).nullable().optional(),
+          plannedHours: z.number().nonnegative().nullable().optional(),
+          isBillable: z.boolean().optional(),
+          startDate: z.coerce.date().nullable().optional(),
+          endDate: z.coerce.date().nullable().optional(),
+        })
+        .parse(call.input)
+      const project = await projectService.setEmployeeSettings(ctx, input)
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        clientId: project.clientId ?? null,
+        clientName: project.clientName ?? null,
+        isBillable: project.isBillable,
+        plannedHours: project.plannedHours ?? null,
+        startDate: project.startDate ?? null,
+        endDate: project.endDate ?? null,
+      }
+    }
+    case "count-projects-by-client": {
+      const projects = await projectService.listClientOptions(ctx)
+      const counts = new Map<string, number>()
+      for (const project of projects) {
+        if (!project.clientId) continue
+        counts.set(project.clientId, (counts.get(project.clientId) ?? 0) + 1)
+      }
+      return [...counts].map(([clientId, count]) => ({ clientId, count }))
+    }
+    case "count-client-projects": {
+      const projects = await projectService.listClientOptions(ctx)
+      const { clientId } = clientIdInput.parse(call.input)
+      return projects.filter((project) => project.clientId === clientId).length
+    }
+    case "list-client-projects": {
+      const projects = await projectService.listClientOptions(ctx)
+      const { clientId } = clientIdInput.parse(call.input)
+      return projects
+        .filter((project) => project.clientId === clientId)
+        .map((project) => ({
+          id: project.id,
+          name: project.name,
+          status: project.status,
+          clientId: project.clientId ?? null,
+        }))
+    }
+    case "set-project-client": {
+      const input = projectClientInput.parse(call.input)
+      const project = await projectService.setClient(
+        ctx,
+        input.projectId,
+        input.clientId
+      )
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        clientId: project.clientId ?? null,
+      }
+    }
     case "list-tasks":
       return projectService.listTasks(
         ctx,

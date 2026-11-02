@@ -1,6 +1,7 @@
 import type { UserAuditInput } from "@workspace/audit"
 import type { RequestContext } from "@workspace/core/context"
 import type { NotifyArgs } from "@workspace/notifications"
+import type { MemberDirectoryPort } from "@workspace/organization/directory"
 
 import type { TaskExternalLink } from "./integrations/types"
 
@@ -51,4 +52,6 @@ export interface ProjectServicePorts {
   audit: ProjectAudit
   notify: ProjectNotify
   repository: ProjectRepositorySync
+  /** Identity reads and the member-management writes the settings card exposes. */
+  directory: MemberDirectoryPort
 }

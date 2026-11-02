@@ -1,4 +1,5 @@
-import type { MessagingStorage } from "./deps"
+import type { MessagingDirectory, MessagingStorage } from "./deps"
+import type { MessagingAudit } from "./service"
 import { createMessagingObjects, type MessagingObjects } from "./objects"
 import { MessagingRepository, type MessagingDb } from "./repository"
 import { MessagingService } from "./service"
@@ -8,6 +9,10 @@ export interface MessagingRuntimeOptions {
   db: MessagingDb
   /** The large-object store bound to the app's own pool. */
   storage: MessagingStorage
+  /** The identity reads (presence and the DM title). */
+  directory: MessagingDirectory
+  /** The app's audit writer (`recordUserAudit`). */
+  audit?: MessagingAudit
 }
 
 export interface MessagingRuntime {
@@ -26,9 +31,10 @@ export interface MessagingRuntime {
 export function createMessagingRuntime(
   options: MessagingRuntimeOptions
 ): MessagingRuntime {
-  const repository = new MessagingRepository(options.db)
+  const repository = new MessagingRepository(options.db, options.directory)
   const service = new MessagingService(repository, {
     storage: options.storage,
+    audit: options.audit,
   })
   const objects = createMessagingObjects(options.db, options.storage)
 

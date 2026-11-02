@@ -15,32 +15,58 @@ import { Client, types } from "pg"
 // comparison by the machine's UTC offset; parse them as UTC instead.
 types.setTypeParser(1114, (value: string) => new Date(`${value}Z`))
 
-let client: Client | null = null
+export type DatabaseName = "identity" | "projects" | "calendars"
 
-async function connection(): Promise<Client> {
-  if (client) return client
-  const connectionString = process.env.DATABASE_URL
+const ENV_BY_DATABASE: Record<DatabaseName, string> = {
+  identity: "IDENTITY_DATABASE_URL",
+  projects: "PROJECTS_DATABASE_URL",
+  calendars: "CALENDARS_DATABASE_URL",
+}
+
+const clients = new Map<DatabaseName, Client>()
+
+async function connection(database: DatabaseName = "identity"): Promise<Client> {
+  const existing = clients.get(database)
+  if (existing) return existing
+  const connectionString =
+    process.env[ENV_BY_DATABASE[database]] ?? process.env.DATABASE_URL
   if (!connectionString) {
-    throw new Error("DATABASE_URL is required by the cross-app e2e suite")
+    throw new Error(
+      `${ENV_BY_DATABASE[database]} (or DATABASE_URL) is required by the cross-app e2e suite`
+    )
   }
-  client = new Client({ connectionString })
+  const client = new Client({ connectionString })
   await client.connect()
+  clients.set(database, client)
   return client
 }
 
 export async function query<T>(
   text: string,
-  values: unknown[] = []
+  values: unknown[] = [],
+  database: DatabaseName = "identity"
 ): Promise<T[]> {
-  const db = await connection()
+  const db = await connection(database)
   const result = await db.query(text, values)
   return result.rows as T[]
 }
 
 export async function closeDatabase(): Promise<void> {
-  if (!client) return
-  await client.end()
-  client = null
+  for (const client of clients.values()) await client.end()
+  clients.clear()
+}
+
+/** Which app database owns one local OIDC session row. */
+async function oidcSessionDatabase(id: string): Promise<DatabaseName | null> {
+  for (const database of ["projects", "calendars"] as const) {
+    const rows = await query<{ id: string }>(
+      `select id from "oidcSession" where id = $1`,
+      [id],
+      database
+    )
+    if (rows[0]) return database
+  }
+  return null
 }
 
 export interface UserRow {
@@ -91,6 +117,7 @@ export async function organizationExists(
 
 export interface OidcSessionRow {
   id: string
+  createdAt?: string
   userId: string
   organizationId: string
   sid: string
@@ -109,14 +136,21 @@ export interface OidcSessionRow {
 export async function oidcSessionsForUser(
   userId: string
 ): Promise<OidcSessionRow[]> {
-  return query<OidcSessionRow>(
-    `select id, "userId", "organizationId", sid, "accessToken",
-            "refreshToken", "accessTokenExpiresAt"
-       from "oidcSession"
-      where "userId" = $1
-      order by "createdAt"`,
-    [userId]
+  const rows = await Promise.all(
+    (["projects", "calendars"] as const).map((database) =>
+      query<OidcSessionRow>(
+        `select id, "userId", "organizationId", sid, "accessToken",
+                "refreshToken", "accessTokenExpiresAt", "createdAt"
+           from "oidcSession"
+          where "userId" = $1`,
+        [userId],
+        database
+      )
+    )
   )
+  return rows
+    .flat()
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
 }
 
 /**
@@ -132,6 +166,8 @@ export async function oidcSessionsForUser(
  * transitional storage layout.
  */
 export async function duplicateAppSession(sourceId: string): Promise<string> {
+  const database = await oidcSessionDatabase(sourceId)
+  if (!database) throw new Error(`No session row to duplicate: ${sourceId}`)
   const rows = await query<{ id: string }>(
     `insert into "oidcSession"
        (id, "userId", "organizationId", sid, "accessToken", "refreshToken",
@@ -142,7 +178,8 @@ export async function duplicateAppSession(sourceId: string): Promise<string> {
        from "oidcSession"
       where id = $1
      returning id`,
-    [sourceId]
+    [sourceId],
+    database
   )
   const created = rows[0]?.id
   if (!created) throw new Error(`No session row to duplicate: ${sourceId}`)
@@ -151,22 +188,28 @@ export async function duplicateAppSession(sourceId: string): Promise<string> {
 
 /** Force the next request to go through the refresh-token grant. */
 export async function expireAccessToken(sessionId: string): Promise<void> {
+  const database = await oidcSessionDatabase(sessionId)
+  if (!database) throw new Error(`No session row: ${sessionId}`)
   await query(
     `update "oidcSession"
         set "accessTokenExpiresAt" = now() - interval '10 minutes'
       where id = $1`,
-    [sessionId]
+    [sessionId],
+    database
   )
 }
 
 /** Make the stored token unusable *and* unrefreshable ("stale token"). */
 export async function poisonAccessToken(sessionId: string): Promise<void> {
+  const database = await oidcSessionDatabase(sessionId)
+  if (!database) throw new Error(`No session row: ${sessionId}`)
   await query(
     `update "oidcSession"
         set "accessTokenExpiresAt" = now() - interval '10 minutes',
             "refreshToken" = null
       where id = $1`,
-    [sessionId]
+    [sessionId],
+    database
   )
 }
 

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
-import { prisma } from "@workspace/db"
+import { prisma as identityPrisma } from "@workspace/db-identity"
+import { prisma } from "@workspace/db-clients"
 
 import { E2E_CLIENTS_URL } from "./env"
 import { openClients, signUp } from "./fixtures"
@@ -19,7 +20,7 @@ async function seedClient(
   organizationSlug: string,
   name: string
 ): Promise<string> {
-  const organization = await prisma.organization.findUnique({
+  const organization = await identityPrisma.organization.findUnique({
     where: { slug: organizationSlug },
     select: { id: true },
   })

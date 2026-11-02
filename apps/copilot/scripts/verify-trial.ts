@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto"
 
 import { getAiQuota } from "../lib/assistant/usage"
 import type { RequestContext } from "@workspace/core/context"
-import { orgQuotaBytes } from "../lib/files"
 import { getOrganizationEntitlements } from "../lib/organization/entitlements"
 import {
   getTrialStatus,
@@ -131,7 +130,7 @@ async function main() {
 
     // Start
     check(
-      (await orgQuotaBytes(orgs.main)) === 1 * GB,
+      (await getOrganizationEntitlements(orgs.main)).storageBytes === 1 * GB,
       "free workspace starts with 1 GB"
     )
     check(
@@ -151,7 +150,7 @@ async function main() {
       "trialEndsAt is now + 14 days"
     )
     check(
-      (await orgQuotaBytes(orgs.main)) === 100 * GB,
+      (await getOrganizationEntitlements(orgs.main)).storageBytes === 100 * GB,
       "Team quota (100 GB) applies immediately"
     )
     check(
@@ -197,8 +196,14 @@ async function main() {
     )
 
     // Data created during the trial must survive the downgrade.
-    const project = await prisma.project.create({
-      data: { organizationId: orgs.main, name: "Created during trial" },
+    const trialRow = await prisma.notification.create({
+      data: {
+        organizationId: orgs.main,
+        userId: users.owner.id,
+        type: "task.assigned",
+        data: { title: "Created during the trial" },
+      },
+      select: { id: true },
     })
 
     // D-3 reminder
@@ -236,7 +241,7 @@ async function main() {
       data: { trialEndsAt: new Date(Date.now() - 1000) },
     })
     check(
-      (await orgQuotaBytes(orgs.main)) === 1 * GB,
+      (await getOrganizationEntitlements(orgs.main)).storageBytes === 1 * GB,
       "workspace is back on Starter (1 GB)"
     )
     check(
@@ -248,7 +253,8 @@ async function main() {
       "the AI allowance is gone after the trial"
     )
     check(
-      (await prisma.project.findUnique({ where: { id: project.id } })) !== null,
+      (await prisma.notification.findUnique({ where: { id: trialRow.id } })) !==
+        null,
       "data created during the trial is intact"
     )
     check(
@@ -257,7 +263,7 @@ async function main() {
     )
     check(
       (await notifications(orgs.gmail, "trial.ended")) === 0 &&
-        (await orgQuotaBytes(orgs.gmail)) === 100 * GB,
+        (await getOrganizationEntitlements(orgs.gmail)).storageBytes === 100 * GB,
       "an organization paid during the trial keeps Team and gets no end notice"
     )
   } finally {

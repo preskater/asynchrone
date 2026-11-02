@@ -14,13 +14,13 @@ export class ClientLinksService extends ClientsServiceCore {
   ): Promise<ClientProjectLinkOptionData[]> {
     const access = this.accessFor(ctx)
     requireEdit(access)
-    const rows = await this.repo.listProjectLinkOptions(ctx.organizationId)
+    const rows = await this.repo.listProjectLinkOptions(ctx)
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
       status: row.status,
       clientId: row.clientId,
-      clientName: row.client?.name ?? null,
+      clientName: row.clientName ?? null,
     }))
   }
 
@@ -33,7 +33,7 @@ export class ClientLinksService extends ClientsServiceCore {
     requireEdit(access)
     const [client, project] = await Promise.all([
       this.repo.findClient(ctx.organizationId, input.clientId),
-      this.repo.findProject(ctx.organizationId, input.projectId),
+      this.repo.findProject(ctx, input.projectId),
     ])
     if (!client) throw new NotFoundError("Client")
     if (!project) throw new NotFoundError("Project")
@@ -46,6 +46,7 @@ export class ClientLinksService extends ClientsServiceCore {
       )
     }
     const updated = await this.repo.setProjectClient(
+      ctx,
       input.projectId,
       input.clientId
     )
@@ -70,7 +71,7 @@ export class ClientLinksService extends ClientsServiceCore {
     requireEdit(access)
     const [client, project] = await Promise.all([
       this.repo.findClient(ctx.organizationId, input.clientId),
-      this.repo.findProject(ctx.organizationId, input.projectId),
+      this.repo.findProject(ctx, input.projectId),
     ])
     if (!client) throw new NotFoundError("Client")
     if (!project) throw new NotFoundError("Project")
@@ -79,7 +80,7 @@ export class ClientLinksService extends ClientsServiceCore {
         code: "project_not_linked",
       })
     }
-    await this.repo.setProjectClient(input.projectId, null)
+    await this.repo.setProjectClient(ctx, input.projectId, null)
     await this.repo.createAudit([
       {
         organizationId: ctx.organizationId,

@@ -86,9 +86,11 @@ export async function POST(request: Request): Promise<Response> {
       data: {
         organizationId: input.organizationId,
         userId: input.userId,
+        actorId: input.actorId ?? null,
         type: input.type,
         idempotencyKey: input.idempotencyKey,
         data: {
+          ...(input.data ?? {}),
           title: input.title,
           ...(input.body ? { body: input.body } : {}),
           ...(input.url ? { url: input.url } : {}),

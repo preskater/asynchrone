@@ -112,22 +112,18 @@ Copilot only redirects to a registered customer origin and only to its
 
 ## Databases
 
-Each app owns one `@workspace/db-<domain>` package and imports only that. The
-pilot and the #161 apps are transitional: their domain packages still read
-`member`/`user`/`account` (and, for calendars/files, the shared
-`rateLimit`/notification tables, the project task overlay and message
-attachments), so `apps/projects`, `apps/calendars` and `apps/files` bind
-`@workspace/db` (the shared client) until #190/#171. Each imports exactly one
-database package, `check:boundaries` passes, and their own schema already
-carries `oidcSession`, `auditLog` and the domain models.
+Each app owns one `@workspace/db-<domain>` package and imports only that. A
+domain package reads identity rows (`member`, `user`, `account`) through
+`IdentityClient` and other domains through their `/internal/v1/*` APIs; it never
+imports a second database client. The domain package defines a port
+(`MemberDirectoryPort`, `ProjectDb`, …) and the app binds the database client,
+large-object store, audit writer, rate limiter and notification ingress.
 
-A new app should bind its own package when every port it needs is satisfied by
-that schema. When a domain package still reads identity tables, keep
-`ProjectDb`-style ports explicit and list the gap in
-[feature-inventory.md](./architecture/feature-inventory.md) rather than
-importing a second database client. `apps/clients` and `apps/employees` use that
-transitional `@workspace/db` binding today (their own packages already carry the
-domain tables and `oidcSession`).
+A new app also mounts the standard internal surface:
+`GET /internal/v1/search`, `GET /internal/v1/organizations/:id/export`,
+`DELETE /internal/v1/organizations/:id`, `DELETE /internal/v1/users/:id` and the
+four `/internal/v1/audit*` routes. Copy the route files from `apps/projects` and
+bind the app's own Prisma client.
 
 ## Environment
 
@@ -139,7 +135,7 @@ Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to th
 | `<DOMAIN>_APP_URL`                       | Public origin; redirect, logout and back-channel URIs derive from it                    |
 | `COPILOT_APP_URL`                        | OIDC issuer and identity server                                                         |
 | `<DOMAIN>_OAUTH_CLIENT_ID/SECRET`        | Provisioned client credentials (`npm run oauth:clients --workspace=copilot -- --apply`) |
-| `DATABASE_URL` / `<DOMAIN>_DATABASE_URL` | Database connection (the pilot uses `DATABASE_URL` until #190)                          |
+| `<DOMAIN>_DATABASE_URL`                  | The app's own database (falls back to `DATABASE_URL` for local convenience)              |
 | `TRUSTED_IP_HEADERS`                     | Audit IP column; empty stores no address                                                |
 
 `next build` must not connect to anything: add build-time placeholders in the
@@ -205,20 +201,99 @@ host with a 308, keeping the path. Domain apps redirect routes they do not own
 (settings, clients, the portal) back to Copilot. Nothing in the old app should
 still render the moved screens.
 
-## Known gaps for the pilot
+## Notes for a new app
 
-- The projects, calendars and files domain identity reads (`member`, `user`,
-  `account`, `session`, and the calendars task overlay / files message
-  attachments) move behind the identity internal API in #190/#171; until then
-  those apps run on the shared database with their own `oidcSession` table
-  already migrated.
-- Meeting settings moved with calendars: they render at
-  `/{locale}/{orgSlug}/calendars/settings`, and Copilot's organization settings
-  tab links there.
-- Repository webhook delivery stays on Copilot (`/api/webhooks/repositories/:id`)
-  so existing GitHub/GitLab hooks keep working; the sync UI and its actions moved.
-- The assistant, MCP and portal keep using the in-process projects adapter in
-  Copilot until #190.
+- Identity reads (`member`, `user`, `account`, `session`) go through
+  `IdentityClient`; the member directory, workspace gate, presence and portal
+  access are all `/internal/v1/*` calls.
+- Polling reads and other background requests go through route handlers with a
+  plain `fetch`, never server actions. A server-action response applies an RSC
+  payload through the client router: it re-renders the route (overwriting the
+  client store with fresh `initialData`) and can abort an in-flight navigation,
+  which broke the organization-switch handoff in the messages app (#171).
+  Server actions are for mutations only.
+- Meeting settings render at `/{locale}/{orgSlug}/calendars/settings`; Copilot's
+  organization settings tab links there.
+- Repository webhook delivery (`/api/webhooks/repositories/:id`) and the sync UI
+  live in the projects app.
+- The assistant, MCP and portal call the domain's
+  `/internal/v1/domain/:operation` API; no Copilot adapter imports the app.
 - Impersonation is detected from the Copilot session row (`sid`); the token has
   no impersonation claim yet, so the banner and the 1-hour TTL are enforced by
-  the session lookup, not by the claims.
+  the identity workspace read, not by the claims.
+
+## Environment
+
+Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to the
+`env` arrays in the root `turbo.json` (build + dev):
+
+| Key                                      | Purpose                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| `<DOMAIN>_APP_URL`                       | Public origin; redirect, logout and back-channel URIs derive from it                    |
+| `COPILOT_APP_URL`                        | OIDC issuer and identity server                                                         |
+| `<DOMAIN>_OAUTH_CLIENT_ID/SECRET`        | Provisioned client credentials (`npm run oauth:clients --workspace=copilot -- --apply`) |
+| `<DOMAIN>_DATABASE_URL`                  | The app's own database (falls back to `DATABASE_URL` for local convenience)              |
+| `TRUSTED_IP_HEADERS`                     | Audit IP column; empty stores no address                                                |
+
+`next build` must not connect to anything: add build-time placeholders in the
+`Dockerfile` and in the CI `ci` job when a key is read at build time.
+
+## Infrastructure
+
+- `Dockerfile`: `docker build --build-arg APP=<domain>` (the `runner` stage
+  copies `apps/<domain>/.next`).
+- `docker-compose.yml`: one service on the app's development port with its own
+  `env_file`.
+- `.github/workflows/docker.yml`: one matrix entry + GHCR image
+  `asynchrone-space-<domain>`.
+- `charts/asynchrone-space`: add one dependency alias on the generic
+  `charts/asynchrone-space-app` chart and a values block for the app (host,
+  image, `config`, `secret.existingSecret`, optional cron jobs), then run
+  `helm dependency build charts/asynchrone-space` and commit `Chart.lock` and
+  the vendored archive. Do not copy a per-app chart; the app-specific values
+  are all the generic chart needs.
+- `.github/workflows/helm.yml` needs no per-app entry: `npm run verify:helm`
+  reads the umbrella and renders every alias. Add the new alias to the `APPS`
+  list in `scripts/verify-helm-charts.mjs`.
+- `packages/contracts` already has the app key, host env, database name,
+  audience and OAuth client env names; check it before adding anything.
+- Add the app to the connection budget in `packages/db-core/src/budget.ts`
+  (`poolMax`, default replicas, HPA ceiling), to
+  `charts/asynchrone-space/values.yaml` (`config.DATABASE_POOL_MAX`,
+  `replicaCount`, `autoscaling.maxReplicas`) and to
+  `connectionBudget.appPoolMax`; `npm run verify:connection-budget` fails
+  otherwise (ADR 0038).
+
+## Observability
+
+Copy the four files every app has (see `docs/observability.md`):
+
+- `instrumentation.ts` and `instrumentation-client.ts` (Sentry, disabled while
+  `SENTRY_DSN` is empty);
+- `app/api/health/route.ts` using `createHealthRoute` with the app's own
+  database check and pool;
+- `app/api/metrics/route.ts` using `createMetricsRoute`;
+- `lib/internal/invalidation.ts` plus
+  `app/internal/v1/invalidate/route.ts` using `createInvalidationHandler`, so
+  Copilot can clear this app's cached reads after a cross-domain mutation.
+
+Wrap the proxy response in `withCorrelation` and cron routes in
+`createCronRoute`. Add `@workspace/observability` to `transpilePackages` (the
+default list in `@workspace/next-config` already includes it) and to the app's
+`package.json`.
+
+## Tests
+
+- Unit: pure rules (`lib/auth/routing.ts`), adapters and helpers; `vitest`.
+- Playwright: sign-in through Copilot, organization switch and one domain flow.
+  `e2e/bootstrap.ts` provisions the OAuth client with a fixed secret so the
+  suite needs no admin session; `playwright.config.ts` starts both apps.
+- Add the app to CI: `npm run test:unit --workspace=<domain>`, a dedicated e2e
+  job, and the boundary check picks the app up automatically.
+
+## Redirects
+
+`apps/copilot/proxy.ts` redirects `/{locale}/{orgSlug}/<domain>[/...]` to the new
+host with a 308, keeping the path. Domain apps redirect routes they do not own
+(settings, clients, the portal) back to Copilot. Nothing in the old app should
+still render the moved screens.

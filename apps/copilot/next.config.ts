@@ -8,7 +8,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 export default createNextConfig({
   outputFileTracingRoot: path.join(projectRoot, "../../"),
   transpilePackages: [
-    "@workspace/db",
+    "@workspace/db-identity",
     "@workspace/audit",
     "@workspace/contracts",
     "@workspace/files",
@@ -17,7 +17,6 @@ export default createNextConfig({
     "@workspace/sagas",
     "@workspace/search",
     "@workspace/db-core",
-    "@workspace/db-identity",
     "@workspace/service-auth",
     "@workspace/projects",
     "@workspace/clients",

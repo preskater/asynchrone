@@ -1,13 +1,16 @@
 import { CalendarRepository, CalendarService } from "@workspace/calendars"
 
+import { recordUserAudit } from "@/lib/audit"
 import { prisma } from "@/lib/prisma"
 
 /**
  * App adapter: the calendar rules live in `@workspace/calendars`; this app binds
  * them to its database client. The package only knows the structural
- * `CalendarDb` port, so the app can bind `@workspace/db-calendars` as soon as
- * the identity reads move behind the internal API (#190) without touching the
- * service.
+ * `CalendarDb` port over `asynchrone_calendars` and writes each mutation's audit
+ * row through the app's own audit writer.
  */
 export const calendarRepository = new CalendarRepository(prisma)
-export const calendarService = new CalendarService(calendarRepository)
+export const calendarService = new CalendarService(
+  calendarRepository,
+  (ctx, input) => recordUserAudit(ctx, input)
+)
