@@ -45,7 +45,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ required "asynchrone-space.migrate.existingSecret (or asynchrone-space-copilot.secret.existingSecret) is required" $secretName }}
+                  name: {{ required "asynchrone-space.migrate.existingSecret (or copilot.secret.existingSecret) is required" $secretName }}
                   key: {{ .Values.migrate.secretKey }}
             {{- range $key := list "IDENTITY_DATABASE_URL" "PROJECTS_DATABASE_URL" "CALENDARS_DATABASE_URL" "FILES_DATABASE_URL" "MESSAGES_DATABASE_URL" "CLIENTS_DATABASE_URL" "EMPLOYEES_DATABASE_URL" "CONTROL_TOWER_DATABASE_URL" }}
             - name: {{ $key }}

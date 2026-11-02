@@ -37,7 +37,7 @@ organization, so checkout charges the first invoice immediately.
 
 Set these in `apps/copilot/.env`. On Kubernetes, `STRIPE_SECRET_KEY` and
 `STRIPE_WEBHOOK_SECRET` belong in the `asynchrone-space-copilot-secrets` Secret; the
-rest are non-secret and go under `asynchrone-space-copilot.config` (see
+rest are non-secret and go under `copilot.config` in `charts/asynchrone-space/values.yaml` (see
 [deployment/helm.md](deployment/helm.md)):
 
 | Variable                                                 | Purpose                                                                                        |

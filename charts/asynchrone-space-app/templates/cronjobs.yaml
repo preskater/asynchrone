@@ -1,0 +1,72 @@
+{{- if .Values.cronjobs.enabled }}
+{{- $root := . }}
+{{- $secretName := .Values.cronjobs.secretName | default .Values.secret.existingSecret }}
+{{- range $name, $job := .Values.cronjobs.jobs }}
+{{- if $job.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "asynchrone-space-app.fullname" $root }}-{{ $name }}
+  labels:
+    {{- include "asynchrone-space-app.labels" $root | nindent 4 }}
+spec:
+  schedule: {{ $job.schedule | quote }}
+  concurrencyPolicy: {{ $root.Values.cronjobs.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ $root.Values.cronjobs.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $root.Values.cronjobs.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $root.Values.cronjobs.backoffLimit }}
+      activeDeadlineSeconds: {{ $root.Values.cronjobs.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ $root.Values.cronjobs.ttlSecondsAfterFinished }}
+      template:
+        metadata:
+          labels:
+            {{- include "asynchrone-space-app.selectorLabels" $root | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          {{- with (include "asynchrone-space-app.imagePullSecrets" $root) }}
+          imagePullSecrets:
+            {{- . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: curl
+              image: {{ $root.Values.cronjobs.image }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  curl -fsS --retry 2 --retry-connrefused --max-time {{ $root.Values.cronjobs.timeoutSeconds }} \
+                    -H "Authorization: Bearer ${CRON_SECRET}" "${TARGET_URL}"
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ required "asynchrone-space-app.cronjobs.secretName (or secret.existingSecret) is required" $secretName }}
+                      key: CRON_SECRET
+                - name: TARGET_URL
+                  value: "http://{{ include "asynchrone-space-app.fullname" $root }}:{{ $root.Values.service.port }}{{ $job.path }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 100
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}
+{{- end }}
+{{- end }}

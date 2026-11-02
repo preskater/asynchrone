@@ -1,30 +1,30 @@
 dependencies:
-- name: asynchrone-space-landing
-  repository: file://../asynchrone-space-landing
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-copilot
-  repository: file://../asynchrone-space-copilot
-  version: 0.1.2
-- name: asynchrone-space-projects
-  repository: file://../asynchrone-space-projects
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-messages
-  repository: file://../asynchrone-space-messages
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-calendars
-  repository: file://../asynchrone-space-calendars
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-files
-  repository: file://../asynchrone-space-files
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-clients
-  repository: file://../asynchrone-space-clients
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-employees
-  repository: file://../asynchrone-space-employees
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
   version: 0.1.0
-- name: asynchrone-space-control-tower
-  repository: file://../asynchrone-space-control-tower
-  version: 0.1.1
-digest: sha256:83f5f8d6c342c39bd85ea2a51bf7f4db57ee32c00d58dcb8fdb9d09bde48e7c7
-generated: "2026-11-02T00:01:42.895286+01:00"
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
+  version: 0.1.0
+- name: asynchrone-space-app
+  repository: file://../asynchrone-space-app
+  version: 0.1.0
+digest: sha256:12b19b13acc0da8354b752f190c7b0cc2498c4e452041c155068680d8f042709
+generated: "2026-11-02T01:30:53.911985+01:00"

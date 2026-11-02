@@ -1,5 +1,5 @@
-{{- $copilot := index .Values "asynchrone-space-copilot" -}}
-{{- $ct := index .Values "asynchrone-space-control-tower" -}}
+{{- $copilot := index .Values "copilot" -}}
+{{- $ct := index .Values "control-tower" -}}
 Asynchrone Space installed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
 
 The pre-install/pre-upgrade migration Job runs `prisma migrate deploy` before
@@ -27,16 +27,21 @@ Control tower:
 {{- end }}
 
 Required secrets:
-  - {{ $copilot.secret.existingSecret }} (DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET, optional
-    OPENAI_API_KEY, RESEND_API_KEY, GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET,
-    TURNSTILE_SECRET_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET)
-  - {{ $ct.secret.existingSecret }} (DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET)
+  - {{ $copilot.secret.existingSecret }} (DATABASE_URL, IDENTITY_DATABASE_URL and the
+    per-app *_DATABASE_URL keys for the migrate Job, BETTER_AUTH_SECRET,
+    CRON_SECRET, optional OPENAI_API_KEY, RESEND_API_KEY, GITHUB_CLIENT_SECRET,
+    GITLAB_CLIENT_SECRET, TURNSTILE_SECRET_KEY, STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET)
+  - {{ $ct.secret.existingSecret }} (CONTROL_TOWER_DATABASE_URL,
+    CONTROL_TOWER_BETTER_AUTH_SECRET)
+  - one Secret per domain app (DATABASE_URL, the app's *_OAUTH_CLIENT_ID/SECRET;
+    the projects Secret also needs CRON_SECRET for repository-sync and the
+    files Secret needs CRON_SECRET for uploads-sweep)
 
-Scheduled jobs (formerly Vercel crons):
-{{- range $job := list (dict "name" "repository-sync" "config" $copilot.cronjobs.repositorySync) (dict "name" "trial-expiry" "config" $copilot.cronjobs.trialExpiry) (dict "name" "organization-deletion" "config" $copilot.cronjobs.organizationDeletion) (dict "name" "audit-retention" "config" $copilot.cronjobs.auditRetention) (dict "name" "data-exports" "config" $copilot.cronjobs.dataExports) }}
-{{- if $job.config.enabled }}
-  - {{ $job.name }} {{ $job.config.schedule }} -> {{ $job.config.path }}
-{{- end }}
-{{- end }}
+Scheduled jobs (formerly Vercel crons, exactly one owner each):
+  - copilot: trial-expiry 0 6 * * *, organization-deletion 30 3 * * *,
+    audit-retention 45 3 * * *, data-exports */15 * * * *
+  - projects: repository-sync 0 * * * *
+  - files: uploads-sweep 0 3 * * *
 
 Every platform operator must enroll TOTP at /setup-2fa on the control tower.

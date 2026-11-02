@@ -1,24 +1,38 @@
 # Production values for the Asynchrone Space umbrella chart.
 #
-# Secrets are never stored here. Create the three Secrets first:
+# Secrets are never stored here. Create one Secret per app before installing:
 #
-#   asynchrone-space-copilot-secrets:           DATABASE_URL, BETTER_AUTH_SECRET, CRON_SECRET,
-#                                           optional OPENAI_API_KEY, RESEND_API_KEY,
+#   asynchrone-space-copilot-secrets:           DATABASE_URL, IDENTITY_DATABASE_URL,
+#                                           PROJECTS_DATABASE_URL, CALENDARS_DATABASE_URL,
+#                                           FILES_DATABASE_URL, MESSAGES_DATABASE_URL,
+#                                           CLIENTS_DATABASE_URL, EMPLOYEES_DATABASE_URL,
+#                                           CONTROL_TOWER_DATABASE_URL (for the migrate Job),
+#                                           BETTER_AUTH_SECRET, CRON_SECRET, optional
+#                                           OPENAI_API_KEY, RESEND_API_KEY,
 #                                           GITHUB_CLIENT_SECRET, GITLAB_CLIENT_SECRET
-#   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as
-#                                           Copilot until #190), PROJECTS_OAUTH_CLIENT_ID,
-#                                           PROJECTS_OAUTH_CLIENT_SECRET
-#   asynchrone-space-clients-secrets:       DATABASE_URL (the same database as
-#                                           Copilot until #171/#190), CLIENTS_OAUTH_CLIENT_ID,
-#                                           CLIENTS_OAUTH_CLIENT_SECRET
-#   asynchrone-space-employees-secrets:     DATABASE_URL (the same database as
-#                                           Copilot until #171/#190), EMPLOYEES_OAUTH_CLIENT_ID,
-#                                           EMPLOYEES_OAUTH_CLIENT_SECRET
-#   asynchrone-space-messages-secrets:      DATABASE_URL (the same database as
-#                                           Copilot until #190/#171),
-#                                           MESSAGES_OAUTH_CLIENT_ID,
+#   asynchrone-space-projects-secrets:      DATABASE_URL (the same database as Copilot until
+#                                           #190), PROJECTS_OAUTH_CLIENT_ID,
+#                                           PROJECTS_OAUTH_CLIENT_SECRET, CRON_SECRET
+#                                           (the projects app owns repository-sync)
+#   asynchrone-space-calendars-secrets:     DATABASE_URL (the same database as Copilot until
+#                                           #190), CALENDARS_OAUTH_CLIENT_ID,
+#                                           CALENDARS_OAUTH_CLIENT_SECRET
+#   asynchrone-space-files-secrets:         DATABASE_URL (the same database as Copilot until
+#                                           #190), CRON_SECRET, FILES_OAUTH_CLIENT_ID,
+#                                           FILES_OAUTH_CLIENT_SECRET
+#   asynchrone-space-messages-secrets:      DATABASE_URL (the same database as Copilot until
+#                                           #190/#171), MESSAGES_OAUTH_CLIENT_ID,
 #                                           MESSAGES_OAUTH_CLIENT_SECRET
-#   asynchrone-space-control-tower-secrets: DATABASE_URL, CONTROL_TOWER_BETTER_AUTH_SECRET
+#   asynchrone-space-clients-secrets:       DATABASE_URL (the same database as Copilot until
+#                                           #171/#190), CLIENTS_OAUTH_CLIENT_ID,
+#                                           CLIENTS_OAUTH_CLIENT_SECRET
+#   asynchrone-space-employees-secrets:     DATABASE_URL (the same database as Copilot until
+#                                           #171/#190), EMPLOYEES_OAUTH_CLIENT_ID,
+#                                           EMPLOYEES_OAUTH_CLIENT_SECRET
+#   asynchrone-space-control-tower-secrets: CONTROL_TOWER_DATABASE_URL,
+#                                           CONTROL_TOWER_BETTER_AUTH_SECRET
+#
+# The landing is stateless and mounts no Secret.
 #
 # Install with an immutable image tag shared by all images:
 #   helm dependency build charts/asynchrone-space
@@ -31,10 +45,32 @@ global:
   imageTag: ""
   imagePullSecrets: []
 
+# Two cert-manager certificates cover the whole fleet. `ASYNCHRONE_WILDCARD_TLS`
+# covers the apex and every `*.asynchrone.space` host (landing, Copilot and the
+# control tower); `ASYNCHRONE_DOMAIN_TLS` covers every
+# `*.copilot.asynchrone.space` domain app. Each ingress references the matching
+# Secret below. Set `certificates.enabled: false` when you provision the TLS
+# Secrets yourself; the ingress TLS entries still render.
+certificates:
+  enabled: true
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  entries:
+    - name: asynchrone-space-tls
+      secretName: asynchrone-space-tls
+      dnsNames:
+        - asynchrone.space
+        - "*.asynchrone.space"
+    - name: asynchrone-space-domain-tls
+      secretName: asynchrone-space-domain-tls
+      dnsNames:
+        - "*.copilot.asynchrone.space"
+
 # ---------------------------------------------------------------------------
-# Public marketing site (no database, no session)
+# Public marketing site (no database, no session, no CronJobs)
 # ---------------------------------------------------------------------------
-asynchrone-space-landing:
+landing:
   enabled: true
 
   # Release `asynchrone-space` yields the resources `asynchrone-space-landing-*`.
@@ -57,16 +93,38 @@ asynchrone-space-landing:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: asynchrone-space-tls
-      #   hosts:
-      #     - asynchrone.space
-      #     - www.asynchrone.space
+      - host: www.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-tls
+        hosts:
+          - asynchrone.space
+          - www.asynchrone.space
+
+  # The landing has no runtime configuration and no Secret.
+  config: {}
+  secret:
+    enabled: false
+  networkPolicy:
+    enabled: false
+    database: false
+
+  # The landing has no database: a successful page render is the whole check.
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
 
 # ---------------------------------------------------------------------------
-# Customer-facing app (the workspace shell until #175 moves it to Copilot)
+# Customer-facing app: workspace shell, identity and OAuth 2.1/OIDC server
 # ---------------------------------------------------------------------------
-asynchrone-space-copilot:
+copilot:
   enabled: true
 
   # Release `asynchrone-space` yields the resources `asynchrone-space-copilot-*`.
@@ -90,20 +148,30 @@ asynchrone-space-copilot:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: copilot-asynchrone-space-tls
-      #   hosts:
-      #     - copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-tls
+        hosts:
+          - copilot.asynchrone.space
 
   config:
+    # Issuer and public origin. The GitHub OAuth callback is
+    # https://copilot.asynchrone.space/api/auth/callback/github and the GitLab
+    # callback is .../callback/gitlab.
     BETTER_AUTH_URL: https://copilot.asynchrone.space
     NEXT_PUBLIC_APP_URL: https://copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
+    PLATFORM_APP_URL: https://copilot.asynchrone.space
     PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
+    CALENDARS_APP_URL: https://calendars.copilot.asynchrone.space
+    FILES_APP_URL: https://files.copilot.asynchrone.space
     MESSAGES_APP_URL: https://messages.copilot.asynchrone.space
+    CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
+    EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "10"
+    # MCP protected-resource identifier. It is also the OAuth resource for the
+    # MCP client; never point it at an app host.
     MCP_RESOURCE_URL: https://copilot.asynchrone.space/mcp
     OPENAI_API_URL: ""
     ASSISTANT_MODEL: gpt-4o-mini
@@ -124,41 +192,37 @@ asynchrone-space-copilot:
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ""
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-copilot-secrets
 
-  # Replace the former Vercel crons.
+  # Identity jobs owned by Copilot. Repository sync now belongs to projects;
+  # uploads-sweep belongs to files.
   cronjobs:
+    enabled: true
     image: curlimages/curl:8.16.0
     secretName: ""
-    uploadsSweep:
-      enabled: true
-      schedule: "0 3 * * *"
-      path: /api/files/uploads/sweep
-    repositorySync:
-      enabled: true
-      schedule: "0 * * * *"
-      path: /api/cron/repository-sync
-    trialExpiry:
-      enabled: true
-      schedule: "0 6 * * *"
-      path: /api/cron/trial-expiry
-    organizationDeletion:
-      enabled: true
-      schedule: "30 3 * * *"
-      path: /api/cron/organization-deletion
-    auditRetention:
-      enabled: true
-      schedule: "45 3 * * *"
-      path: /api/cron/audit-retention
-    dataExports:
-      enabled: true
-      schedule: "*/15 * * * *"
-      path: /api/cron/data-exports
+    jobs:
+      trial-expiry:
+        enabled: true
+        schedule: "0 6 * * *"
+        path: /api/cron/trial-expiry
+      organization-deletion:
+        enabled: true
+        schedule: "30 3 * * *"
+        path: /api/cron/organization-deletion
+      audit-retention:
+        enabled: true
+        schedule: "45 3 * * *"
+        path: /api/cron/audit-retention
+      data-exports:
+        enabled: true
+        schedule: "*/15 * * * *"
+        path: /api/cron/data-exports
 
 # ---------------------------------------------------------------------------
-# Domain app: projects (#160). Own image, own chart, host-only OIDC session.
+# Domain app: projects. Own image, host-only OIDC session, repository sync.
 # ---------------------------------------------------------------------------
-asynchrone-space-projects:
+projects:
   enabled: true
 
   # Release `asynchrone-space` yields the resources `asynchrone-space-projects-*`.
@@ -178,10 +242,10 @@ asynchrone-space-projects:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: projects-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - projects.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - projects.copilot.asynchrone.space
 
   config:
     PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
@@ -191,15 +255,26 @@ asynchrone-space-projects:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-projects-secrets
 
+  # Moved from Copilot in #168: the hourly safety net for missed repository
+  # webhooks now calls the projects Service with the same schedule and
+  # CRON_SECRET.
+  cronjobs:
+    enabled: true
+    jobs:
+      repository-sync:
+        enabled: true
+        schedule: "0 * * * *"
+        path: /api/cron/repository-sync
+
 # ---------------------------------------------------------------------------
-# Domain app: messages (#162). Own image, own chart, host-only OIDC session.
+# Domain app: messages. Own image, host-only OIDC session.
 # ---------------------------------------------------------------------------
-asynchrone-space-messages:
+messages:
   enabled: true
 
-  # Release `asynchrone-space` yields the resources `asynchrone-space-messages-*`.
   nameOverride: messages
   image:
     repository: ghcr.io/preskater/asynchrone-space-messages
@@ -220,10 +295,10 @@ asynchrone-space-messages:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: messages-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - messages.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - messages.copilot.asynchrone.space
 
   config:
     MESSAGES_APP_URL: https://messages.copilot.asynchrone.space
@@ -233,15 +308,15 @@ asynchrone-space-messages:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-messages-secrets
 
 # ---------------------------------------------------------------------------
-# Domain app: calendars and meetings (#161). Own image, own chart.
+# Domain app: calendars and meetings. Own image, host-only OIDC session.
 # ---------------------------------------------------------------------------
-asynchrone-space-calendars:
+calendars:
   enabled: true
 
-  # Release `asynchrone-space` yields the resources `asynchrone-space-calendars-*`.
   nameOverride: calendars
   image:
     repository: ghcr.io/preskater/asynchrone-space-calendars
@@ -258,10 +333,10 @@ asynchrone-space-calendars:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: calendars-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - calendars.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - calendars.copilot.asynchrone.space
 
   config:
     CALENDARS_APP_URL: https://calendars.copilot.asynchrone.space
@@ -271,15 +346,15 @@ asynchrone-space-calendars:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-calendars-secrets
 
 # ---------------------------------------------------------------------------
-# Domain app: files (#161). Own image, own chart and the uploads-sweep CronJob.
+# Domain app: files. Own image, host-only OIDC session and uploads-sweep.
 # ---------------------------------------------------------------------------
-asynchrone-space-files:
+files:
   enabled: true
 
-  # Release `asynchrone-space` yields the resources `asynchrone-space-files-*`.
   nameOverride: files
   image:
     repository: ghcr.io/preskater/asynchrone-space-files
@@ -301,10 +376,10 @@ asynchrone-space-files:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: files-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - files.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - files.copilot.asynchrone.space
 
   config:
     FILES_APP_URL: https://files.copilot.asynchrone.space
@@ -314,20 +389,22 @@ asynchrone-space-files:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-files-secrets
 
-  # Moved from the Copilot chart in #161; the schedule and CRON_SECRET are
-  # unchanged.
+  # Owned by files since #161; schedule and CRON_SECRET unchanged.
   cronjobs:
-    uploadsSweep:
-      enabled: true
-      schedule: "0 3 * * *"
-      path: /api/files/uploads/sweep
+    enabled: true
+    jobs:
+      uploads-sweep:
+        enabled: true
+        schedule: "0 3 * * *"
+        path: /api/files/uploads/sweep
 
 # ---------------------------------------------------------------------------
-# Domain app: clients (#163). Own image, own chart, host-only OIDC session.
+# Domain app: clients (CRM). Own image, host-only OIDC session.
 # ---------------------------------------------------------------------------
-asynchrone-space-clients:
+clients:
   enabled: true
 
   nameOverride: clients
@@ -346,10 +423,10 @@ asynchrone-space-clients:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: clients-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - clients.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - clients.copilot.asynchrone.space
 
   config:
     CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
@@ -359,12 +436,13 @@ asynchrone-space-clients:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-clients-secrets
 
 # ---------------------------------------------------------------------------
-# Domain app: employees (#163). Own image, own chart, host-only OIDC session.
+# Domain app: employees (HR). Own image, host-only OIDC session.
 # ---------------------------------------------------------------------------
-asynchrone-space-employees:
+employees:
   enabled: true
 
   nameOverride: employees
@@ -383,10 +461,10 @@ asynchrone-space-employees:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: employees-copilot-asynchrone-space-tls
-      #   hosts:
-      #     - employees.copilot.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-domain-tls
+        hosts:
+          - employees.copilot.asynchrone.space
 
   config:
     EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
@@ -396,15 +474,17 @@ asynchrone-space-employees:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-employees-secrets
 
 # ---------------------------------------------------------------------------
 # Internal control tower
 # ---------------------------------------------------------------------------
-asynchrone-space-control-tower:
+control-tower:
   enabled: true
 
-  # Release `asynchrone-space` yields the resources `asynchrone-space-control-tower-*`.
+  # Release `asynchrone-space` yields the resources
+  # `asynchrone-space-control-tower-*`.
   nameOverride: control-tower
   image:
     repository: ghcr.io/preskater/asynchrone-space-control-tower
@@ -425,10 +505,10 @@ asynchrone-space-control-tower:
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-      # - secretName: control-tower-asynchrone-space-tls
-      #   hosts:
-      #     - control-tower.asynchrone.space
+    tls:
+      - secretName: asynchrone-space-tls
+        hosts:
+          - control-tower.asynchrone.space
 
   config:
     BETTER_AUTH_URL: https://control-tower.asynchrone.space
@@ -438,24 +518,26 @@ asynchrone-space-control-tower:
     DEPLOY_ENV: production
 
   secret:
+    enabled: true
     existingSecret: asynchrone-space-control-tower-secrets
 
 # ---------------------------------------------------------------------------
-# One-shot Prisma migrations, run as a pre-install/pre-upgrade hook before
-# either Deployment is rolled out.
+# One-shot Prisma migrations, run as a pre-install/pre-upgrade hook before the
+# Deployments roll out.
 # ---------------------------------------------------------------------------
 migrate:
   enabled: true
   # The referenced secret must contain DATABASE_URL (the monolith, until #185)
   # and IDENTITY_DATABASE_URL, PROJECTS_DATABASE_URL, CALENDARS_DATABASE_URL,
   # FILES_DATABASE_URL, MESSAGES_DATABASE_URL, CLIENTS_DATABASE_URL,
-  # EMPLOYEES_DATABASE_URL and CONTROL_TOWER_DATABASE_URL.
+  # EMPLOYEES_DATABASE_URL and CONTROL_TOWER_DATABASE_URL. It defaults to the
+  # Copilot Secret.
   image:
     repository: ghcr.io/preskater/asynchrone-space-migrate
     tag: ""
     pullPolicy: IfNotPresent
   imagePullSecrets: []
-  # Defaults to asynchrone-space-copilot.secret.existingSecret when empty.
+  # Defaults to copilot.secret.existingSecret when empty.
   existingSecret: ""
   secretKey: DATABASE_URL
   backoffLimit: 2

@@ -100,7 +100,7 @@ Secret that holds DATABASE_URL for migrations.
 */}}
 {{- define "asynchrone-space.migrate.secretName" -}}
 {{- $copilotSecret := "" -}}
-{{- $copilot := index .Values "asynchrone-space-copilot" | default dict -}}
+{{- $copilot := index .Values "copilot" | default dict -}}
 {{- $copilotSecretConfig := index $copilot "secret" | default dict -}}
 {{- $copilotSecret = index $copilotSecretConfig "existingSecret" | default "" -}}
 {{- default $copilotSecret .Values.migrate.existingSecret -}}

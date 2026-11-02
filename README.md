@@ -49,6 +49,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | `packages/eslint-config`     | Shared ESLint configuration.                                                        |
 | `packages/typescript-config` | Shared TypeScript configuration.                                                    |
 | `charts/asynchrone-space`    | Helm umbrella chart for deploying every app.                                         |
+| `charts/asynchrone-space-app`| Generic app chart instantiated once per app by the umbrella (aliases).               |
 | `docs/domain-app-template.md`| How the domain apps are built, tested and deployed (start here for a new app).       |
 
 ## Getting started
@@ -213,12 +214,12 @@ stateless landing reads only `apps/landing/.env` (see
 | `DATABASE_URL`       | Yes      | PostgreSQL connection string.                                                                                                                                                  |
 | `DATABASE_POOL_MAX`  | No       | Max Postgres connections per instance (default `3`).                                                                                                                           |
 | `BETTER_AUTH_SECRET` | Yes      | Secret used to sign sessions and encrypt the stored MCP/OAuth JWKS keys. Keep it stable across runtimes; clear the `jwks` table when rotating it.                              |
-| `BETTER_AUTH_URL`    | Yes      | Public base URL of the app.                                                                                                                                                    |
+| `BETTER_AUTH_URL`    | Yes      | Public base URL of Copilot (`https://copilot.asynchrone.space` in production): issuer, OAuth metadata and social callbacks.                                                       |
 | `OPENAI_API_KEY`     | No       | Enables AI assistant features.                                                                                                                                                 |
 | `OPENAI_API_URL`     | No       | Custom OpenAI-compatible base URL.                                                                                                                                             |
 | `ASSISTANT_MODEL`    | No       | Model used by the assistant (default `gpt-4o-mini`).                                                                                                                           |
 | `MCP_RESOURCE_URL`   | No       | Public identifier of the OAuth2-protected `/mcp` endpoint (defaults to `${BETTER_AUTH_URL}/mcp`).                                                                              |
-| `CRON_SECRET`        | No       | Bearer token guarding the scheduled routes (`/api/files/uploads/sweep` in `apps/files`, `/api/cron/repository-sync` in `apps/copilot`); put it in the Kubernetes Secrets so the charts' CronJobs authenticate. |
+| `CRON_SECRET`        | No       | Bearer token guarding the scheduled routes (`/api/cron/repository-sync` in `apps/projects`, `/api/files/uploads/sweep` in `apps/files`, the four identity jobs in `apps/copilot`); put it in the Kubernetes Secrets so the charts' CronJobs authenticate. |
 
 ## Available scripts
 
@@ -232,6 +233,8 @@ workspaces.
 | `npm run lint`      | Lint all workspaces.                 |
 | `npm run typecheck` | Type-check all workspaces.           |
 | `npm run format`    | Format with Prettier.                |
+| `npm run verify:helm` | Lint and render the umbrella and every app chart. |
+| `npm run check:boundaries` | Enforce workspace import boundaries. |
 
 ## File storage
 
@@ -303,22 +306,27 @@ npm run verify:large-object --workspace=copilot
 
 ## Deployment
 
-The Docker workflow publishes these images to GHCR:
+The Docker workflow publishes ten images to GHCR — one per app plus the
+migration image:
 
-| Image                                                      | Dockerfile stage               | Runs                       |
-| ---------------------------------------------------------- | ------------------------------ | -------------------------- |
-| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` (`APP=copilot`)       | Copilot (identity + OAuth) |
-| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` (`APP=projects`)      | Projects domain app        |
-| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` (`APP=clients`)       | Clients (CRM) domain app   |
-| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` (`APP=employees`)     | Employees (HR) domain app  |
-| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` (`APP=control-tower`) | Internal control tower     |
-| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` (`APP=landing`)       | Public landing site        |
-| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` (`APP=copilot`)      | One-shot Prisma migrations |
+| Image                                                      | Dockerfile stage               | Runs                        |
+| ---------------------------------------------------------- | ------------------------------ | --------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` (`APP=copilot`)       | Copilot (identity + OAuth)  |
+| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` (`APP=projects`)      | Projects                    |
+| `ghcr.io/preskater/asynchrone-space-calendars`             | `runner` (`APP=calendars`)     | Calendars and meetings      |
+| `ghcr.io/preskater/asynchrone-space-files`                 | `runner` (`APP=files`)         | Files                       |
+| `ghcr.io/preskater/asynchrone-space-messages`              | `runner` (`APP=messages`)      | Messages                    |
+| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` (`APP=clients`)       | Clients (CRM)               |
+| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` (`APP=employees`)     | Employees (HR)              |
+| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` (`APP=control-tower`) | Internal control tower      |
+| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` (`APP=landing`)       | Public landing site         |
+| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` (`APP=copilot`)      | One-shot Prisma migrations  |
 
-Deploy them with the Helm umbrella chart in `charts/asynchrone-space`, which composes the
-`asynchrone-space-landing`, `asynchrone-space-copilot`,
-`asynchrone-space-projects`, `asynchrone-space-clients`,
-`asynchrone-space-employees` and `asynchrone-space-control-tower` subcharts:
+Deploy them with the Helm umbrella chart in `charts/asynchrone-space`. It
+instantiates the single generic chart `charts/asynchrone-space-app` once per
+app through dependency aliases (`landing`, `copilot`, `projects`, `calendars`,
+`files`, `messages`, `clients`, `employees`, `control-tower`) and keeps the
+migration hook and the wildcard certificates:
 
 ```bash
 helm dependency build charts/asynchrone-space
@@ -329,28 +337,38 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secre
   --from-literal=BETTER_AUTH_SECRET='…' \
   --from-literal=CRON_SECRET='…'
 
-kubectl -n asynchrone-space create secret generic asynchrone-space-clients-secrets \
+kubectl -n asynchrone-space create secret generic asynchrone-space-projects-secrets \
   --from-literal=DATABASE_URL='postgresql://…' \
-  --from-literal=CLIENTS_OAUTH_CLIENT_ID='…' \
-  --from-literal=CLIENTS_OAUTH_CLIENT_SECRET='…'
+  --from-literal=PROJECTS_OAUTH_CLIENT_ID='…' \
+  --from-literal=PROJECTS_OAUTH_CLIENT_SECRET='…' \
+  --from-literal=CRON_SECRET='…'
 
-kubectl -n asynchrone-space create secret generic asynchrone-space-employees-secrets \
-  --from-literal=DATABASE_URL='postgresql://…' \
-  --from-literal=EMPLOYEES_OAUTH_CLIENT_ID='…' \
-  --from-literal=EMPLOYEES_OAUTH_CLIENT_SECRET='…'
+# calendars, files, messages, clients and employees use the same shape.
+# The files Secret also needs CRON_SECRET for uploads-sweep.
 
 kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower-secrets \
-  --from-literal=DATABASE_URL='postgresql://…' \
+  --from-literal=CONTROL_TOWER_DATABASE_URL='postgresql://…' \
   --from-literal=CONTROL_TOWER_BETTER_AUTH_SECRET='…'
 
 helm upgrade --install asynchrone-space charts/asynchrone-space -n asynchrone-space \
   --set global.imageTag=sha-abc1234
 ```
 
-A pre-install/pre-upgrade Job runs `prisma migrate deploy` before the
-Deployments roll out, and Kubernetes CronJobs replace the former Vercel crons.
-See [docs/deployment/helm.md](./docs/deployment/helm.md) for chart values,
-ingress/TLS, DNS, rollback and troubleshooting, and
+DNS uses `asynchrone.space` plus `*.asynchrone.space` for the landing, Copilot,
+`www` (redirected to the apex) and control tower, and
+`*.copilot.asynchrone.space` for the domain apps; the umbrella renders both
+wildcard cert-manager certificates. Copilot is the only OAuth issuer:
+`BETTER_AUTH_URL` and `MCP_RESOURCE_URL` point at
+`https://copilot.asynchrone.space` (and `/mcp`), `PLATFORM_APP_URL` points at
+Copilot on the control tower, and there is no shared cookie. A
+pre-install/pre-upgrade Job runs `prisma migrate deploy` before the Deployments
+roll out. Each cron has exactly one owner: Copilot runs trial-expiry,
+organization-deletion, audit-retention and data-exports; projects runs
+repository-sync; files runs uploads-sweep.
+
+`npm run verify:helm` lints the umbrella and renders every app alias. See
+[docs/deployment/helm.md](./docs/deployment/helm.md) for the secrets, chart
+values, ingress/TLS, rollback and troubleshooting, and
 [database operations](./docs/deployment/database-operations.md) for the
 eight-database secrets, network policy, backups, restore order and connection
 budget.

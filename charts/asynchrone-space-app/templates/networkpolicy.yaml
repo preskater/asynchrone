@@ -1,0 +1,45 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "asynchrone-space-app.fullname" . }}
+  labels:
+    {{- include "asynchrone-space-app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "asynchrone-space-app.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.containerPort }}
+  egress:
+    {{- if .Values.networkPolicy.database }}
+    # PostgreSQL. Set `databaseFrom` to the database namespace/ipBlock in
+    # production; an empty list means any destination on the port.
+    - to:
+        {{- toYaml .Values.networkPolicy.databaseFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.databasePort }}
+    {{- end }}
+    # DNS.
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.networkPolicy.httpsEgress }}
+    # OAuth, JWKS, Stripe, email and other HTTPS providers.
+    - to:
+        {{- toYaml .Values.networkPolicy.httpsEgressFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+{{- end }}

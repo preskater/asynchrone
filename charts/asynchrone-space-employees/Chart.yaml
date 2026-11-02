@@ -1,6 +1,0 @@
-apiVersion: v2
-name: asynchrone-space-employees
-description: "Employees: the HR domain app (profiles, attendance, leave, balances, salary and capacity)"
-type: application
-version: 0.1.0
-appVersion: "0.0.1"

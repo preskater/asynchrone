@@ -1,6 +1,0 @@
-apiVersion: v2
-name: asynchrone-space-files
-description: "Files (file tree, upload/download APIs and the uploads-sweep cron)"
-type: application
-version: 0.1.0
-appVersion: "0.0.1"

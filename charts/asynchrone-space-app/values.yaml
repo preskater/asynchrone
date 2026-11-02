@@ -1,0 +1,186 @@
+# Generic values for one Asynchrone Space app.
+#
+# The umbrella chart (charts/asynchrone-space) depends on this chart once per
+# app through a Helm dependency alias (`landing`, `copilot`, `projects`,
+# `calendars`, `files`, `messages`, `clients`, `employees`,
+# `control-tower`) and supplies the app-specific values. The same chart can be
+# installed standalone with `-f` values or `--set`.
+#
+# Nothing here is a secret: Secrets are referenced by name and created out of
+# band. See docs/deployment/helm.md.
+
+# Propagated by the umbrella chart. `global.imageTag` pins every image in the
+# release with one immutable tag.
+global:
+  imageTag: ""
+  imagePullSecrets: []
+
+replicaCount: 2
+
+image:
+  # Required in production. The umbrella sets one repository per app; the
+  # placeholder keeps `helm lint`/`helm template` of the generic chart alone
+  # valid.
+  repository: ghcr.io/preskater/asynchrone-space-app
+  # Falls back to global.imageTag. The umbrella pins an immutable tag; the
+  # standalone default only exists so the chart can be linted on its own.
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+containerPort: 3000
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+  hosts: []
+    # - host: copilot.asynchrone.space
+    #   paths:
+    #     - path: /
+    #       pathType: Prefix
+  tls: []
+    # - secretName: asynchrone-space-tls
+    #   hosts:
+    #     - copilot.asynchrone.space
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: ""
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Requests/limits deliberately empty: set them per cluster. An app holding a
+# database connection per in-flight transfer scales memory with concurrency.
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    # Checks the database as well as the server.
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+terminationGracePeriodSeconds: 30
+
+# Non-secret runtime configuration. Rendered into a ConfigMap and consumed
+# with envFrom. Empty values are omitted so the app's own defaults apply.
+config: {}
+
+# Existing Secret mounted with envFrom. Set `enabled: false` for a stateless app
+# (the landing) that has no database or auth secret. The chart never creates or
+# stores secret values.
+secret:
+  enabled: false
+  # Required when enabled. For example asynchrone-space-copilot-secrets.
+  existingSecret: ""
+
+# Least-privilege network policy. Disabled by default so an existing cluster
+# keeps working; enable it after reviewing the ingress controller and database
+# namespaces for your installation.
+networkPolicy:
+  enabled: false
+  # Who may reach the HTTP port. Defaults to the common ingress-nginx namespace.
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  # Add a PostgreSQL egress rule. The landing has no database.
+  database: true
+  # Restrict the database destination to its namespace or ipBlock. An empty
+  # list allows any destination on the port.
+  databaseFrom: []
+  databasePort: 5432
+  # Allow HTTPS egress for OAuth, JWKS, Stripe, email and other providers.
+  httpsEgress: true
+  httpsEgressFrom: []
+
+extraEnv: []
+extraEnvFrom: []
+extraVolumes: []
+extraVolumeMounts: []
+
+# The Next.js server writes its incremental/image cache here at runtime. Keep
+# it on an emptyDir because the container root filesystem is read-only.
+cache:
+  mountPath: ""
+
+# Versioned scheduled jobs that call the app over HTTP with the CRON_SECRET
+# bearer token. Each job is owned by exactly one app; the umbrella chart sets
+# the owner's jobs and leaves this empty for every other app.
+cronjobs:
+  enabled: false
+  image: curlimages/curl:8.16.0
+  # Defaults to secret.existingSecret when empty.
+  secretName: ""
+  timeoutSeconds: 60
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 300
+  jobs: {}
+    # repository-sync:
+    #   enabled: true
+    #   schedule: "0 * * * *"
+    #   path: /api/cron/repository-sync
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+tests:
+  image: busybox:1.37.0
