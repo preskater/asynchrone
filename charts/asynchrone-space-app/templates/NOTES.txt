@@ -1,0 +1,26 @@
+{{ include "asynchrone-space-app.name" . | title }} ({{ include "asynchrone-space-app.fullname" . }}) installed.
+
+Required Secret: {{ if .Values.secret.enabled }}{{ .Values.secret.existingSecret }}{{ else }}none (stateless app){{ end }}
+
+{{- if .Values.ingress.enabled }}
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Service (cluster-internal): {{ include "asynchrone-space-app.fullname" . }}:{{ .Values.service.port }}
+{{- end }}
+
+Scheduled jobs owned by this app:
+{{- if .Values.cronjobs.enabled }}
+{{- range $name, $job := .Values.cronjobs.jobs }}
+{{- if $job.enabled }}
+  - {{ include "asynchrone-space-app.fullname" $ }}-{{ $name }} ({{ $job.schedule }})
+{{- end }}
+{{- end }}
+{{- else }}
+  none
+{{- end }}
+
+Run the connection test with:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

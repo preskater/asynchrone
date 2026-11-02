@@ -25,12 +25,14 @@ Secret (it is not sensitive and must be auditable).
 
 ## Network policy
 
-Both subcharts ship `networkPolicy.enabled: false` so an existing cluster keeps
-working. Enable it per installation and set:
+The generic app chart ships `<app>.networkPolicy.enabled: false` (the umbrella
+instantiates it per app), so an existing cluster keeps working. Enable it per
+installation and set:
 
-- `networkPolicy.ingressFrom` to the ingress controller's namespace (the
+- `<app>.networkPolicy.ingressFrom` to the ingress controller's namespace (the
   default is `ingress-nginx`);
-- `networkPolicy.databaseFrom` to the database namespace or `ipBlock`;
+- `<app>.networkPolicy.databaseFrom` to the database namespace or `ipBlock`
+  (the landing sets `database: false` because it has no database);
 - egress 53 (DNS), 5432 (PostgreSQL) and 443 (OAuth/JWKS/providers).
 
 `/internal/v1/*` must never be exposed by the Ingress. The apps also verify

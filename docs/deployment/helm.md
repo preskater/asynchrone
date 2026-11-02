@@ -1,33 +1,35 @@
 # Deploying Asynchrone Space with Helm
 
-Asynchrone Space runs as nine Next.js apps today: the stateless public landing
-site, Copilot (the customer app and identity/OAuth server), the projects,
-calendars, files, messages, clients and employees domain apps and the control
-tower. Copilot and the control tower are backed by their own PostgreSQL
-databases (eight are reserved, one per app; Copilot owns identity). Until
-#190/#171 the domain apps connect to the same database as Copilot. This guide
-installs all of them from the umbrella chart in `charts/asynchrone-space`.
-Secrets, network policy, backups, restore order and the connection budget are
-covered in [Database operations](database-operations.md).
+Asynchrone Space runs as nine Next.js apps: the stateless public landing site,
+Copilot (the customer app and identity/OAuth server), the projects, calendars,
+files, messages, clients and employees domain apps and the control tower. Copilot
+owns customer identity; every other app is an OIDC relying party with a host-only
+session. Until #190/#171 the domain apps connect to the same PostgreSQL database
+as Copilot. This guide installs all of them from the umbrella chart in
+`charts/asynchrone-space`.
 
 ```
 charts/
-  asynchrone-space/                   # umbrella: dependencies, migration hook, values
-  asynchrone-space-landing/           # public site, ingress (asynchrone.space + www redirect)
-  asynchrone-space-copilot/           # Copilot: ingress, CronJobs
-  asynchrone-space-projects/          # domain app: ingress, host-only OIDC session
-  asynchrone-space-calendars/         # domain app: calendars + meetings, host-only OIDC session
-  asynchrone-space-files/             # domain app: files + uploads-sweep CronJob
-  asynchrone-space-messages/          # domain app: ingress, host-only OIDC session
-  asynchrone-space-clients/           # CRM domain app: ingress, host-only OIDC session
-  asynchrone-space-employees/         # HR domain app: ingress, host-only OIDC session
-  asynchrone-space-control-tower/     # internal platform app, ingress
+  asynchrone-space-app/             # one generic app chart: Deployment, Service,
+                                    # Ingress, ConfigMap, Secret ref, PDB, HPA,
+                                    # NetworkPolicy, CronJobs, helm test
+  asynchrone-space/                 # umbrella: 9 dependency aliases, migrate Job,
+                                    # wildcard Certificates, production values
 ```
+
+The umbrella depends on `asynchrone-space-app` once per app through a Helm
+dependency alias (`landing`, `copilot`, `projects`, `calendars`, `files`,
+`messages`, `clients`, `employees`, `control-tower`). Each alias sets its own
+`nameOverride`, image, host, TLS secret, config and cron jobs, so resources stay
+`asynchrone-space-<app>-*`.
+
+Secrets, network policy, backups, restore order and the connection budget are
+covered in [Database operations](database-operations.md).
 
 ## Prerequisites
 
-- A Kubernetes cluster (1.27+) with an ingress controller. The values default
-  to the `nginx` ingress class.
+- Kubernetes 1.27+ with an ingress controller. The values default to the
+  `nginx` ingress class.
 - Helm 3.14+ or Helm 4.
 - A PostgreSQL database reachable from the cluster.
 - `kubectl` access to the target namespace.
@@ -51,20 +53,22 @@ charts/
 
 ## Images
 
-`.github/workflows/docker.yml` publishes ten images for every push to `main`
-and every `v*` tag:
-| Image                                                      | Built from                             | Purpose                                       |
-| ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
-| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` stage, `APP=copilot`          | Copilot (`copilot.asynchrone.space`)          |
-| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` stage, `APP=projects`         | Projects (`projects.copilot.asynchrone.space`)|
-| `ghcr.io/preskater/asynchrone-space-calendars`             | `runner` stage, `APP=calendars`        | Calendars and meetings (`calendars.copilot.asynchrone.space`) |
-| `ghcr.io/preskater/asynchrone-space-files`                 | `runner` stage, `APP=files`            | Files (`files.copilot.asynchrone.space`)      |
-| `ghcr.io/preskater/asynchrone-space-messages`              | `runner` stage, `APP=messages`         | Messages (`messages.copilot.asynchrone.space`)|
-| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` stage, `APP=clients`          | Clients (`clients.copilot.asynchrone.space`)  |
-| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` stage, `APP=employees`        | Employees (`employees.copilot.asynchrone.space`) |
-| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` stage, `APP=control-tower`    | Control tower                                 |
-| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` stage, `APP=landing`          | Public site (`asynchrone.space`)              |
-| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` stage, `turbo prune migrate` | One-shot monolith + per-app Prisma migrations |
+`.github/workflows/docker.yml` publishes ten images for every push to `main` and
+every `v*` tag. Every row uses the same `Dockerfile`; the `runner` stage builds
+one Next.js app, the `migrate` stage ships the Prisma migration Job.
+
+| Image                                                | Stage / build arg                    | Purpose                                                        |
+| ---------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`         | `runner`, `APP=copilot`              | Copilot, identity and OAuth (`copilot.asynchrone.space`)       |
+| `ghcr.io/preskater/asynchrone-space-projects`        | `runner`, `APP=projects`             | Projects (`projects.copilot.asynchrone.space`)                 |
+| `ghcr.io/preskater/asynchrone-space-calendars`       | `runner`, `APP=calendars`            | Calendars and meetings (`calendars.copilot.asynchrone.space`)  |
+| `ghcr.io/preskater/asynchrone-space-files`           | `runner`, `APP=files`                | Files (`files.copilot.asynchrone.space`)                       |
+| `ghcr.io/preskater/asynchrone-space-messages`        | `runner`, `APP=messages`             | Messages (`messages.copilot.asynchrone.space`)                 |
+| `ghcr.io/preskater/asynchrone-space-clients`         | `runner`, `APP=clients`              | Clients, the CRM (`clients.copilot.asynchrone.space`)          |
+| `ghcr.io/preskater/asynchrone-space-employees`       | `runner`, `APP=employees`            | Employees, the HR app (`employees.copilot.asynchrone.space`)   |
+| `ghcr.io/preskater/asynchrone-space-control-tower`   | `runner`, `APP=control-tower`        | Control tower (`control-tower.asynchrone.space`)               |
+| `ghcr.io/preskater/asynchrone-space-landing`         | `runner`, `APP=landing`              | Public site (`asynchrone.space`)                               |
+| `ghcr.io/preskater/asynchrone-space-migrate`         | `migrate`, `turbo prune @workspace/migrate` | One-shot monolith + per-app Prisma migrations           |
 
 The workflow tags images with the branch, the release tag and `sha-<shortsha>`.
 Use the immutable `sha-` tag:
@@ -74,82 +78,16 @@ helm upgrade --install asynchrone-space charts/asynchrone-space -n asynchrone-sp
   --set global.imageTag=sha-abc1234
 ```
 
-`global.imageTag` is required; the chart fails to render without it. A
-per-subchart `image.tag` overrides it if the apps must roll separately.
+`global.imageTag` is required; the chart fails to render without it. A per-app
+`image.tag` overrides it if one app must roll separately.
 
 ## Create the secrets
 
 The chart references existing Secrets and never renders secret values. Create
-them before installing; the migration Job and the pods fail fast if a required
-key is missing.
+them before installing; the pods fail fast if a required key is missing.
 
-The projects app has its own secret with the provisioned client credentials:
+### Copilot and the migrate Job
 
-```bash
-kubectl -n asynchrone-space create secret generic asynchrone-space-projects-secrets \
-  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
-  --from-literal=PROJECTS_OAUTH_CLIENT_ID="$(grep ^PROJECTS_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
-  --from-literal=PROJECTS_OAUTH_CLIENT_SECRET="$(grep ^PROJECTS_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
-```
-
-`DATABASE_URL` is the same database Copilot uses until #190 (the projects domain
-package still reads identity tables). Generate the client credentials with
-`npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth`;
-its registered redirect URI is
-`https://projects.copilot.asynchrone.space/api/auth/callback`.
-
-The calendars and files apps need their own secrets too; the files secret also
-carries `CRON_SECRET` because it owns the `uploads-sweep` CronJob:
-
-```bash
-kubectl -n asynchrone-space create secret generic asynchrone-space-calendars-secrets \
-  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
-  --from-literal=CALENDARS_OAUTH_CLIENT_ID="$(grep ^CALENDARS_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
-  --from-literal=CALENDARS_OAUTH_CLIENT_SECRET="$(grep ^CALENDARS_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
-
-kubectl -n asynchrone-space create secret generic asynchrone-space-files-secrets \
-  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
-  --from-literal=CRON_SECRET='<random-token>' \
-  --from-literal=FILES_OAUTH_CLIENT_ID="$(grep ^FILES_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
-  --from-literal=FILES_OAUTH_CLIENT_SECRET="$(grep ^FILES_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
-```
-
-Their registered redirect URIs are
-`https://calendars.copilot.asynchrone.space/api/auth/callback` and
-`https://files.copilot.asynchrone.space/api/auth/callback`. `DATABASE_URL` is the
-same database Copilot uses until #190, for the same reason as projects.
-
-The messages app has its own secret the same way:
-
-```bash
-kubectl -n asynchrone-space create secret generic asynchrone-space-messages-secrets \
-  --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
-  --from-literal=MESSAGES_OAUTH_CLIENT_ID="$(grep ^MESSAGES_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
-  --from-literal=MESSAGES_OAUTH_CLIENT_SECRET="$(grep ^MESSAGES_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
-```
-
-`DATABASE_URL` is the same database Copilot uses until #190/#171 (the messaging
-domain still reads the member directory and uses the files upload sessions); its
-registered redirect URI is
-`https://messages.copilot.asynchrone.space/api/auth/callback`.
-
-The clients and employees apps have the same shape (#163):
-
-```bash
-for app in clients employees; do
-  PREFIX=$(echo "$app" | tr a-z A-Z)
-  kubectl -n asynchrone-space create secret generic "asynchrone-space-${app}-secrets" \
-    --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
-    --from-literal="${PREFIX}_OAUTH_CLIENT_ID=$(grep ^${PREFIX}_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
-    --from-literal="${PREFIX}_OAUTH_CLIENT_SECRET=$(grep ^${PREFIX}_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)"
-done
-```
-
-Their registered redirect URIs are
-`https://clients.copilot.asynchrone.space/api/auth/callback` and
-`https://employees.copilot.asynchrone.space/api/auth/callback`. `DATABASE_URL`
-is the same database Copilot uses until #171/#190, because both domains still
-read identity rows through the documented transitional binding.
 ```bash
 kubectl create namespace asynchrone-space
 
@@ -165,7 +103,76 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-copilot-secre
   --from-literal=CONTROL_TOWER_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_control_tower?schema=public' \
   --from-literal=BETTER_AUTH_SECRET='<at-least-16-chars>' \
   --from-literal=CRON_SECRET='<random-token>'
+```
 
+Copilot reads `DATABASE_URL`; the per-app `*_DATABASE_URL` keys are consumed by
+the migrate Job. Keep `BETTER_AUTH_SECRET` stable: it encrypts the JWKS rows in
+the database. If it is rotated, clear the `jwks` table so new keys are generated.
+
+Add optional keys to `asynchrone-space-copilot-secrets` as needed:
+
+| Key                     | Used by                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `OPENAI_API_KEY`        | Assistant                                                   |
+| `RESEND_API_KEY`        | Verification and password-reset email                       |
+| `GITHUB_CLIENT_SECRET`  | GitHub OAuth account linking                                |
+| `GITLAB_CLIENT_SECRET`  | GitLab OAuth account linking                                |
+| `TURNSTILE_SECRET_KEY`  | Cloudflare Turnstile on sign-up and password reset          |
+| `STRIPE_SECRET_KEY`     | Billing: Checkout and the Customer Portal                   |
+| `STRIPE_WEBHOOK_SECRET` | Billing: signing secret of `/api/webhooks/stripe`           |
+| `SENTRY_DSN`            | Server-side error tracking and request timings              |
+
+Register the OAuth callbacks on the GitHub and GitLab apps:
+
+- GitHub: `https://copilot.asynchrone.space/api/auth/callback/github`
+- GitLab: `https://copilot.asynchrone.space/api/auth/callback/gitlab`
+
+Set `copilot.config.GITHUB_CLIENT_ID` / `copilot.config.GITLAB_CLIENT_ID` in
+values and the matching secrets above. `TURNSTILE_SECRET_KEY` must be set
+together with `copilot.config.TURNSTILE_SITE_KEY`; `STRIPE_WEBHOOK_SECRET`
+requires `STRIPE_SECRET_KEY`. The app refuses to boot on a half-configured pair.
+
+### Domain apps
+
+Each domain app has its own Secret. Its `DATABASE_URL` is the same database
+Copilot uses until #190/#171 (the domain packages still read identity rows), and
+it carries the provisioned OAuth client pair. Generate the pairs with
+`npm run oauth:clients --workspace=copilot -- --apply --write-env apps/copilot/.env.oauth`.
+
+```bash
+for app in projects calendars files messages clients employees; do
+  PREFIX=$(echo "$app" | tr a-z A-Z)
+  EXTRA=()
+  # The projects app owns repository-sync since #168.
+  if [ "$app" = "projects" ]; then EXTRA+=(--from-literal=CRON_SECRET='<random-token>'); fi
+  # The files app owns uploads-sweep.
+  if [ "$app" = "files" ]; then EXTRA+=(--from-literal=CRON_SECRET='<random-token>'); fi
+
+  kubectl -n asynchrone-space create secret generic "asynchrone-space-${app}-secrets" \
+    --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
+    --from-literal="${PREFIX}_OAUTH_CLIENT_ID=$(grep ^${PREFIX}_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
+    --from-literal="${PREFIX}_OAUTH_CLIENT_SECRET=$(grep ^${PREFIX}_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)" \
+    "${EXTRA[@]}"
+done
+```
+
+Registered redirect URIs (all on the domain wildcard):
+
+| App       | Redirect URI                                                     |
+| --------- | ---------------------------------------------------------------- |
+| projects  | `https://projects.copilot.asynchrone.space/api/auth/callback`    |
+| calendars | `https://calendars.copilot.asynchrone.space/api/auth/callback`   |
+| files     | `https://files.copilot.asynchrone.space/api/auth/callback`       |
+| messages  | `https://messages.copilot.asynchrone.space/api/auth/callback`    |
+| clients   | `https://clients.copilot.asynchrone.space/api/auth/callback`     |
+| employees | `https://employees.copilot.asynchrone.space/api/auth/callback`   |
+
+Every app uses the same `CRON_SECRET` value as Copilot so the CronJob and the
+route agree. Only the owner app's Secret needs it.
+
+### Control tower
+
+```bash
 kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower-secrets \
   --from-literal=CONTROL_TOWER_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_control_tower?schema=public' \
   --from-literal=CONTROL_TOWER_BETTER_AUTH_SECRET='<at-least-32-chars>'
@@ -174,65 +181,23 @@ kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower
 The control tower reads `CONTROL_TOWER_DATABASE_URL` (never `DATABASE_URL`) so a
 copied customer secret cannot point platform sign-in at the identity database.
 Run the data cutover described in [../control-tower-database.md](../control-tower-database.md)
-before rolling the new image out.
-
-Add optional keys to `asynchrone-space-copilot-secrets` as needed:
-
-| Key                     | Used by                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`        | Assistant                                                                        |
-| `RESEND_API_KEY`        | Verification and password-reset email                                            |
-| `GITHUB_CLIENT_SECRET`  | GitHub OAuth account linking                                                     |
-| `GITLAB_CLIENT_SECRET`  | GitLab OAuth account linking                                                     |
-| `TURNSTILE_SECRET_KEY`  | Cloudflare Turnstile on sign-up and password reset                               |
-| `STRIPE_SECRET_KEY`     | Billing: Checkout and the Customer Portal                                        |
-| `STRIPE_WEBHOOK_SECRET` | Billing: signing secret of `/api/webhooks/stripe`                                |
-| `SENTRY_DSN`            | Server-side error tracking and request timings ([Observability](#observability)) |
-
-`TURNSTILE_SECRET_KEY` must be set together with
-`asynchrone-space-copilot.config.TURNSTILE_SITE_KEY`, and `STRIPE_WEBHOOK_SECRET`
-requires `STRIPE_SECRET_KEY`; the app refuses to boot on a half-configured
-pair.
-
-Plan and trial limits need no extra configuration. Billing falls back to the
-inline Team price when `asynchrone-space-copilot.config.STRIPE_PRICE_TEAM_MONTHLY` /
-`STRIPE_PRICE_TEAM_YEARLY` are empty; see [../billing.md](../billing.md) for the
-Stripe endpoint, test-mode procedure and the production checklist.
-
-Use different `BETTER_AUTH_SECRET` and `CONTROL_TOWER_BETTER_AUTH_SECRET`
-values. Keep `BETTER_AUTH_SECRET` stable: it encrypts the JWKS rows in the
-database. If it is rotated, clear the `jwks` table so new keys are generated.
+before rolling the new image out. Use different `BETTER_AUTH_SECRET` and
+`CONTROL_TOWER_BETTER_AUTH_SECRET` values.
 
 Secret values are injected with `envFrom` at pod start, so restart the
 Deployments after changing a Secret:
 
 ```bash
-kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-copilot deploy/asynchrone-space-projects deploy/asynchrone-space-messages deploy/asynchrone-space-control-tower deploy/asynchrone-space-landing
+kubectl -n asynchrone-space rollout restart deploy/asynchrone-space-copilot \
+  deploy/asynchrone-space-projects deploy/asynchrone-space-calendars \
+  deploy/asynchrone-space-files deploy/asynchrone-space-messages \
+  deploy/asynchrone-space-clients deploy/asynchrone-space-employees \
+  deploy/asynchrone-space-control-tower deploy/asynchrone-space-landing
 ```
-
-### Upgrading from the pre-#175 chart
-
-The rename in [ADR 0035](../adr/0035-rename-web-app-to-copilot.md) renamed the
-image, the subchart and every Kubernetes resource. An existing release does not
-adopt the new names in place: Helm creates the Copilot resources and leaves the
-old `asynchrone-space-web-*` ones running against the same database. During a
-maintenance window:
-
-1. Create `asynchrone-space-copilot-secrets` from the same values as the old
-   `asynchrone-space-web-secrets` (read them from your secret manager; do not
-   copy a manifest with `resourceVersion`/`uid`).
-2. Install the new chart with a new immutable `global.imageTag`.
-3. Check the Copilot pod, sign-in, OAuth metadata and one cron run.
-4. Delete the old Deployment/Service/Ingress/ConfigMap/CronJobs/PDB and, once
-   no rollback is needed, the old Secret and the old
-   `ghcr.io/preskater/asynchrone-space` package.
-
-Rolling back before step 4 is a `helm rollback` plus pointing DNS at the old
-Ingress; the database schema did not change.
 
 ## Install
 
-The umbrella chart has local `file://` dependencies, so build them first when
+The umbrella chart has a local `file://` dependency, so build it first when
 installing from a source checkout:
 
 ```bash
@@ -243,118 +208,146 @@ helm upgrade --install asynchrone-space charts/asynchrone-space \
   --set global.imageTag=sha-abc1234
 ```
 
-`helm dependency build` writes packaged copies to `charts/asynchrone-space/charts/`
-and creates `Chart.lock`. Those archives **are committed**, so a chart source
-that clones the repository (Rancher, Fleet) or a packaged `.tgz` works without
-running a dependency step first. After changing any subchart, rebuild and
-commit the archives:
+`helm dependency build` writes `charts/asynchrone-space/charts/asynchrone-space-app-*.tgz`
+and `Chart.lock`. The archive **is committed**, so a chart source that clones the
+repository (Rancher, Fleet) or a packaged `.tgz` works without a dependency step.
+After changing the generic chart, rebuild and commit the archive:
 
 ```bash
 helm dependency build charts/asynchrone-space
-git add charts/asynchrone-space/charts
+git add charts/asynchrone-space/charts charts/asynchrone-space/Chart.lock
 ```
 
-CI fails when a vendored archive no longer matches its subchart sources
-(`.github/workflows/helm.yml`, "Check vendored subcharts are up to date").
+CI fails when the vendored archive no longer matches its sources
+(`.github/workflows/helm.yml`). `npm run verify:helm` also lints the umbrella,
+renders every app alias on its own and renders the generic chart standalone.
 
-Use `-f my-values.yaml` for production overrides instead of long `--set`
-lists. The defaults target `asynchrone.space` (landing, with
-`www.asynchrone.space` redirected to the apex by the ingress annotation),
-`copilot.asynchrone.space` (Copilot), `projects.copilot.asynchrone.space`,
-`calendars.copilot.asynchrone.space`, `files.copilot.asynchrone.space`,
-`messages.copilot.asynchrone.space` and `control-tower.asynchrone.space`, with
-the `nginx` ingress class.
+## DNS and TLS
 
-Only the landing host is indexable: it serves `robots.txt` and a localized
-`sitemap.xml`. Copilot answers `robots.txt` with `Disallow: /` and sends
-`X-Robots-Tag: noindex, nofollow` on every response (the control tower does the
-same). Old apex workspace URLs (`/sign-in`, `/portal`, `/settings`,
-`/<orgSlug>/search`, …) are redirected to Copilot inside the landing app with a
-308 that preserves the locale and query string; no ingress rule is needed.
+Point both wildcard DNS records at the ingress controller's load balancer:
+
+| Record                       | Serves                                              |
+| ---------------------------- | --------------------------------------------------- |
+| `asynchrone.space`           | landing (apex)                                      |
+| `*.asynchrone.space`         | `www`, `copilot`, `control-tower` and future hosts  |
+| `*.copilot.asynchrone.space` | projects, calendars, files, messages, clients, employees |
+
+The umbrella renders two cert-manager `Certificate` resources by default:
+
+```yaml
+certificates:
+  enabled: true
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  entries:
+    - name: asynchrone-space-tls
+      secretName: asynchrone-space-tls
+      dnsNames: [asynchrone.space, "*.asynchrone.space"]
+    - name: asynchrone-space-domain-tls
+      secretName: asynchrone-space-domain-tls
+      dnsNames: ["*.copilot.asynchrone.space"]
+```
+
+Every Ingress references the matching Secret: landing, Copilot and the control
+tower use `asynchrone-space-tls`; the six domain apps use
+`asynchrone-space-domain-tls`. `www.asynchrone.space` is an explicit landing
+host with `nginx.ingress.kubernetes.io/from-to-www-redirect: "true"`, so it
+redirects to the apex at the edge.
+
+If you provision certificates another way, set `certificates.enabled: false`
+and create the two Secrets yourself (or point each `ingress.tls[].secretName`
+at your own Secret). The rendered Ingress TLS entries remain in place.
 
 ## What gets created
 
-| Resource       | Name                                                                                 | Notes                               |
-| -------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
-| Deployment     | `asynchrone-space-landing`                                                           | 2 replicas by default               |
-| Deployment     | `asynchrone-space-copilot`                                                               | 2 replicas by default               |
-| Deployment     | `asynchrone-space-projects`                                                              | 2 replicas by default               |
-| Deployment     | `asynchrone-space-calendars`                                                             | 2 replicas by default               |
-| Deployment     | `asynchrone-space-files`                                                                 | 2 replicas by default               |
-| Deployment     | `asynchrone-space-messages`                                                              | 2 replicas by default               |
-| Deployment     | `asynchrone-space-control-tower`                                                     | 2 replicas by default               |
-| Service        | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,control-tower}`     | ClusterIP, port 80 → container 3000 |
-| Ingress        | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,control-tower}`     | One host each                       |
-| ConfigMap      | `asynchrone-space-{copilot,projects,calendars,files,messages,control-tower}`             | Non-secret runtime config           |
-| CronJob        | `asynchrone-space-files-uploads-sweep`                                                   | `0 3 * * *` (moved here in #161)    |
-| CronJob        | `asynchrone-space-copilot-repository-sync`                                               | `0 * * * *`                         |
-| CronJob        | `asynchrone-space-copilot-trial-expiry`                                                  | `0 6 * * *`                         |
-| CronJob        | `asynchrone-space-copilot-organization-deletion`                                         | `30 3 * * *`                        |
-| CronJob        | `asynchrone-space-copilot-audit-retention`                                               | `45 3 * * *`                        |
-| CronJob        | `asynchrone-space-copilot-data-exports`                                                  | `*/15 * * * *`                      |
-| Job (hook)     | `asynchrone-space-migrate`                                                           | Pre-install and pre-upgrade         |
-| ServiceAccount | `asynchrone-space-{copilot,projects,calendars,files,control-tower}`, `asynchrone-space-migrate` | Token automount disabled |
-| PDB            | `asynchrone-space-{copilot,projects,calendars,files,control-tower}`                      | `minAvailable: 1`                   |
+| Resource       | Name                                                                                     | Notes                              |
+| -------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- |
+| Deployment     | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,clients,employees,control-tower}` | 2 replicas by default |
+| Service        | same nine names                                                                          | ClusterIP, port 80 → container 3000 |
+| Ingress        | same nine names                                                                          | One host each, wildcard TLS        |
+| ConfigMap      | same nine names                                                                          | Non-secret runtime config          |
+| Certificate    | `asynchrone-space-tls`, `asynchrone-space-domain-tls`                                    | cert-manager, apex + both wildcards |
+| CronJob        | `asynchrone-space-copilot-{trial-expiry,organization-deletion,audit-retention,data-exports}` | Copilot identity jobs          |
+| CronJob        | `asynchrone-space-projects-repository-sync`                                              | Hourly repository safety net       |
+| CronJob        | `asynchrone-space-files-uploads-sweep`                                                   | Daily large-object sweep           |
+| Job (hook)     | `asynchrone-space-migrate`                                                               | Pre-install and pre-upgrade        |
+| ServiceAccount | the nine apps plus `asynchrone-space-migrate`                                            | Token automount disabled           |
+| PDB            | the nine apps                                                                            | `minAvailable: 1`                  |
+
+No app owns another app's CronJob. The ownership matrix is:
+
+| Job                     | Owner     | Schedule        | Route                             |
+| ----------------------- | --------- | --------------- | --------------------------------- |
+| `trial-expiry`          | copilot   | `0 6 * * *`     | `/api/cron/trial-expiry`          |
+| `organization-deletion` | copilot   | `30 3 * * *`    | `/api/cron/organization-deletion` |
+| `audit-retention`       | copilot   | `45 3 * * *`    | `/api/cron/audit-retention`       |
+| `data-exports`          | copilot   | `*/15 * * * *`  | `/api/cron/data-exports`          |
+| `repository-sync`       | projects  | `0 * * * *`     | `/api/cron/repository-sync`       |
+| `uploads-sweep`         | files     | `0 3 * * *`     | `/api/files/uploads/sweep`        |
+
+The repository webhook route (`/api/webhooks/repositories/:id`) stays in Copilot
+until #190; only the scheduled reconciliation moved to projects. The portal has
+no image and no host: it is part of Copilot (`copilot.asynchrone.space/portal`).
 
 ## Configuration
 
-Values live under `asynchrone-space-{copilot,projects,calendars,files,control-tower}`
-in `charts/asynchrone-space/values.yaml`. The most useful overrides:
+Values live under the alias key in `charts/asynchrone-space/values.yaml`
+(`landing`, `copilot`, `projects`, `calendars`, `files`, `messages`, `clients`,
+`employees`, `control-tower`). Every app accepts the generic chart values; the
+most useful overrides are:
 
-| Value                                          | Default                          | Purpose                                |
-| ---------------------------------------------- | -------------------------------- | -------------------------------------- |
-| `global.imageTag`                              | `""` (required)                  | Tag shared by all three images         |
-| `global.imagePullSecrets`                      | `[]`                             | Pull secrets for private GHCR packages |
-| `asynchrone-space-copilot.replicaCount`            | `2`                              | Copilot replicas                      |
-| `asynchrone-space-control-tower.replicaCount`  | `2`                              | Control tower replicas                 |
-| `asynchrone-space-copilot.ingress.hosts`           | `copilot.asynchrone.space`       | Copilot host(s)                       |
-| `asynchrone-space-control-tower.ingress.hosts` | `control-tower.asynchrone.space` | Control tower host(s)                  |
-| `*.ingress.className`                          | `nginx`                          | Ingress controller class               |
-| `*.ingress.tls`                                | `[]`                             | TLS secret(s) for the hosts            |
-| `*.config`                                     | see values                       | Non-secret environment variables       |
-| `*.networkPolicy.enabled`                      | `false`                          | Enable least-privilege ingress/egress  |
-| `asynchrone-space-copilot.cronjobs.*.enabled`      | `true`                           | Toggle each identity scheduled job     |
-| `asynchrone-space-files.cronjobs.uploadsSweep`     | `true`, `0 3 * * *`              | Upload-sweep job (files app)           |
-| `migrate.enabled`                              | `true`                           | Toggle the migration hook              |
+| Value                              | Default                              | Purpose                                |
+| ---------------------------------- | ------------------------------------ | -------------------------------------- |
+| `global.imageTag`                  | `""` (required)                      | Tag shared by every image              |
+| `global.imagePullSecrets`          | `[]`                                 | Pull secrets for private GHCR packages |
+| `<app>.replicaCount`               | `2`                                  | Replicas                               |
+| `<app>.image.repository`           | per app                              | Image repository                       |
+| `<app>.ingress.hosts`              | per app                              | Host(s) and paths                      |
+| `<app>.ingress.className`          | `nginx`                              | Ingress controller class               |
+| `<app>.ingress.tls`                | wildcard Secret per app              | TLS secret(s) for the hosts            |
+| `<app>.config`                     | see values                           | Non-secret environment variables       |
+| `<app>.secret.existingSecret`      | per app                              | Secret mounted with `envFrom`          |
+| `<app>.networkPolicy.enabled`      | `false`                              | Least-privilege ingress/egress         |
+| `<app>.cronjobs.jobs.<job>.enabled`| owner only                           | Toggle the owner's scheduled job       |
+| `certificates.enabled`             | `true`                               | Render the two wildcard certificates   |
+| `migrate.enabled`                  | `true`                               | Toggle the migration hook              |
 
-`BETTER_AUTH_URL`, `MCP_RESOURCE_URL`, `PLATFORM_APP_URL`,
-`NEXT_PUBLIC_APP_URL` and `CONTROL_TOWER_URL` must match the public URLs served
-by the ingress. Copilot uses `CONTROL_TOWER_URL` for "Stop impersonating"; the
-control tower uses `PLATFORM_APP_URL` for impersonation handoff links.
+### Copilot discovery URLs
 
-`asynchrone-space-copilot.config.TRUSTED_IP_HEADERS` (default
-`x-real-ip,x-forwarded-for`) lists the headers Better Auth trusts for the
-per-IP auth rate limits. They are only trustworthy because ingress-nginx
-overwrites them: never expose the Copilot pods without the ingress (no
-`port-forward`, no direct `Service` URL) in production.
+`copilot.config` sets:
 
-### TLS and DNS
+- `BETTER_AUTH_URL=https://copilot.asynchrone.space`
+- `PLATFORM_APP_URL=https://copilot.asynchrone.space`
+- `MCP_RESOURCE_URL=https://copilot.asynchrone.space/mcp`
 
-Point both hostnames at the ingress controller's load balancer, then configure
-certificates either through cert-manager annotations:
+`PLATFORM_APP_URL` also appears on the control tower, where it is the handoff
+target. There is no `AUTH_COOKIE_DOMAIN` and no shared customer cookie: each app
+keeps a host-only session, and Copilot is the only OAuth issuer.
 
-```yaml
-asynchrone-space-copilot:
-  ingress:
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-    tls:
-      - secretName: asynchrone-space-tls
-        hosts:
-          - asynchrone.space
-```
+The per-app internal audience is derived in `@workspace/contracts`
+(`urn:asynchrone:app:<key>`), not set as an environment variable. The OAuth
+client credentials are read from each app's Secret:
 
-or by creating the TLS Secrets yourself. Repeat for
-`asynchrone-space-control-tower`.
+| App           | Client ID / secret keys                         | Internal audience                 |
+| ------------- | ----------------------------------------------- | --------------------------------- |
+| copilot       | `COPILOT_OAUTH_CLIENT_ID`/`_SECRET`             | `urn:asynchrone:app:copilot`      |
+| projects      | `PROJECTS_OAUTH_CLIENT_ID`/`_SECRET`            | `urn:asynchrone:app:projects`     |
+| calendars     | `CALENDARS_OAUTH_CLIENT_ID`/`_SECRET`           | `urn:asynchrone:app:calendars`    |
+| files         | `FILES_OAUTH_CLIENT_ID`/`_SECRET`               | `urn:asynchrone:app:files`        |
+| messages      | `MESSAGES_OAUTH_CLIENT_ID`/`_SECRET`            | `urn:asynchrone:app:messages`     |
+| clients       | `CLIENTS_OAUTH_CLIENT_ID`/`_SECRET`             | `urn:asynchrone:app:clients`      |
+| employees     | `EMPLOYEES_OAUTH_CLIENT_ID`/`_SECRET`           | `urn:asynchrone:app:employees`    |
+| control-tower | `CONTROL_TOWER_OAUTH_CLIENT_ID`/`_SECRET`       | `urn:asynchrone:app:control-tower`|
+| landing       | none (stateless)                                | `urn:asynchrone:app:landing`      |
 
-### Uploads and proxy limits
+### TLS and proxy limits
 
-The files subchart sets nginx proxy read/send timeouts to 600 seconds and a body
-size of 8 MiB (Copilot keeps the same limits for its portal and message
-attachments). Uploads are chunked, so a single request stays small, but downloads
-stream a PostgreSQL large object and can take a while. Increase the timeouts if
-your files are very large, and keep the ingress body limit above the 3 MiB
-upload chunk.
+The files and Copilot Ingresses set nginx proxy read/send timeouts to 600
+seconds and a body size of 8 MiB; messages uses the same body ceiling for
+attachment chunks. Uploads are chunked, so a single request stays small, but
+downloads stream a PostgreSQL large object and can take a while. Keep the
+ingress body limit above the 3 MiB upload chunk.
 
 ### Database connections
 
@@ -364,9 +357,8 @@ in [Database operations](database-operations.md). In-flight uploads and
 downloads hold one connection each; keep the total below 70% of
 `max_connections`.
 
-Enable `asynchrone-space-copilot.networkPolicy.enabled` and
-`asynchrone-space-control-tower.networkPolicy.enabled` after setting the ingress
-and database namespaces. `/internal/v1/*` is never routed by the Ingress.
+Enable `<app>.networkPolicy.enabled` after setting the ingress and database
+namespaces. `/internal/v1/*` is never routed by the Ingress.
 
 ### Control tower access
 
@@ -378,13 +370,13 @@ npm run grant:platform-role --workspace=control-tower -- --email you@example.com
 ```
 
 The operator then enrolls an authenticator at `/setup-2fa`. Set
-`PLATFORM_ALLOWED_IPS` in `asynchrone-space-control-tower.config` to a comma-separated list
-of IPv4 addresses/CIDRs (or `*`). The app reads `X-Forwarded-For` and
-`X-Real-IP`, so the ingress must be configured to preserve the client address.
-For defense in depth, also add an edge allowlist:
+`control-tower.config.PLATFORM_ALLOWED_IPS` to a comma-separated list of IPv4
+addresses/CIDRs (or `*`). The app reads `X-Forwarded-For` and `X-Real-IP`, so
+the ingress must preserve the client address. For defense in depth, also add an
+edge allowlist:
 
 ```yaml
-asynchrone-space-control-tower:
+control-tower:
   ingress:
     annotations:
       nginx.ingress.kubernetes.io/whitelist-source-range: "203.0.113.0/24"
@@ -392,10 +384,11 @@ asynchrone-space-control-tower:
 
 ## Migrations
 
-The `asynchrone-space-migrate` Job is a Helm `pre-install,pre-upgrade` hook with a lower
-hook weight than the Deployments. It runs `cd packages/db && npx prisma migrate
-deploy` with `DATABASE_URL` from `asynchrone-space-copilot-secrets`. A failed migration aborts
-the release before pods roll; the Job is kept for inspection:
+The `asynchrone-space-migrate` Job is a Helm `pre-install,pre-upgrade` hook with
+a lower hook weight than the Deployments. It runs
+`cd packages/db && npx prisma migrate deploy` with `DATABASE_URL` from
+`asynchrone-space-copilot-secrets`, then the per-app orchestrator. A failed
+migration aborts the release before pods roll; the Job is kept for inspection:
 
 ```bash
 kubectl -n asynchrone-space logs job/asynchrone-space-migrate
@@ -415,21 +408,38 @@ The migrate image runs as a non-root user with a read-only root filesystem and
 
 ## Scheduled jobs
 
-The uploads-sweep and repository-sync CronJobs replace the former Vercel crons;
-trial-expiry runs the daily Team trial reminders and expiry (ADR 0021);
+Trial-expiry runs the daily Team trial reminders and expiry (ADR 0021);
 organization-deletion deletes organizations whose 30-day deletion grace period
-has passed, including their file large objects
-([ADR 0024](../adr/0024-delete-organizations-after-a-grace-period.md));
-audit-retention prunes audit rows past each organization's plan window without
-touching `PlatformAuditEvent` (see [audit-log.md](../audit-log.md)); and
-data-exports builds owner-requested organization exports every 15 minutes and
-unlinks archives older than 7 days
-([ADR 0026](../adr/0026-export-organization-data-asynchronously.md)). They
-call the in-cluster Service and send the same `CRON_SECRET` bearer token read
-from `asynchrone-space-copilot-secrets`; the corresponding route rejects a missing
-or incorrect token when `CRON_SECRET` is set. `concurrencyPolicy: Forbid`
-prevents overlapping runs. Change schedules through
-`asynchrone-space-copilot.cronjobs.<job>.schedule`.
+has passed, including their file large objects (ADR 0024); audit-retention prunes
+audit rows past each organization's plan window without touching
+`PlatformAuditEvent` (see [audit-log.md](../audit-log.md)); data-exports builds
+owner-requested organization exports every 15 minutes and unlinks archives older
+than 7 days (ADR 0026); repository-sync reconciles repository connections as a
+safety net for missed webhooks; uploads-sweep removes incomplete upload
+sessions.
+
+Each CronJob calls the owning app's in-cluster Service with the same
+`CRON_SECRET` bearer token, read from that app's Secret. The corresponding route
+rejects a missing or incorrect token when `CRON_SECRET` is set.
+`concurrencyPolicy: Forbid` prevents overlapping runs. Change schedules through
+`<app>.cronjobs.jobs.<job>.schedule`.
+
+## Local compose
+
+`docker compose up --build` starts PostgreSQL, the migration Job and every app:
+
+| Service       | Host port | Host name in production             |
+| ------------- | --------- | ----------------------------------- |
+| control-tower | 3001      | `control-tower.asynchrone.space`    |
+| landing       | 3002      | `asynchrone.space`                  |
+| copilot       | 3003      | `copilot.asynchrone.space`          |
+| projects      | 3004      | `projects.copilot.asynchrone.space` |
+| calendars     | 3005      | `calendars.copilot.asynchrone.space`|
+| files         | 3006      | `files.copilot.asynchrone.space`    |
+| messages      | 3007      | `messages.copilot.asynchrone.space` |
+| clients       | 3008      | `clients.copilot.asynchrone.space`  |
+| employees     | 3009      | `employees.copilot.asynchrone.space`|
+| postgres      | 5434      | —                                   |
 
 ## Observability
 
@@ -439,28 +449,16 @@ account.
 
 - **Server**: add `SENTRY_DSN` to `asynchrone-space-copilot-secrets`. Copilot
   reads it at runtime in `apps/copilot/instrumentation.ts`, reports every request
-  error through `onRequestError`, and samples 10 % of requests for latency.
+  error through `onRequestError`, and samples 10% of requests for latency.
 - **Browser**: the DSN is inlined at build time, so set the `SENTRY_DSN`
-  repository variable in GitHub (Settings → Secrets and variables → Actions →
-  Variables). `docker.yml` passes it as a build arg. The DSN is public; it
-  only allows sending events.
+  repository variable in GitHub. `docker.yml` passes it as a build arg. The DSN
+  is public; it only allows sending events.
 - Events use `DEPLOY_ENV` (falling back to `NODE_ENV`) as the environment and
   `GIT_COMMIT_SHA` as the release when they are set.
 
-Configure monitoring in Sentry once events arrive:
-
-1. **Uptime**: an uptime monitor on `GET https://<copilot-host>/api/health` every
-   minute. The route returns 200 when the database answers and 503 otherwise,
-   so it catches both a down pod and a lost database.
-2. **5xx rate**: a metric alert on the failure rate of
-   `transaction.op:http.server` transactions (for example above 2 % over 5
-   minutes).
-3. **p95 latency**: a metric alert on `p95(transaction.duration)` for the same
-   transactions (for example above 2 s over 10 minutes).
-
-The Content-Security-Policy is report-only and limits `connect-src` to
-`'self'`, so browser events to Sentry show up as CSP reports. Add the Sentry
-ingest host to `connect-src` before the policy is enforced.
+Recommended alerts: uptime on `GET https://copilot.asynchrone.space/api/health`
+every minute, a 5xx-rate alert above 2% over 5 minutes, and a p95 latency alert
+above 2 s over 10 minutes.
 
 ## Upgrades and rollback
 
@@ -474,40 +472,47 @@ helm rollback asynchrone-space 1 -n asynchrone-space
 ```
 
 `--reuse-values` keeps earlier overrides but does not merge new chart defaults;
-use `-f my-values.yaml` on every upgrade for a durable configuration. A
-rollback also re-runs the migration Job, so rollbacks across a schema-changing
-release still need a database plan.
+use `-f my-values.yaml` on every upgrade for a durable configuration. A rollback
+also re-runs the migration Job, so rollbacks across a schema-changing release
+still need a database plan.
 
 ## Verify
 
 ```bash
+npm run verify:helm
 helm lint --strict charts/asynchrone-space --set global.imageTag=ci
-helm template asynchrone-space charts/asynchrone-space -n asynchrone-space --set global.imageTag=ci
-kubectl -n asynchrone-space get pods,svc,ingress,cronjob,job
+helm template asynchrone-space charts/asynchrone-space -n asynchrone-space \
+  --set global.imageTag=ci > /dev/null
+grep -c '^kind: CronJob' <(helm template asynchrone-space charts/asynchrone-space \
+  --set global.imageTag=ci)   # 6, one owner each
+docker compose config > /dev/null
+kubectl -n asynchrone-space get pods,svc,ingress,cronjob,job,certificate
 helm test asynchrone-space -n asynchrone-space
 kubectl -n asynchrone-space logs deploy/asynchrone-space-copilot --tail=100
 ```
 
-`helm test` runs the per-subchart connection Pods against each Service.
+`npm run verify:helm` renders the umbrella, every app alias on its own and the
+generic chart standalone, and asserts the two wildcard certificates, the www
+redirect, the Copilot discovery URLs and the six-owner CronJob set.
 
 ## Troubleshooting
 
-- **`image.tag or global.imageTag must be set`** — pass `--set
-global.imageTag=sha-…`; the chart intentionally refuses to default to a
+- **`image.tag or global.imageTag must be set`** — pass
+  `--set global.imageTag=sha-…`; the chart intentionally refuses to default to a
   mutable tag.
 - **Migration Job fails immediately** — check that the Secret exists and
   contains `DATABASE_URL`; check the Job logs. If Prisma needs a writable path,
   set `migrate.securityContext.readOnlyRootFilesystem=false`.
-- **Pods crash with `Invalid environment configuration`** — a required
-  variable is missing or malformed. Compare the ConfigMap and Secret with the
-  env table in the README.
+- **Pods crash with `Invalid environment configuration`** — a required variable
+  is missing or malformed. Compare the ConfigMap and Secret with the env table
+  in the README.
 - **Pods start but the control tower returns 404** — the account has no platform
   role; grant it and enroll TOTP.
 - **Client IPs are the ingress address** — configure the controller to preserve
   `X-Forwarded-For` (nginx: `use-forwarded-headers: "true"`).
-- **CronJob fails with `secret not found`** — `CRON_SECRET` is missing from
-  `asynchrone-space-copilot-secrets`; the chart mounts it as a required key.
+- **CronJob fails with `secret not found`** — `CRON_SECRET` is missing from the
+  owner app's Secret (projects for repository-sync, files for uploads-sweep,
+  Copilot for the four identity jobs). The chart mounts it as a required key.
 - **Read-only filesystem errors** — Next.js writes its image cache to
-  `apps/<app>/.next/cache`, mounted as an `emptyDir`. If a custom runtime path
-  is used, override `cache.mountPath` or
-  `securityContext.readOnlyRootFilesystem`.
+  `apps/<app>/.next/cache`, mounted as an `emptyDir`. If a custom runtime path is
+  used, override `cache.mountPath` or `securityContext.readOnlyRootFilesystem`.

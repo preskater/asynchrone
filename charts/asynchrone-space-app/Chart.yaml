@@ -1,0 +1,6 @@
+apiVersion: v2
+name: asynchrone-space-app
+description: Generic Asynchrone Space app chart, instantiated once per app by the umbrella release
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

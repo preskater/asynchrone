@@ -217,7 +217,7 @@ the identity internal API. It is the only app with this exception.
 | Server actions     | `apps/projects/actions/{projects,project-messages,integrations}.ts` (projects, tasks, members, labels, templates, comments, project discussion thread, repository connections)                                                                                      |
 | Pages              | `apps/projects/app/[locale]/[orgSlug]/projects[/\[projectId\]]` (list, workspace, loading, not-found); Copilot 308-redirects the old paths                                                                                                                         |
 | Auth               | `apps/projects/app/api/auth/{sign-in,callback,logout,backchannel-logout,switch}`, `lib/auth/workspace.ts` (2FA gate, organization binding)                                                                                                                           |
-| API                | Copilot: `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync` (until #190); projects: `/api/health`                                                                                                                                     |
+| API                | Copilot: `POST /api/webhooks/repositories/[connectionId]` (until #190); projects: `GET /api/cron/repository-sync` (hourly since #168), `/api/health`                                                                                                                |
 | MCP tools          | `list_projects`, `get_project`, `list_tasks`, `create_project`, `create_task`, `update_task`, `move_task`                                                                                                                                                           |
 | Prisma models      | `Project`, `ProjectMember`, `Label`, `ProjectLabel`, `Task`, `TaskIdentifierCounter`, `TaskTemplate`, `TaskLabel`, `Subtask`, `TaskComment`, `ProjectActivity`, `ProjectMessage`, `RepositoryConnection`, `UserRepositoryToken`, `AuditLog`                         |
 | Audit actions      | `project.created`, `project.updated`, `project.deleted`, `project.client_settings.updated`, `project.member.*`, `project.label.*`, `project.template.*`, `task.created`, `task.updated`, `task.moved`, `task.deleted`, `task.subtask.toggled`, `task.comment.added` |
@@ -241,7 +241,7 @@ the identity internal API. It is the only app with this exception.
 | `packages/projects/src/components/*`              | Project and task UI (board, list, calendar, details, dialogs, settings, templates, labels, repository and discussion)         |
 | `apps/copilot/lib/projects/index.ts`                  | Copilot adapter (assistant, MCP, portal, search): binds the shared client, audit, notifications and repository integration   |
 | `apps/copilot/lib/projects/{thread,task-comments}.ts` | Copilot adapters for the portal: bind the db client + notifier                                                                |
-| `apps/copilot/lib/integrations/index.ts`              | Copilot adapter: webhook handler and `repository-sync` cron (webhook URLs stay on Copilot until #190)                         |
+| `apps/copilot/lib/integrations/index.ts`              | Copilot adapter: webhook handler and in-process repository service (webhook URLs stay on Copilot until #190; the cron moved to projects in #168) |
 | `apps/projects/lib/{projects,integrations}`           | App adapters: bind the db client, audit writer, notification inbox and repository sync                                        |
 | `apps/projects/lib/auth/*`                            | OIDC session, return-to cookie, workspace gates and request context                                                           |
 | `apps/projects/lib/project-actions.ts`                | Binds the app's server actions to the package's `ProjectActions` port                                                         |
@@ -264,7 +264,7 @@ they move behind the identity internal API in #190.
 | `/[locale]/portal/projects/[projectId]/tasks/[taskId]`       | Portal page | `portal/.../tasks/[taskId]/page.tsx`; reads `portalService` + task comments                              |
 | `/[locale]/(app)/layout`                                     | Layout      | Builds `PROJECT_ACTIONS` from the app's server actions and passes them + `canManageMembers` to the store |
 | `POST /api/webhooks/repositories/[connectionId]`             | API         | `repositoryWebhookHandler` from the package adapter                                                      |
-| `GET /api/cron/repository-sync`                              | Cron        | `repositoryIntegrationService.syncAllConnections()` from the package adapter                             |
+| `GET /api/cron/repository-sync`                              | Cron        | Projects app: `repositoryIntegrationService.syncAllConnections()`; hourly `CRON_SECRET` job (#168)        |
 | `/api/health`                                                | API         | App health check (not project domain)                                                                    |
 | MCP `/mcp` (`list_projects`, `get_project`, `list_tasks`, …) | MCP tools   | `apps/copilot/lib/mcp/tools/projects.ts` → `projectService` adapter                                          |
 | Assistant tools                                              | In-process  | `apps/copilot/lib/assistant/tools.ts` → `projectService` adapter                                             |
@@ -328,7 +328,7 @@ deletion adapters until #190.
 | `GET /api/files/uploads/sweep`                | `apps/files/app/api/files/uploads/sweep/route.ts`                                                                                                                                                                                | unlinks expired upload sessions (`CRON_SECRET`-guarded)                                                    |
 | `GET /api/portal/files/[fileId]/download`     | `apps/copilot/app/api/portal/files/[fileId]/download/route.ts`                                                                                                                                                                     | portal-owned; `@workspace/portal` resolves the client-visible link and streams its large object            |
 | Server actions                                | `apps/files/actions/files.ts`                                                                                                                                                                                                    | folders, upload metadata, rename/move/duplicate/star/trash/restore/delete, bulk, shares, restricted access |
-| Cron                                          | `uploads-sweep` (files app, `/api/files/uploads/sweep`, daily 03:00, `CRON_SECRET`); the files Helm chart owns the CronJob since #161                                                                                             |                                                                                                            |
+| Cron                                          | `uploads-sweep` (files app, `/api/files/uploads/sweep`, daily 03:00, `CRON_SECRET`); the files app owns the CronJob since #161                                                                                                   |                                                                                                            |
 | MCP tools                                     | `apps/copilot/lib/mcp/tools/files.ts`                                                                                                                                                                                              | `list_files`, `create_folder`, `create_files`, `rename_file`, `move_file`, `trash_file`                    |
 | Prisma models                                 | `FileNode`, `UploadSession`, `FileShare`, `FileVersion`, `FileActivity`, `OidcSession`, `AuditLog`                                                                                                                              | `asynchrone_files` (`@workspace/db-files`); the app binds the shared client until #190                   |
 | Storage                                       | `packages/files/src/objects.ts` + `@workspace/storage`                                                                                                                                                                         | PostgreSQL large objects; resumable uploads; the app binds its own pool                                    |
@@ -648,8 +648,8 @@ parentheses; keep the checklist honest rather than pre-checking it.
 ### Copilot (#149, #150, #151, #152, #175, #164, #165, #166, #190)
 
 - [x] Renamed from `apps/web` to `apps/copilot`, deployed from the
-      `asynchrone-space-copilot` image and chart at `copilot.asynchrone.space`
-      (#175).
+      `asynchrone-space-copilot` image and a generic Helm chart instance at
+      `copilot.asynchrone.space` (#175, #168).
 - [ ] Auth, 2FA, onboarding, organization selection, settings, billing, audit,
       search, help, feedback, MCP, platform handoff and the assistant run here.
 - [ ] OIDC authorization server, JWKS, consent and token lifecycle are unchanged.
@@ -674,14 +674,15 @@ parentheses; keep the checklist honest rather than pre-checking it.
       and no longer loads project data in its shell (#160).
 - [x] Host-only OIDC session, 2FA page gate and organization switch on the
       projects host (#160).
-- [x] Own image (`APP=projects`), Helm subchart, compose service and CI jobs
+- [x] Own image (`APP=projects`), generic Helm chart instance, compose service and CI jobs
       (#160).
 - [x] Audit rows are written by the projects app (`apps/projects/lib/audit.ts`)
       into the shared `auditLog` table; the fan-out endpoint is #187's.
 - [ ] `Project`/`Task`/`ProjectMessage`/repository models are read from
       `asynchrone_projects` (pilot still binds the shared client, #190).
-- [ ] MCP tools, repository webhooks and the `repository-sync` cron move to the
-      projects app (#190).
+- [x] The hourly `repository-sync` cron moved to `apps/projects`
+      (`/api/cron/repository-sync`, `CRON_SECRET`) (#168).
+- [ ] MCP tools and repository webhooks move to the projects app (#190).
 - [ ] Search, export and deletion endpoints are wired.
 - [ ] Assistant, MCP and portal reach it through internal clients.
 
@@ -781,3 +782,26 @@ are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
 - Adding an internal endpoint: add it to `INTERNAL_ROUTES`, a Zod contract and
   the internal API map before wiring the handler.
 - Removing the transitional shim: delete the row from “Known coupling”.
+
+### Deployment (#168)
+
+- [x] The Docker matrix publishes one image per app (landing, copilot, projects,
+      calendars, files, messages, clients, employees, control-tower) plus the
+      migrate image, all from the same Dockerfile (`APP=…`).
+- [x] One generic Helm chart (`charts/asynchrone-space-app`) is instantiated per
+      app through umbrella dependency aliases; the umbrella keeps the migrate
+      hook and wildcard Certificates.
+- [x] DNS/TLS: `asynchrone.space` + `*.asynchrone.space` for landing, Copilot,
+      the control tower and `www` (redirected to the apex);
+      `*.copilot.asynchrone.space` for the domain apps.
+- [x] Per-app Secrets carry the database URL and OAuth client pair; the
+      internal audience is derived by `@workspace/contracts`.
+- [x] `BETTER_AUTH_URL` and `MCP_RESOURCE_URL` point at Copilot,
+      `PLATFORM_APP_URL` on the control tower points at Copilot, and there is no
+      shared cookie.
+- [x] Cron ownership: copilot (four identity jobs), projects
+      (`repository-sync`), files (`uploads-sweep`); every cron has exactly one
+      owner.
+- [x] `docker compose up --build` starts all nine apps on ports 3001–3009.
+- [x] `npm run verify:helm` lints and renders the umbrella, each app alias and
+      the generic chart standalone.

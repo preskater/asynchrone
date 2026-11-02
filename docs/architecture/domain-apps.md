@@ -25,9 +25,17 @@ inventory in [#146](./feature-inventory.md).
 
 `apps/projects` (#160), `apps/calendars` (#161), `apps/files` (#161),
 `apps/messages` (#162), `apps/clients` and `apps/employees` (#163) are live:
-each serves its own host from its own image and chart with a host-only OIDC
-session. The remaining domain apps follow the same template — see
-[domain-app-template.md](../domain-app-template.md).
+each serves its own host from its own image and a generic Helm chart instance
+with a host-only OIDC session. The remaining domain apps follow the same
+template — see [domain-app-template.md](../domain-app-template.md).
+
+Deployment is one umbrella release (#168): `charts/asynchrone-space` depends on
+the generic `charts/asynchrone-space-app` once per app through Helm aliases and
+keeps the migration hook. Copilot is the only OAuth issuer, so every host sits
+under `*.asynchrone.space` (landing, Copilot, control tower) or
+`*.copilot.asynchrone.space` (domain apps). Each cron has exactly one owner:
+Copilot runs the identity jobs, projects runs `repository-sync` and files runs
+`uploads-sweep`. See [Deploying with Helm](../deployment/helm.md).
 
 The clients and employees apps keep the documented transitional database
 binding: `@workspace/clients` still reads `member`/`user`/`fileNode`/`project`
@@ -218,3 +226,5 @@ also catches imports in files that are not currently reachable from a route.
       settings moved out of Copilot (#161)
 - [x] Clients and employees apps at `clients.copilot.asynchrone.space` and
       `employees.copilot.asynchrone.space` (#163)
+- [x] One generic Helm app chart instantiated per app, per-app images, wildcard
+      DNS/TLS, per-app secrets and single-owner crons (#168)

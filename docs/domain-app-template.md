@@ -140,12 +140,15 @@ Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to th
   `env_file`.
 - `.github/workflows/docker.yml`: one matrix entry + GHCR image
   `asynchrone-space-<domain>`.
-- `charts/asynchrone-space-<domain>`: copy the projects subchart, set the host,
-  image, `config` and `secret.existingSecret`.
-- `charts/asynchrone-space`: add the dependency and values block, then
-  `helm dependency update` and commit the archive (CI diffs it against the
-  source).
-- `.github/workflows/helm.yml`: add the chart to the vendored-archive check.
+- `charts/asynchrone-space`: add one dependency alias on the generic
+  `charts/asynchrone-space-app` chart and a values block for the app (host,
+  image, `config`, `secret.existingSecret`, optional cron jobs), then run
+  `helm dependency build charts/asynchrone-space` and commit `Chart.lock` and
+  the vendored archive. Do not copy a per-app chart; the app-specific values
+  are all the generic chart needs.
+- `.github/workflows/helm.yml` needs no per-app entry: `npm run verify:helm`
+  reads the umbrella and renders every alias. Add the new alias to the `APPS`
+  list in `scripts/verify-helm-charts.mjs`.
 - `packages/contracts` already has the app key, host env, database name,
   audience and OAuth client env names; check it before adding anything.
 

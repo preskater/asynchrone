@@ -25,37 +25,32 @@ jobs:
       - name: Build chart dependencies
         run: helm dependency build charts/asynchrone-space
 
-      # The subchart archives are committed so Git-based chart sources
+      # The generic app chart archive is committed so Git-based chart sources
       # (Rancher, Fleet) and packaged charts work without `helm dependency
-      # build`. Compare contents with the sources instead of raw bytes: Helm
+      # build`. Compare contents with the source instead of raw bytes: Helm
       # embeds checkout mtimes in the tar headers and re-serializes Chart.yaml,
-      # so a rebuild never produces identical files. Metadata is compared
+      # so a rebuild never produces an identical file. Metadata is compared
       # through `helm show chart`, which normalizes it.
-      - name: Check vendored subcharts are up to date
+      - name: Check the vendored app chart is up to date
         shell: bash
         run: |
           set -euo pipefail
-          for chart in asynchrone-space-landing asynchrone-space-copilot asynchrone-space-projects asynchrone-space-calendars asynchrone-space-files asynchrone-space-messages asynchrone-space-clients asynchrone-space-employees asynchrone-space-control-tower; do
-            set -- charts/asynchrone-space/charts/"${chart}"-*.tgz
-            if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
-              echo "Expected exactly one vendored archive for ${chart}" >&2
-              exit 1
-            fi
-            archive="$1"
-            tmp="$(mktemp -d)"
-            tar -xzf "$archive" -C "$tmp"
-            diff <(helm show chart "charts/${chart}") <(helm show chart "$archive")
-            diff -r --exclude=.helmignore --exclude=Chart.yaml \
-              "charts/${chart}" "${tmp}/${chart}"
-            rm -rf "$tmp"
-          done
+          set -- charts/asynchrone-space/charts/asynchrone-space-app-*.tgz
+          if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+            echo "Expected exactly one vendored archive for asynchrone-space-app" >&2
+            exit 1
+          fi
+          archive="$1"
+          tmp="$(mktemp -d)"
+          tar -xzf "$archive" -C "$tmp"
+          diff <(helm show chart charts/asynchrone-space-app) <(helm show chart "$archive")
+          diff -r --exclude=.helmignore --exclude=Chart.yaml \
+            charts/asynchrone-space-app "${tmp}/asynchrone-space-app"
+          rm -rf "$tmp"
 
-      - name: Lint
-        run: helm lint --strict charts/asynchrone-space --set global.imageTag=ci-placeholder-tag
-
-      - name: Render
-        run: |
-          helm template asynchrone-space charts/asynchrone-space \
-            --namespace asynchrone-space \
-            --set global.imageTag=ci-placeholder-tag \
-            > /dev/null
+      # Lints the umbrella, renders it, renders every app alias on its own and
+      # renders the generic chart standalone. It also asserts the wildcard
+      # certificates, the www redirect, the Copilot discovery URLs and the
+      # single-owner CronJob set.
+      - name: Lint and render every app
+        run: node scripts/verify-helm-charts.mjs

@@ -2,43 +2,55 @@ apiVersion: v2
 name: asynchrone-space
 description: Umbrella chart for the Asynchrone Space landing, Copilot, domain apps and control tower
 type: application
-version: 0.1.5
+version: 0.2.0
 appVersion: "0.0.1"
 
+# One generic chart, instantiated once per app with a dependency alias and an
+# app-specific values block below. Resource names stay
+# `asynchrone-space-<alias>` because every alias sets `nameOverride`.
 dependencies:
-  - name: asynchrone-space-landing
+  - name: asynchrone-space-app
+    alias: landing
     version: 0.1.0
-    repository: file://../asynchrone-space-landing
-    condition: asynchrone-space-landing.enabled
-  - name: asynchrone-space-copilot
-    version: 0.1.2
-    repository: file://../asynchrone-space-copilot
-    condition: asynchrone-space-copilot.enabled
-  - name: asynchrone-space-projects
+    repository: file://../asynchrone-space-app
+    condition: landing.enabled
+  - name: asynchrone-space-app
+    alias: copilot
     version: 0.1.0
-    repository: file://../asynchrone-space-projects
-    condition: asynchrone-space-projects.enabled
-  - name: asynchrone-space-messages
+    repository: file://../asynchrone-space-app
+    condition: copilot.enabled
+  - name: asynchrone-space-app
+    alias: projects
     version: 0.1.0
-    repository: file://../asynchrone-space-messages
-    condition: asynchrone-space-messages.enabled
-  - name: asynchrone-space-calendars
+    repository: file://../asynchrone-space-app
+    condition: projects.enabled
+  - name: asynchrone-space-app
+    alias: calendars
     version: 0.1.0
-    repository: file://../asynchrone-space-calendars
-    condition: asynchrone-space-calendars.enabled
-  - name: asynchrone-space-files
+    repository: file://../asynchrone-space-app
+    condition: calendars.enabled
+  - name: asynchrone-space-app
+    alias: files
     version: 0.1.0
-    repository: file://../asynchrone-space-files
-    condition: asynchrone-space-files.enabled
-  - name: asynchrone-space-clients
+    repository: file://../asynchrone-space-app
+    condition: files.enabled
+  - name: asynchrone-space-app
+    alias: messages
     version: 0.1.0
-    repository: file://../asynchrone-space-clients
-    condition: asynchrone-space-clients.enabled
-  - name: asynchrone-space-employees
+    repository: file://../asynchrone-space-app
+    condition: messages.enabled
+  - name: asynchrone-space-app
+    alias: clients
     version: 0.1.0
-    repository: file://../asynchrone-space-employees
-    condition: asynchrone-space-employees.enabled
-  - name: asynchrone-space-control-tower
-    version: 0.1.1
-    repository: file://../asynchrone-space-control-tower
-    condition: asynchrone-space-control-tower.enabled
+    repository: file://../asynchrone-space-app
+    condition: clients.enabled
+  - name: asynchrone-space-app
+    alias: employees
+    version: 0.1.0
+    repository: file://../asynchrone-space-app
+    condition: employees.enabled
+  - name: asynchrone-space-app
+    alias: control-tower
+    version: 0.1.0
+    repository: file://../asynchrone-space-app
+    condition: control-tower.enabled
