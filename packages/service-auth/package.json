@@ -13,10 +13,10 @@
   "dependencies": {
     "@workspace/contracts": "*",
     "@workspace/observability": "*",
-    "jose": "^6.2.3"
+    "jose": "^6.2.14"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "eslint": "^10.13.0",

@@ -16,7 +16,7 @@
     "remark-mdx-frontmatter": "^6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
