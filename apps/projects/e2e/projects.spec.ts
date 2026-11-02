@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { E2E_PROJECTS_URL } from "./env"
+import { E2E_COPILOT_URL, E2E_PROJECTS_URL } from "./env"
 import {
   createOrganization,
   openProjects,
@@ -41,7 +41,10 @@ test("signs in through Copilot and loads projects on its own host", async ({
   )
 })
 
-test("switches organization on the projects host", async ({ page }) => {
+test("switches organization on the projects host", async ({
+  page,
+  context,
+}) => {
   const account = await signUp(page)
   // Creating an organization makes it Copilot's active one, so the first
   // authorization is issued for it; the switcher then goes back to the first.
@@ -56,6 +59,14 @@ test("switches organization on the projects host", async ({ page }) => {
   // Copilot owns the active organization, so it asks which one the app should
   // access; choosing it sends the browser back into this app's sign-in flow.
   await page.waitForURL(/\/select-organization\?/)
+
+  // Switching ends the projects session bound to the previous organization
+  // before the Copilot handoff (the next authorization creates a new one).
+  const switched = await projectsSessionCookies(context)
+  expect(
+    switched.find((cookie) => cookie.name.endsWith("asynchrone_session"))
+  ).toBeUndefined()
+
   await page.getByRole("button", { name: /Project HQ/i }).click()
 
   await page.waitForURL(
@@ -65,6 +76,23 @@ test("switches organization on the projects host", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Projects", level: 2 })
   ).toBeVisible()
+})
+
+test("back-channel logout ends the projects session", async ({ page }) => {
+  const account = await signUp(page)
+  await openProjects(page, account.organizationSlug)
+
+  // Copilot deletes the session and dispatches a signed Logout Token to the
+  // projects back-channel endpoint. The browser cookie stays, but the local
+  // session row is gone, so the next request is signed out.
+  const signOut = await page.request.post(
+    `${E2E_COPILOT_URL}/api/auth/sign-out`,
+    { headers: { Origin: E2E_COPILOT_URL }, data: {} }
+  )
+  expect(signOut.ok(), await signOut.text()).toBeTruthy()
+
+  await page.goto(`${E2E_PROJECTS_URL}/en/${account.organizationSlug}/projects`)
+  await page.waitForURL(/\/sign-in/, { timeout: 60_000 })
 })
 
 test("creates a project and a task", async ({ page }) => {

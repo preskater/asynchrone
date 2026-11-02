@@ -59,10 +59,30 @@ export async function GET(request: Request) {
 ```
 
 The verifier checks the signature against Copilot's JWKS, the issuer, the
-audience, expiry and required scopes. A token minted for another app is
-rejected. Better Auth stamps `iss` as `{origin}/api/auth`; the verifier accepts
-that and the bare origin so already-issued tokens and the package tests keep
-working.
+audience, expiry (with a 60-second clock-skew allowance) and required scopes. A
+token minted for another app is rejected: every app passes its own
+`internalAudience("<key>")`, and the verifier expects `iss` to be
+`${origin}/api/auth` (Better Auth's mount path). The bare origin is still
+accepted so already-issued tokens keep working.
+
+## Session revocation endpoint
+
+Each domain app exposes `POST /internal/v1/auth/revoke`:
+
+```json
+{ "sid": "<copilot session id>" }
+```
+
+It requires `internal:domain:write` with the app's own audience and deletes
+every local `oidcSession` row bound to that `sid`. Copilot calls it with
+`apps/copilot/lib/internal/app-sessions.ts` on organization switch (and as a
+backstop on stop-impersonation), using the provisioned
+`COPILOT_OAUTH_CLIENT_ID/SECRET` client. A projects token is rejected by files,
+messages, calendars, clients and employees.
+
+`apps/<app>/lib/internal/service.ts` binds the app's verifier and the revoke
+route uses `requireAppService(request, scope)`; the delegated operations use
+`apps/<app>/lib/internal/domain.ts` and `createDomainHandler`.
 
 ## Scope matrix
 
@@ -153,8 +173,9 @@ npm run typecheck --workspace=@workspace/service-auth
 npm run lint --workspace=@workspace/service-auth
 ```
 
-Covers token requests, caching, expiry skew, audience binding, scope checks,
-expired tokens and missing Bearer headers.
+Covers token requests, caching, expiry skew, issuer and audience binding, scope
+checks, expired tokens, missing Bearer headers and the fleet matrix: a token
+minted for one app is accepted only by that app's verifier.
 
 ## Follow-up
 

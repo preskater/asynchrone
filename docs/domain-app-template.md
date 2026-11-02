@@ -24,7 +24,9 @@ apps/<domain>/
       page.tsx               -> the domain's default screen
       <domain>/...           the screens
     api/auth/{sign-in,callback,logout,backchannel-logout}/route.ts
-    api/auth/switch/route.ts organization-switch handoff
+    api/auth/switch/route.ts organization-switch handoff (ends the local session)
+    internal/v1/auth/revoke/route.ts  session revocation (service token)
+    internal/v1/domain/[operation]/route.ts  delegated domain API (#190)
     api/health/route.ts
   lib/
     env.ts                   fail-fast registry for this app's keys
@@ -34,6 +36,8 @@ apps/<domain>/
     auth/return-to.ts        post-login path cookie
     auth/routing.ts          pure rules (token organization, 2FA gate)
     auth/workspace.ts        requireWorkspace(), toRequestContext()
+    internal/service.ts      audience-bound ServiceTokenVerifier
+    internal/domain.ts       delegated operation dispatch (#190)
     request-context.ts       getRequestContext(), revalidateOrgPath(), parseLocalized()
     <domain>/index.ts        adapter: binds db, audit, notifications, integrations
   actions/*.ts               "use server" actions (the app owns them)
@@ -61,8 +65,16 @@ to the domain's default screen.
 - The callback keeps exactly one local session per Copilot `sid`: switching
   organization re-authorizes and must not leave the previous organization's
   session behind.
+- `readSessionRecord()` verifies the access token on every request (signature,
+  issuer, audience, expiry with 60-second skew) and rejects a token whose
+  `sub`/`sid`/organization no longer matches the stored row.
 - Back-channel logout is `POST /api/auth/backchannel-logout`; `logout` deletes
   the local row and calls Copilot's end-session endpoint.
+- `/api/auth/switch` deletes the local row and clears the cookie before the
+  handoff; Copilot's `/organization/set-active` calls
+  `/internal/v1/auth/revoke` on every domain app with the `sid`.
+- Every app also enforces the token's `twoFactorRequired`/`twoFactorEnrolled`
+  claims together with the current policy and the one-hour impersonation TTL.
 
 ### Issuer claim
 

@@ -41,6 +41,12 @@ accounts are left out: they never reach the workspace).
   allowed.
 - Impersonating platform staff are let through, since they cannot enroll on the
   user's behalf.
+- Every domain app also enforces the `twoFactorRequired` / `twoFactorEnrolled`
+  claims from the verified OIDC access token. The app requires enrollment when
+  **either** the current policy or the token's claims say so, so a token minted
+  before the policy was enabled cannot lower the gate. Impersonation sessions
+  are exempt (the claim is ignored when `impersonated` is attested, and the
+  workspace resolver exempts the Copilot `impersonatedBy` session).
 - Changes write `organization.two_factor_policy.update` to the audit log.
 - The gate covers the workspace pages. Server actions, the REST API and MCP
   tokens are not gated by it.

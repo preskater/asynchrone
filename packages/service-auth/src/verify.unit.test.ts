@@ -1,6 +1,8 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from "jose"
 import { beforeAll, describe, expect, it } from "vitest"
 
+import { CUSTOMER_APP_KEYS, internalAudience } from "@workspace/contracts"
+
 import { SERVICE_SCOPES } from "./verify"
 import {
   ServiceTokenVerifier,
@@ -8,15 +10,17 @@ import {
   type ServiceTokenClaims,
 } from "./verify"
 
-const issuer = "https://copilot.asynchrone.space"
+const origin = "https://copilot.asynchrone.space"
+const issuer = `${origin}/api/auth`
 const audience = "urn:asynchrone:app:projects"
 
 let sign: (options?: {
   audience?: string
   scope?: string
-  expires?: string
+  expires?: string | number
   issuer?: string
 }) => Promise<string>
+let keySet: ReturnType<typeof createLocalJWKSet>
 let verifier: ServiceTokenVerifier
 
 beforeAll(async () => {
@@ -25,7 +29,7 @@ beforeAll(async () => {
   jwk.kid = "test-key"
   jwk.alg = "RS256"
   jwk.use = "sig"
-  const keySet = createLocalJWKSet({ keys: [jwk] })
+  keySet = createLocalJWKSet({ keys: [jwk] })
 
   sign = async ({
     audience: tokenAudience = audience,
@@ -42,7 +46,7 @@ beforeAll(async () => {
       .setExpirationTime(expires)
       .sign(privateKey)
 
-  verifier = new ServiceTokenVerifier({ issuer, audience, keySet })
+  verifier = new ServiceTokenVerifier({ issuer: origin, audience, keySet })
 })
 
 describe("service token verifier", () => {
@@ -55,9 +59,17 @@ describe("service token verifier", () => {
   })
 
   it("accepts Better Auth's /api/auth issuer", async () => {
-    const token = await sign({ issuer: `${issuer}/api/auth` })
+    const token = await sign()
     await expect(verifier.verify(token)).resolves.toMatchObject({
-      iss: `${issuer}/api/auth`,
+      iss: issuer,
+    })
+    expect(verifier.issuer).toBe(issuer)
+  })
+
+  it("accepts the legacy bare-origin issuer", async () => {
+    const token = await sign({ issuer: origin })
+    await expect(verifier.verify(token)).resolves.toMatchObject({
+      iss: origin,
     })
   })
 
@@ -76,12 +88,48 @@ describe("service token verifier", () => {
     ).rejects.toMatchObject({ code: "insufficient_scope", status: 403 })
   })
 
-  it("rejects an expired token", async () => {
-    const token = await sign({ expires: "1s" })
-    await new Promise((resolve) => setTimeout(resolve, 1_100))
+  it("rejects a token from another issuer", async () => {
+    await expect(
+      verifier.verify(await sign({ issuer: "https://evil.example" }))
+    ).rejects.toMatchObject({ code: "invalid_token", status: 401 })
+  })
+
+  it("accepts a just-expired token inside the clock skew", async () => {
+    const token = await sign({ expires: Math.floor(Date.now() / 1000) - 30 })
+    await expect(verifier.verify(token)).resolves.toMatchObject({
+      aud: audience,
+    })
+  })
+
+  it("rejects an expired token outside the clock skew", async () => {
+    const token = await sign({ expires: Math.floor(Date.now() / 1000) - 120 })
     await expect(verifier.verify(token)).rejects.toMatchObject({
       code: "invalid_token",
     })
+  })
+})
+
+describe("fleet audience isolation", () => {
+  it("rejects a token minted for one app at every other app", async () => {
+    const token = await sign({ audience: internalAudience("projects") })
+
+    for (const key of CUSTOMER_APP_KEYS) {
+      const appVerifier = new ServiceTokenVerifier({
+        issuer: origin,
+        audience: internalAudience(key),
+        keySet,
+      })
+      if (key === "projects") {
+        await expect(appVerifier.verify(token)).resolves.toMatchObject({
+          aud: internalAudience("projects"),
+        })
+      } else {
+        await expect(appVerifier.verify(token)).rejects.toMatchObject({
+          code: "invalid_token",
+          status: 401,
+        })
+      }
+    }
   })
 })
 

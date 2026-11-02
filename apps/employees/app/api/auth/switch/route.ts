@@ -1,9 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { safeRedirect } from "@workspace/core/redirect"
+import { clearSessionCookie } from "@workspace/oidc"
 
 import { clearReturnTo } from "@/lib/auth/return-to"
+import { readSessionRecord } from "@/lib/auth/session"
 import { env } from "@/lib/env"
+import { oidcConfig, sessionStore } from "@/lib/oidc"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -25,6 +28,11 @@ export async function GET(request: NextRequest) {
   const locale = localeParam && LOCALES.has(localeParam) ? localeParam : "en"
   const returnTo = safeRedirect(url.searchParams.get("returnTo"), "/")
 
+  // Switching organization is a new authorization: this app's session is
+  // bound to the previous organization, so it must not survive the handoff.
+  const session = await readSessionRecord()
+  if (session) await sessionStore.deleteBySid(session.sid)
+
   const signIn = new URL("/api/auth/sign-in", env.EMPLOYEES_APP_URL)
   signIn.searchParams.set("returnTo", returnTo)
 
@@ -34,6 +42,7 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(target)
   response.headers.append("Set-Cookie", clearReturnTo())
+  response.headers.append("Set-Cookie", clearSessionCookie(oidcConfig))
   response.headers.append("Cache-Control", "no-store")
   return response
 }

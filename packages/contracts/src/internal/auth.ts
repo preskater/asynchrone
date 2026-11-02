@@ -53,3 +53,14 @@ export const serviceAuthContract = z.object({
   scopes: z.array(serviceScopeSchema),
   audience: z.string().min(1),
 })
+
+/**
+ * Request body for `POST /internal/v1/auth/revoke`: end every local app session
+ * bound to one Copilot sign-in. Sent by Copilot on organization switch and as a
+ * stop-impersonation backstop.
+ */
+export const SessionRevokeRequestSchema = z.object({
+  sid: z.string().min(1),
+})
+
+export type SessionRevokeRequest = z.infer<typeof SessionRevokeRequestSchema>

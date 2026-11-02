@@ -7,7 +7,7 @@ import {
 } from "@workspace/contracts"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 
-import { ensureIssuer, serviceEndpoint, ServiceAuthError } from "./config"
+import { ensureIssuer, serviceEndpoint, serviceIssuer, ServiceAuthError } from "./config"
 
 type VerificationKey = Parameters<typeof jwtVerify>[1]
 
@@ -20,6 +20,8 @@ export interface ServiceTokenVerifierConfig {
   keySet?: VerificationKey
   /** Override the JWKS URL; defaults to `{issuer}/api/auth/jwks`. */
   jwksUri?: string
+  /** Allowed clock difference when checking token timestamps. Defaults to 60s. */
+  clockToleranceSeconds?: number
 }
 
 export interface VerifyOptions {
@@ -31,21 +33,26 @@ export interface VerifyOptions {
  * required claims and scopes. A token minted for another app is rejected.
  */
 export class ServiceTokenVerifier {
+  /** The `iss` value expected on the token (`<origin>/api/auth`). */
   readonly issuer: string
   readonly audience: string
   private readonly keySet: VerificationKey
   private readonly acceptedIssuers: string[]
+  private readonly clockToleranceSeconds: number
 
   constructor(config: ServiceTokenVerifierConfig) {
-    this.issuer = ensureIssuer(config.issuer)
+    const origin = ensureIssuer(config.issuer)
+    this.issuer = serviceIssuer(origin)
     this.audience = config.audience
     // Better Auth's OAuth provider stamps `iss` as `{origin}/api/auth`; older
-    // tokens and the package tests use the bare origin. Accept both.
-    this.acceptedIssuers = [this.issuer, `${this.issuer}/api/auth`]
+    // tokens and the package tests use the bare origin. Accept both, but never
+    // build the JWKS URL from the issuer path.
+    this.acceptedIssuers = [this.issuer, origin]
+    this.clockToleranceSeconds = config.clockToleranceSeconds ?? 60
     this.keySet =
       config.keySet ??
       createRemoteJWKSet(
-        new URL(config.jwksUri ?? serviceEndpoint(this.issuer, "/jwks"))
+        new URL(config.jwksUri ?? serviceEndpoint(origin, "/jwks"))
       )
   }
 
@@ -58,6 +65,7 @@ export class ServiceTokenVerifier {
       const result = await jwtVerify(token, this.keySet, {
         issuer: this.acceptedIssuers,
         audience: this.audience,
+        clockTolerance: this.clockToleranceSeconds,
       })
       payload = result.payload
     } catch (error) {

@@ -6,7 +6,11 @@ import type { MemberRole } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
 import type { Entitlements } from "@workspace/organization/entitlements"
 import { parseRoles } from "@workspace/organization/roles"
-import type { OidcSessionRecord } from "@workspace/oidc"
+import {
+  IMPERSONATION_TTL_MS,
+  twoFactorRequiredByClaims,
+  type OidcSessionRecord,
+} from "@workspace/oidc"
 
 import {
   resolveTokenOrganization,
@@ -34,8 +38,6 @@ export interface MessagesWorkspace {
   entitlements: Entitlements
   deletionScheduledAt: Date | null
 }
-
-const IMPERSONATION_TTL_MS = 60 * 60 * 1000
 
 /**
  * Resolve the signed-in workspace for a `/{locale}/{orgSlug}` route.
@@ -156,7 +158,10 @@ export async function requireMessagesWorkspace({
   const impersonatedBy = resolution.session.session.impersonatedBy ?? null
   if (
     twoFactorEnrollmentRequired({
-      required: shell.requireTwoFactor,
+      // The current policy wins, but a token captured under an older policy
+      // cannot lower the requirement: both must be satisfied.
+      required:
+        shell.requireTwoFactor || twoFactorRequiredByClaims(session.claims),
       entitled: shell.entitlements.requireTwoFactor,
       enrolled: Boolean(user.customerTwoFactorEnabled),
       impersonated: Boolean(impersonatedBy),
