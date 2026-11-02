@@ -1,12 +1,13 @@
 import type { MemberDirectoryPort } from "@workspace/organization/directory"
 
 import type { ProjectDb } from "./db"
-import type { ProjectNotify } from "./ports"
+import type { ProjectAudit, ProjectNotify } from "./ports"
 
 export interface ProjectThreadDependencies {
   db: ProjectDb
   notify: ProjectNotify
   directory: MemberDirectoryPort
+  audit?: ProjectAudit
 }
 
 export const PROJECT_MESSAGE_MAX_LENGTH = 4000
@@ -80,7 +81,7 @@ export async function listProjectMessages(
  * internal project members so the team sees replies in the header bell.
  */
 export async function createProjectMessage(
-  { db, notify, directory }: ProjectThreadDependencies,
+  { db, notify, directory, audit }: ProjectThreadDependencies,
   input: {
     organizationId: string
     projectId: string
@@ -99,6 +100,21 @@ export async function createProjectMessage(
     },
   })
 
+  await audit?.(
+    {
+      organizationId: input.organizationId,
+      userId: input.authorId,
+      userName: input.authorKind === "client" ? "Client" : "Team",
+      userEmail: "",
+    },
+    {
+      action: "project.message.added",
+      entityType: "project",
+      entityId: input.projectId,
+      entityLabel: input.body.slice(0, 120),
+      after: { authorKind: input.authorKind },
+    }
+  )
   const nameById = await namesByIds(directory, input.organizationId, [
     row.authorId,
   ])

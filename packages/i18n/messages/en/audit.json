@@ -74,7 +74,10 @@
         "updated": "Task template updated",
         "deleted": "Task template deleted"
       },
-      "update": "Employee project updated"
+      "update": "Employee project updated",
+      "message": {
+        "added": "Project message sent"
+      }
     },
     "task": {
       "created": "Task created",

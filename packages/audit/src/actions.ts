@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = {
   taskDeleted: "task.deleted",
   taskSubtaskToggled: "task.subtask.toggled",
   taskCommentAdded: "task.comment.added",
+  projectMessageAdded: "project.message.added",
 
   fileCreated: "file.created",
   fileFolderCreated: "file.folder.created",

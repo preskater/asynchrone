@@ -229,7 +229,7 @@ through `IdentityClient`; the app binds only `@workspace/db-projects`.
 | API                | Projects: `POST /api/webhooks/repositories/[connectionId]`, `GET /api/cron/repository-sync` (hourly since #168), `/api/health`; the webhook moved here in #171 |
 | MCP tools          | `list_projects`, `get_project`, `list_tasks`, `create_project`, `create_task`, `update_task`, `move_task`                                                                                                                                                           |
 | Prisma models      | `Project`, `ProjectMember`, `Label`, `ProjectLabel`, `Task`, `TaskIdentifierCounter`, `TaskTemplate`, `TaskLabel`, `Subtask`, `TaskComment`, `ProjectActivity`, `ProjectMessage`, `RepositoryConnection`, `UserRepositoryToken`, `AuditLog`                         |
-| Audit actions      | `project.created`, `project.updated`, `project.deleted`, `project.client_settings.updated`, `project.member.*`, `project.label.*`, `project.template.*`, `task.created`, `task.updated`, `task.moved`, `task.deleted`, `task.subtask.toggled`, `task.comment.added` |
+| Audit actions      | `project.created`, `project.updated`, `project.deleted`, `project.client_settings.updated`, `project.member.*`, `project.label.*`, `project.template.*`, `task.created`, `task.updated`, `task.moved`, `task.deleted`, `task.subtask.toggled`, `task.comment.added`, `project.message.added` |
 | Audit entities     | `project`, `task`, `label`, `taskTemplate`                                                                                                                                                                                                                          |
 | Internal endpoints | `GET /internal/v1/search`, `GET /organizations/:id/export`, `DELETE /organizations/:id`, `DELETE /users/:id`, the audit routes and the file content stream                                                             |
 
@@ -525,7 +525,7 @@ meetings read model. Every portal read goes through an internal API call
 | Models         | `PortalInvite`, `Member.clientId` (identity); `Client` (clients); `Project`, `Task`, `ProjectMessage`, `TaskComment` (projects); `FileNode` (files)                                                                           |
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
-| Audit          | `client.document.linked` is written by the clients app for a portal upload; portal message/task-comment mutations still write no `AuditLog` row (preserved)                                                                   |
+| Audit          | `client.document.linked` is written by the clients app for a portal upload; portal project messages and task comments write `project.message.added` / `task.comment.added` through the projects app. |
 | Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `apps/copilot/e2e/portal.spec.ts` (invitation → portal, project visibility, document upload/download, workspace and portal rejection) and the cross-app deletion/export probes |
 
 ### Package layout (#158)

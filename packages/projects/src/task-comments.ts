@@ -2,12 +2,13 @@ import { NotFoundError } from "@workspace/core/errors"
 import type { MemberDirectoryPort } from "@workspace/organization/directory"
 
 import type { ProjectDb } from "./db"
-import type { ProjectNotify } from "./ports"
+import type { ProjectAudit, ProjectNotify } from "./ports"
 
 export interface TaskCommentDependencies {
   db: ProjectDb
   notify: ProjectNotify
   directory: MemberDirectoryPort
+  audit?: ProjectAudit
 }
 
 export const TASK_COMMENT_MAX_LENGTH = 4000
@@ -82,7 +83,7 @@ function mapComment(
  * project members so the team sees them in the header bell.
  */
 export async function createTaskComment(
-  { db, notify, directory }: TaskCommentDependencies,
+  { db, notify, directory, audit }: TaskCommentDependencies,
   input: {
     organizationId: string
     taskId: string
@@ -114,6 +115,21 @@ export async function createTaskComment(
     },
   })
 
+  await audit?.(
+    {
+      organizationId: input.organizationId,
+      userId: input.authorId,
+      userName: input.authorName ?? "Client",
+      userEmail: "",
+    },
+    {
+      action: "task.comment.added",
+      entityType: "task",
+      entityId: input.taskId,
+      entityLabel: input.body.slice(0, 120),
+      after: { authorKind: input.authorKind },
+    }
+  )
   if (input.authorKind === "client") {
     await notifyTeamOfClientComment({ db, notify, directory }, input, task)
   }

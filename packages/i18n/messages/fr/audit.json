@@ -74,7 +74,10 @@
         "updated": "Modèle de tâche modifié",
         "deleted": "Modèle de tâche supprimé"
       },
-      "update": "Projet collaborateur modifié"
+      "update": "Projet collaborateur modifié",
+      "message": {
+        "added": "Message de projet envoyé"
+      }
     },
     "task": {
       "created": "Tâche créée",

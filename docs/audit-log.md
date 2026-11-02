@@ -65,9 +65,7 @@ endpoints rather than a server action. They are covered by the `after` hook in
 `organizationHooks` only receive the target member, which is not enough for an
 audit trail).
 
-Task comments stay in the project activity feed rather than the audit trail.
-Messages, calendar events and meeting requests now write their own audit rows in
-the owning app; the project, client and employee mutations already did.
+Project messages and task comments write `project.message.added` / `task.comment.added`; they remain visible in the project activity feed too. Chat messages, calendar events and meeting requests write their own audit rows in the owning app; the project, client and employee mutations already did.
 
 ## Reading it
 
