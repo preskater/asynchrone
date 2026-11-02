@@ -118,23 +118,17 @@ export async function dispatchDomain(
     }
     case "list-project-options": {
       const { projects } = await projectService.listShell(ctx)
-      const rows = await Promise.all(
-        projects.map(async (project) => {
-          const detail = await projectService.get(ctx, project.id)
-          return {
-            id: project.id,
-            name: project.name,
-            status: project.status,
-            clientId: project.clientId ?? null,
-            clientName: project.clientName ?? null,
-            isBillable: detail.isBillable,
-            plannedHours: detail.plannedHours ?? null,
-            startDate: detail.startDate ?? null,
-            endDate: detail.endDate ?? null,
-          }
-        })
-      )
-      return rows
+      return projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        clientId: project.clientId ?? null,
+        clientName: project.clientName ?? null,
+        isBillable: project.isBillable,
+        plannedHours: project.plannedHours ?? null,
+        startDate: project.startDate ?? null,
+        endDate: project.endDate ?? null,
+      }))
     }
     case "list-user-repository-tokens":
       return repositoryIntegrationService.listUserTokens(ctx)
