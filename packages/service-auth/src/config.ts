@@ -1,5 +1,5 @@
 export interface ServiceAuthConfig {
-  /** Copilot origin, e.g. `https://copilot.asynchrone.space`. */
+  /** Copilot origin, e.g. `https://copilot.asynchrone.space`. Tokens carry `${origin}/api/auth` as `iss`. */
   issuer: string
   clientId: string
   clientSecret: string
@@ -30,6 +30,15 @@ export function ensureIssuer(issuer: string): string {
     throw new Error("Service auth issuer must be an origin without a path")
   }
   return url.origin
+}
+
+/**
+ * The `iss` claim on client-credentials tokens. Better Auth mounts the OAuth
+ * endpoints under `/api/auth` and publishes that mount as its issuer, while
+ * configuration carries the bare origin used to build endpoints.
+ */
+export function serviceIssuer(issuer: string): string {
+  return `${ensureIssuer(issuer)}/api/auth`
 }
 
 export function serviceEndpoint(issuer: string, path: string): string {

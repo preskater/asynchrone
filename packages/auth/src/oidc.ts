@@ -3,12 +3,16 @@ import {
   resolveSession,
   sessionCookieName,
   type OidcConfig,
+  type OidcSessionRecord,
   type OidcSessionStore,
+  type ResolveSessionOptions,
 } from "@workspace/oidc"
 
 export interface OidcSessionReaderOptions {
   store: OidcSessionStore
   config: OidcConfig
+  /** Test hook; production uses the package defaults. */
+  resolveOptions?: ResolveSessionOptions
 }
 
 /**
@@ -19,14 +23,17 @@ export interface OidcSessionReaderOptions {
 export function createOidcSessionReader({
   store,
   config,
+  resolveOptions,
 }: OidcSessionReaderOptions) {
   const cookieName = sessionCookieName(config)
 
   return {
-    async resolve(cookieHeader: string | null) {
+    async resolve(
+      cookieHeader: string | null
+    ): Promise<OidcSessionRecord | null> {
       const sessionId = parseCookieHeader(cookieHeader)[cookieName]
       if (!sessionId) return null
-      return resolveSession(store, config, sessionId)
+      return resolveSession(store, config, sessionId, resolveOptions)
     },
   }
 }

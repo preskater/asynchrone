@@ -5,6 +5,7 @@ import { recordTwoFactorChange } from "./account/two-factor-audit"
 import { recordAuthAuditEvent } from "./audit/auth-audit"
 import { rateLimit } from "./core/rate-limit"
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email"
+import { revokeAppSessions } from "./internal/app-sessions"
 import { ac, orgRoles } from "@workspace/organization/access"
 import {
   entitlementsFor,
@@ -103,6 +104,7 @@ export const auth = createAuth({
     trustedClientIds,
     revokeForSession: revokeOauthTokensForSession,
     revokeForUser: revokeOauthTokensForUser,
+    revokeAppSessions,
   },
   captchaSecret: process.env.TURNSTILE_SECRET_KEY,
   github: githubOauth,

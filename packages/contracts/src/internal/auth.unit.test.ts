@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   SERVICE_SCOPES,
+  SessionRevokeRequestSchema,
   assertAudience,
   hasScope,
   parseServiceTokenClaims,
@@ -41,5 +42,13 @@ describe("service authentication", () => {
       SERVICE_SCOPES.auditRead
     )
     expect(() => serviceScopeSchema.parse("internal:superuser")).toThrow()
+  })
+
+  it("requires a non-empty sid for a session revocation request", () => {
+    expect(SessionRevokeRequestSchema.parse({ sid: "sid_1" })).toEqual({
+      sid: "sid_1",
+    })
+    expect(() => SessionRevokeRequestSchema.parse({ sid: "" })).toThrow()
+    expect(() => SessionRevokeRequestSchema.parse({})).toThrow()
   })
 })

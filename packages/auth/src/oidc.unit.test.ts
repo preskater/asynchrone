@@ -28,7 +28,17 @@ describe("createOidcSessionReader", () => {
       updatedAt: now,
     })
 
-    const reader = createOidcSessionReader({ store, config })
+    const reader = createOidcSessionReader({
+      store,
+      config,
+      resolveOptions: {
+        verify: async () => ({
+          sub: "user_1",
+          sid: "copilot_sid",
+          org: "org_1",
+        }),
+      },
+    })
     const session = await reader.resolve("__Host-asynchrone_session=session_1")
     expect(session).toMatchObject({
       userId: "user_1",

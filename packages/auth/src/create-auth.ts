@@ -110,6 +110,11 @@ export interface AuthOptions<
     trustedClientIds: () => Set<string>
     revokeForSession: (sessionId: string) => Promise<void>
     revokeForUser: (userId: string) => Promise<void>
+    /**
+     * End the same Copilot sign-in's sessions in every domain app. Called on
+     * organization switch, which keeps the Copilot session alive.
+     */
+    revokeAppSessions?: (sid: string) => Promise<void>
   }
   captchaSecret?: string
   github?: { clientId: string; clientSecret: string; scope: string[] }
@@ -345,6 +350,10 @@ export function createAuth<TRoles extends Record<string, any>>(
 
         if (ctx.path === "/organization/set-active") {
           await oauth.revokeForUser(userId)
+          // The Copilot session stays alive; every app session bound to it must
+          // still end because the token's organization just changed.
+          const sessionId = ctx.context.session?.session.id
+          if (sessionId) await oauth.revokeAppSessions?.(sessionId)
         }
         if (ctx.path === "/sign-out") {
           const sessionId = ctx.context.session?.session.id

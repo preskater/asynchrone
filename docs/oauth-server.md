@@ -47,7 +47,10 @@ MCP remains a protected resource at `MCP_RESOURCE_URL` (default
   - `userName`, `userEmail`;
   - `twoFactorRequired`, `twoFactorEnrolled`.
 - OIDC reserved claims (`iss`, `sub`, `aud`, `exp`, `sid`, `amr`, `acr`, …) are
-  owned by the provider. Do not try to overwrite them.
+  owned by the provider. Do not try to overwrite them. The provider issues
+  `acr: "0"`; apps must not infer 2FA from it. `twoFactorRequired` and
+  `twoFactorEnrolled` are the authoritative policy signal, and every app
+  enforces them together with the live organization policy.
 
 ## 2FA and organization policy
 
@@ -63,19 +66,39 @@ The setup page returns to `next` after enrollment, so the OAuth flow resumes.
 The workspace layout keeps the same gate for direct page visits.
 
 Known edge: if the user has no active organization, organization selection runs
-through `/select-organization` after the hook. A policy check after that
-selection is handled by the workspace gate and by the per-app token claims; #169
-adds a stricter post-selection redirect.
+through `/select-organization` after the hook. Once a token is issued, every app
+enforces `twoFactorRequired` from the verified token claims as well as the
+current organization policy, so a stale token cannot bypass the gate; the app
+sends the member to the setup page before rendering.
 
 ## Revocation on context changes
 
-- `/organization/set-active` revokes the user's OAuth refresh and access tokens;
-  apps re-authorize for the new organization.
+- `/organization/set-active` revokes the user's OAuth refresh and access tokens,
+  fans out `POST /internal/v1/auth/revoke` to every domain app with the Copilot
+  `sid`, and apps re-authorize for the new organization. The Copilot session
+  itself stays alive.
 - A member role change revokes tokens before deleting sessions.
-- `/sign-out` revokes grants bound to the ending session.
+- `/sign-out` revokes grants bound to the ending session and the provider
+  dispatches a signed Logout Token to every client with a registered
+  `backchannel_logout_uri`.
+- Stop-impersonation deletes the session through Better Auth's internal adapter,
+  so the same `session.delete.after` hook dispatches back-channel logout; the
+  app also calls the domain-app revocation fan-out as a backstop.
 - Access tokens are short-lived JWTs, so revocation is effective at refresh or
   expiry; introspection reports an ended session as inactive.
 - Back-channel logout URIs are registered per app client in #182.
+
+## Internal service tokens
+
+Client-credentials tokens use the same issuer as every other token:
+`${BETTER_AUTH_URL}/api/auth`. `@workspace/service-auth` appends that mount path
+when it verifies the `iss` claim, and the audience is the target app's
+`urn:asynchrone:app:<key>` resource. A token minted for projects is rejected by
+files.
+
+`COPILOT_OAUTH_CLIENT_ID/SECRET` are the Copilot service client used for the
+organization-switch fan-out. They are provisioned by
+`npm run oauth:clients --workspace=copilot` and grant `internal:domain:write`.
 
 ## Environment
 

@@ -23,6 +23,12 @@ export interface OidcConfig {
   secureCookies?: boolean
   /** Defaults to 30 days. */
   sessionMaxAgeSeconds?: number
+  /**
+   * Allowed clock difference when checking `exp`/`nbf`/`iat`, in seconds.
+   * Defaults to 60 so a small skew between Copilot and an app replica does not
+   * reject otherwise valid tokens.
+   */
+  clockToleranceSeconds?: number
 }
 
 export interface NormalizedOidcConfig extends OidcConfig {
@@ -30,7 +36,11 @@ export interface NormalizedOidcConfig extends OidcConfig {
   sessionCookieName: string
   secureCookies: boolean
   sessionMaxAgeSeconds: number
+  clockToleranceSeconds: number
 }
+
+/** Default clock skew allowance for JWKS verification. */
+export const DEFAULT_CLOCK_TOLERANCE_SECONDS = 60
 
 export const OIDC_BASE_PATH = "/api/auth"
 
@@ -69,5 +79,7 @@ export function normalizeConfig(config: OidcConfig): NormalizedOidcConfig {
       (secureCookies ? "__Host-asynchrone_session" : "asynchrone_session"),
     secureCookies,
     sessionMaxAgeSeconds: config.sessionMaxAgeSeconds ?? 30 * 24 * 60 * 60,
+    clockToleranceSeconds:
+      config.clockToleranceSeconds ?? DEFAULT_CLOCK_TOLERANCE_SECONDS,
   }
 }

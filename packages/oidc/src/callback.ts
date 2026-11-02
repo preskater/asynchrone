@@ -78,6 +78,7 @@ export async function completeAuthorization(
     organizationId,
     sid,
     now,
+    claims,
   })
 
   return {

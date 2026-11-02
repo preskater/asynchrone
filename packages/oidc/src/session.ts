@@ -1,5 +1,13 @@
 import { normalizeConfig, type OidcConfig } from "./config"
+import {
+  claimOrganizationId,
+  verifyAccessToken,
+  type AccessTokenClaims,
+} from "./jwks"
 import { refreshAccessToken, type OidcFetch, type TokenResponse } from "./token"
+
+/** Impersonation sessions are capped independently of the app session. */
+export const IMPERSONATION_TTL_MS = 60 * 60 * 1000
 
 /**
  * Storage contract for an app-local OIDC session. Each app stores the row in
@@ -20,6 +28,11 @@ export interface OidcSessionRecord {
   accessTokenExpiresAt: number
   createdAt: number
   updatedAt: number
+  /**
+   * Claims verified from the current access token. In-memory only: the store
+   * never persists them, and `resolveSession` refreshes them on every request.
+   */
+  claims?: AccessTokenClaims
 }
 
 export type OidcSessionPatch = Partial<
@@ -71,6 +84,8 @@ export interface CreateSessionInput {
   sid: string
   id?: string
   now?: number
+  /** Claims from the access token, kept for the current request. */
+  claims?: AccessTokenClaims
 }
 
 export function sessionRecordFromTokens({
@@ -80,6 +95,7 @@ export function sessionRecordFromTokens({
   sid,
   id,
   now = Date.now(),
+  claims,
 }: CreateSessionInput): OidcSessionRecord {
   return {
     id: id ?? crypto.randomUUID(),
@@ -91,6 +107,7 @@ export function sessionRecordFromTokens({
     accessTokenExpiresAt: tokens.expires_at,
     createdAt: now,
     updatedAt: now,
+    ...(claims ? { claims } : {}),
   }
 }
 
@@ -103,16 +120,72 @@ export async function createSession(
   return record
 }
 
+/**
+ * Why a stored session no longer matches its access token. Any mismatch is a
+ * context change (another user, another Copilot sign-in or another
+ * organization) and ends the local session.
+ */
+export type SessionClaimMismatch =
+  "subject_mismatch" | "sid_mismatch" | "organization_mismatch"
+
+/** Compare the verified token claims with the persisted session binding. */
+export function sessionClaimMismatch(
+  claims: AccessTokenClaims,
+  record: Pick<OidcSessionRecord, "userId" | "organizationId" | "sid">
+): SessionClaimMismatch | null {
+  if (claims.sub !== record.userId) return "subject_mismatch"
+  if (typeof claims.sid !== "string" || claims.sid !== record.sid) {
+    return "sid_mismatch"
+  }
+  const organizationId = claimOrganizationId(claims)
+  if (!organizationId || organizationId !== record.organizationId) {
+    return "organization_mismatch"
+  }
+  return null
+}
+
+/**
+ * The impersonation TTL is fixed at one hour from the Copilot session's
+ * creation, regardless of the app session or of a refreshed token.
+ */
+export function impersonationExpired({
+  impersonatedBy,
+  createdAt,
+  now = Date.now(),
+  ttlMs = IMPERSONATION_TTL_MS,
+}: {
+  impersonatedBy: string | null | undefined
+  createdAt: number
+  now?: number
+  ttlMs?: number
+}): boolean {
+  if (!impersonatedBy) return false
+  return createdAt + ttlMs <= now
+}
+
 export interface ResolveSessionOptions {
   fetchImpl?: OidcFetch
   now?: number
   /** Refresh this many milliseconds before expiry. Defaults to 30 seconds. */
   refreshSkewMs?: number
+  /** Injectable for tests; defaults to Copilot JWKS verification. */
+  verify?: (token: string) => Promise<AccessTokenClaims>
+  /**
+   * Verify the access token's signature, issuer, audience, expiry and binding
+   * on every resolve. Defaults to true; only tests should turn it off.
+   */
+  enforceClaims?: boolean
 }
 
 /**
- * Load a session and refresh it when the access token is near expiry. A failed
- * refresh deletes the local session; the caller should redirect to Copilot.
+ * Load a session, refresh it when the access token is near expiry, and verify
+ * the refreshed token against Copilot.
+ *
+ * A failed refresh, an invalid token (wrong issuer/audience/signature/expiry)
+ * or a token bound to another user, sign-in or organization deletes the local
+ * session and returns null; the caller redirects to Copilot. Verification
+ * fails closed: if Copilot's JWKS is unreachable, the local session is not
+ * trusted.
  */
 export async function resolveSession(
   store: OidcSessionStore,
@@ -122,34 +195,56 @@ export async function resolveSession(
     fetchImpl = fetch,
     now = Date.now(),
     refreshSkewMs = 30_000,
+    verify = (token) => verifyAccessToken(config, token),
+    enforceClaims = true,
   }: ResolveSessionOptions = {}
 ): Promise<OidcSessionRecord | null> {
   const record = await store.get(sessionId)
   if (!record) return null
-  if (record.accessTokenExpiresAt > now + refreshSkewMs) return record
-  if (!record.refreshToken) {
-    await store.delete(record.id)
+
+  let current = record
+  if (record.accessTokenExpiresAt <= now + refreshSkewMs) {
+    if (!record.refreshToken) {
+      await store.delete(record.id)
+      return null
+    }
+
+    try {
+      const tokens = await refreshAccessToken(config, {
+        refreshToken: record.refreshToken,
+        fetchImpl,
+        now,
+      })
+      const updated = {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token ?? record.refreshToken,
+        accessTokenExpiresAt: tokens.expires_at,
+        updatedAt: now,
+      }
+      await store.update(record.id, updated)
+      current = { ...record, ...updated }
+    } catch {
+      await store.delete(record.id)
+      return null
+    }
+  }
+
+  if (!enforceClaims) return current
+
+  let claims: AccessTokenClaims
+  try {
+    claims = await verify(current.accessToken)
+  } catch {
+    await store.delete(current.id)
     return null
   }
 
-  try {
-    const tokens = await refreshAccessToken(config, {
-      refreshToken: record.refreshToken,
-      fetchImpl,
-      now,
-    })
-    const updated = {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token ?? record.refreshToken,
-      accessTokenExpiresAt: tokens.expires_at,
-      updatedAt: now,
-    }
-    await store.update(record.id, updated)
-    return { ...record, ...updated }
-  } catch {
-    await store.delete(record.id)
+  if (sessionClaimMismatch(claims, current)) {
+    await store.delete(current.id)
     return null
   }
+
+  return { ...current, claims }
 }
 
 /** Remove every local session bound to a Copilot session id. */

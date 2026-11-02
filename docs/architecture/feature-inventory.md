@@ -117,6 +117,20 @@ organization 2FA policy.
 | `/.well-known/oauth-protected-resource/[[...path]]`   | GET      | Copilot (RFC 9728 metadata)   |
 | `/mcp`                                                | POST     | Copilot (MCP transport)       |
 
+### Fleet authentication (#169)
+
+| Surface | Behaviour |
+| --- | --- |
+| App session cookie | Host-only `__Host-asynchrone_session` over HTTPS (`asynchrone_session` on local HTTP), never a `Domain=` attribute or a shared `.copilot` cookie. |
+| Token verification | `@workspace/oidc` verifies signature, `iss` (`<copilot>/api/auth`), `aud` (`urn:asynchrone:app:<key>`), `exp` with 60s skew, and binds `sub`/`sid`/`org` to the local row on every request. A token for another app, another sign-in or another organization is rejected and the local row is deleted. |
+| Refresh | Rotating refresh token; a failed refresh deletes the local session and sends the user to Copilot. |
+| Back-channel logout | `POST /api/auth/backchannel-logout` verifies the signed logout token and deletes every session by `sid`. Copilot dispatches it through `session.delete.after` (sign-out, admin revocation, stop-impersonation). |
+| Organization switch | The app's `/api/auth/switch` deletes its local session and clears the cookie; Copilot's `/organization/set-active` then calls each domain app's `POST /internal/v1/auth/revoke` with the `sid`. |
+| Impersonation | One-hour TTL from the Copilot session's creation, enforced by every workspace resolver; stop-impersonation deletes the session through Better Auth (back-channel logout) plus the revocation fan-out. |
+| 2FA | The authorize hook redirects unenrolled members; every app also enforces the token's `twoFactorRequired`/`twoFactorEnrolled` claims together with the current organization policy. Impersonating staff are exempt. |
+| Internal APIs | Audience-bound client-credentials tokens via `@workspace/service-auth`; `iss` is `<copilot>/api/auth`; a token for one app is rejected by another. |
+| Config guard | `npm run verify:auth-config --workspace=control-tower` asserts the control-tower invariants and the fleet rules above. |
+
 ### Assistant and MCP
 
 - Assistant agent/tools: `@workspace/ai` (chat parts, stream reducer, pricing,
@@ -573,6 +587,7 @@ always applies its own organization, role, visibility and portal rules.
 | `GET /audit/export`                      | each app    | `@workspace/audit`, `AuditExportSchema`                                      | `internal:audit:read`          | Copilot only                          |
 | `POST /audit/prune`                      | each app    | `@workspace/audit`, `AuditPruneRequest/ResultSchema`                         | `internal:audit:write`         | Copilot only                          |
 | `POST /notifications`                    | Copilot     | `app/internal/v1/notifications/route.ts`, `NotificationInput/ResultSchema`   | `internal:notifications:write` | implemented                           |
+| `POST /auth/revoke`                      | each domain | `app/internal/v1/auth/revoke/route.ts`; deletes local sessions by Copilot `sid` | `internal:domain:write`        | implemented (#169)                    |
 | `GET /search`                            | each domain | `@workspace/search` `createSearchHandler`, `SearchResponseSchema`            | `internal:search:read`         | handler exists, not wired             |
 | `GET /organizations/:id/export`          | each domain | `@workspace/sagas` `createExportHandler`, `ExportPartSchema`                 | `internal:export:read`         | handler exists, not wired             |
 | `DELETE /organizations/:id`              | each domain | `@workspace/sagas` `createDeleteOrganizationHandler`, `DeletionResultSchema` | `internal:delete:write`        | handler exists, not wired             |
