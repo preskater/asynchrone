@@ -13,7 +13,15 @@
         "lib/generated/**"
       ],
       "env": [
-        "DATABASE_URL"
+        "DATABASE_URL",
+        "IDENTITY_DATABASE_URL",
+        "PROJECTS_DATABASE_URL",
+        "CALENDARS_DATABASE_URL",
+        "FILES_DATABASE_URL",
+        "MESSAGES_DATABASE_URL",
+        "CLIENTS_DATABASE_URL",
+        "EMPLOYEES_DATABASE_URL",
+        "CONTROL_TOWER_DATABASE_URL"
       ]
     },
     "build": {
@@ -131,7 +139,8 @@
         "DATABASE_POOL_MAX",
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
-        "CONTROL_TOWER_URL"
+        "CONTROL_TOWER_URL",
+        "IDENTITY_DATABASE_URL"
       ]
     },
     "dev": {
