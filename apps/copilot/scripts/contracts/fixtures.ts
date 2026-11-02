@@ -22,7 +22,6 @@ export interface ContractFixture {
     alice: string
     bob: string
     mallory: string
-    portalB: string
   }
   ctxAlice: RequestContext
   ctxBob: RequestContext
@@ -43,7 +42,6 @@ export async function createContractFixture(): Promise<ContractFixture> {
     alice: `user_contract_alice_${suffix}`,
     bob: `user_contract_bob_${suffix}`,
     mallory: `user_contract_mallory_${suffix}`,
-    portalB: `user_contract_portal_b_${suffix}`,
   }
 
   await prisma.organization.createMany({
@@ -80,14 +78,6 @@ export async function createContractFixture(): Promise<ContractFixture> {
         organizationId: orgB,
         userId: users.mallory,
         role: "owner",
-        createdAt: now,
-      },
-      {
-        id: `member_portal_b_${suffix}`,
-        organizationId: orgB,
-        userId: users.portalB,
-        role: "client",
-        clientId: `client_contract_b_${suffix}`,
         createdAt: now,
       },
     ],
