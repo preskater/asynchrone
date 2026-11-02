@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
+
+import { createPool } from "@workspace/db-core"
 
 // Validates required runtime configuration on first import (fail fast).
 import "./env"
@@ -9,41 +10,24 @@ import { PrismaClient } from "../lib/generated/prisma/client"
 /**
  * Small, explicitly configured Postgres pool.
  *
- * Every app instance (container, pod, or function) builds its own `pg.Pool`,
- * and `@prisma/adapter-pg` defaults that pool to `max: 10`. Under concurrency
- * that exhausts the database role's connection limit (`P2037 /
- * TooManyConnections`). We instead build one small pool per instance and
- * strongly recommend pointing `DATABASE_URL` at a connection pooler
- * (PgBouncer / Neon / Supabase / Accelerate).
+ * Every app instance (container, pod, or function) builds its own `pg.Pool`.
+ * `@workspace/db-core` applies the fleet connection budget (ADR 0038): the
+ * configured `DATABASE_POOL_MAX` is clamped to the app's ceiling, and the idle
+ * timeouts release a connection left inside a transaction. Without that clamp
+ * a single app could exhaust the shared PostgreSQL role (`P2037 /
+ * TooManyConnections`).
  */
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
-  pool: Pool | undefined
+  pool: ReturnType<typeof createPool> | undefined
 }
 
-function poolMax() {
-  const value = Number(process.env.DATABASE_POOL_MAX)
-  if (Number.isFinite(value) && value > 0) return value
-  return 3
-}
-
-function makePool() {
-  return new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: poolMax(),
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 10_000,
-    allowExitOnIdle: true,
+export const pool =
+  globalForPrisma.pool ??
+  createPool(process.env.DATABASE_URL, {
+    app: "copilot",
+    label: "DATABASE_URL",
   })
-}
-
-/**
- * A single shared pool used by both Prisma and the large-object helpers in
- * `apps/copilot/lib/large-object.ts`. Prisma must never dispose of it, otherwise
- * the large-object code would be left holding a dead pool. Keep this singleton
- * on `globalThis` so hot reloads and warm serverless invocations reuse it.
- */
-export const pool = globalForPrisma.pool ?? makePool()
 
 function createPrisma() {
   const adapter = new PrismaPg(pool, { disposeExternalPool: false })

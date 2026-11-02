@@ -9,8 +9,17 @@ import {
   type DomainOperation,
 } from "@workspace/contracts"
 
+import { observeRequest, logRequest } from "@workspace/observability"
+
 import { ServiceAuthError } from "./config"
 import { requireInternalService, ServiceTokenVerifier } from "./verify"
+
+/**
+ * Correlation id header shared with every app (issue #170). Kept as a literal
+ * so `@workspace/service-auth` does not need a browser-visible dependency for
+ * one constant.
+ */
+const CORRELATION_HEADER = "x-request-id"
 
 export interface DomainDispatch {
   (operation: DomainOperation, call: DomainCall): Promise<unknown>
@@ -31,29 +40,45 @@ interface IdempotentEntry {
   result: Promise<unknown>
 }
 
-function envelope(app: string, data: unknown): Response {
+function envelope(
+  app: string,
+  data: unknown,
+  correlationId: string | null
+): Response {
   return Response.json(
     {
       data,
       meta: {
         app,
         version: INTERNAL_API_VERSION,
-        requestId: crypto.randomUUID(),
+        requestId: correlationId ?? crypto.randomUUID(),
       },
     },
     {
       headers: {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
+        ...(correlationId ? { [CORRELATION_HEADER]: correlationId } : {}),
       },
     }
   )
 }
 
-function error(status: number, code: string, message: string): Response {
+function error(
+  status: number,
+  code: string,
+  message: string,
+  correlationId: string | null = null
+): Response {
   return Response.json(
     { error: InternalErrorSchema.parse({ code, message }) },
-    { status, headers: { "Cache-Control": "no-store" } }
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        ...(correlationId ? { [CORRELATION_HEADER]: correlationId } : {}),
+      },
+    }
   )
 }
 
@@ -101,9 +126,11 @@ export function createDomainHandler({
     request: Request,
     context: { params: Promise<{ operation: string }> }
   ): Promise<Response> {
+    const started = performance.now()
+    const correlationId = request.headers.get(CORRELATION_HEADER)
     const { operation } = await context.params
     if (!isDomainOperation(operation)) {
-      return error(404, "not_found", "Unknown domain operation")
+      return error(404, "not_found", "Unknown domain operation", correlationId)
     }
 
     const scope =
@@ -118,15 +145,25 @@ export function createDomainHandler({
       })
     } catch (cause) {
       if (cause instanceof ServiceAuthError) {
-        return error(cause.status, cause.code, cause.message)
+        return error(cause.status, cause.code, cause.message, correlationId)
       }
-      return error(401, "unauthorized", "A valid service token is required")
+      return error(
+        401,
+        "unauthorized",
+        "A valid service token is required",
+        correlationId
+      )
     }
 
     const raw = (await request.json().catch(() => null)) as unknown
     const parsed = DomainCallSchema.safeParse(raw)
     if (!parsed.success) {
-      return error(400, "invalid_call", "The domain call envelope is invalid")
+      return error(
+        400,
+        "invalid_call",
+        "The domain call envelope is invalid",
+        correlationId
+      )
     }
 
     const idempotencyKey =
@@ -137,19 +174,46 @@ export function createDomainHandler({
       ? `${claims.client_id}|${operation}|${idempotencyKey}`
       : null
 
+    let status = 200
+    const record = () => {
+      const durationMs = performance.now() - started
+      const route = `/internal/v1/domain/${operation}`
+      observeRequest({
+        app,
+        route,
+        method: request.method,
+        status,
+        durationMs,
+      })
+      logRequest({
+        app,
+        route,
+        method: request.method,
+        status,
+        durationMs,
+        correlationId,
+      })
+    }
+
     if (cacheKey) {
       const now = Date.now()
       prune(now)
       const cached = idempotent.get(cacheKey)
       if (cached) {
         try {
-          return envelope(app, await cached.result)
+          const response = envelope(app, await cached.result, correlationId)
+          record()
+          return response
         } catch (cause) {
-          return error(
-            statusOf(cause) ?? 500,
+          status = statusOf(cause) ?? 500
+          const response = error(
+            status,
             codeOf(cause),
-            cause instanceof Error ? cause.message : "Domain request failed"
+            cause instanceof Error ? cause.message : "Domain request failed",
+            correlationId
           )
+          record()
+          return response
         }
       }
     }
@@ -163,19 +227,33 @@ export function createDomainHandler({
     }
 
     try {
-      return envelope(app, await result)
+      const response = envelope(app, await result, correlationId)
+      record()
+      return response
     } catch (cause) {
       if (cacheKey) idempotent.delete(cacheKey)
-      const status = statusOf(cause)
-      if (status) {
-        return error(
-          status,
+      const mapped = statusOf(cause)
+      if (mapped) {
+        status = mapped
+        const response = error(
+          mapped,
           codeOf(cause),
-          cause instanceof Error ? cause.message : "Domain request failed"
+          cause instanceof Error ? cause.message : "Domain request failed",
+          correlationId
         )
+        record()
+        return response
       }
       console.error(`[${app}] internal domain request failed`, cause)
-      return error(500, "internal_error", "Domain request failed")
+      status = 500
+      const response = error(
+        500,
+        "internal_error",
+        "Domain request failed",
+        correlationId
+      )
+      record()
+      return response
     }
   }
 }

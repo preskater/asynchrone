@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { createCronRoute } from "@workspace/observability/next"
+
 import { pruneAuditLogs } from "@/lib/audit/prune"
 import { pruneRemoteAuditLogs } from "@/lib/audit/remote-prune"
 
@@ -15,16 +17,19 @@ export const maxDuration = 300
  * everything older. `PlatformAuditEvent` is never touched. Idempotent, and it
  * leaves a large backlog for the next run instead of locking the table.
  */
-export async function GET(request: Request): Promise<NextResponse> {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    const authorization = request.headers.get("authorization")
-    if (authorization !== `Bearer ${secret}`) {
-      return new NextResponse("Unauthorized", { status: 401 })
+export const GET = createCronRoute(
+  { app: "copilot", job: "audit-retention" },
+  async (request): Promise<NextResponse> => {
+    const secret = process.env.CRON_SECRET
+    if (secret) {
+      const authorization = request.headers.get("authorization")
+      if (authorization !== `Bearer ${secret}`) {
+        return new NextResponse("Unauthorized", { status: 401 })
+      }
     }
-  }
 
-  const local = await pruneAuditLogs()
-  const remote = await pruneRemoteAuditLogs()
-  return NextResponse.json({ ok: true, local, remote })
-}
+    const local = await pruneAuditLogs()
+    const remote = await pruneRemoteAuditLogs()
+    return NextResponse.json({ ok: true, local, remote })
+  }
+)

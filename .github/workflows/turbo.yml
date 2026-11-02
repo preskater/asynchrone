@@ -81,6 +81,9 @@ jobs:
       - name: Check workspace boundaries
         run: npm run check:boundaries
 
+      - name: Verify the fleet connection budget
+        run: npm run verify:connection-budget
+
       - name: Validate OAuth client manifest
         run: npm run oauth:clients --workspace=copilot
 
@@ -99,6 +102,9 @@ jobs:
           npm run test:unit --workspace=messages
           npm run test:unit --workspace=clients
           npm run test:unit --workspace=employees
+          npm run test:unit --workspace=@workspace/db-core
+          npm run test:unit --workspace=@workspace/observability
+          npm run test:unit --workspace=@workspace/service-auth
 
   # Cross-domain contracts: package exports, member directory, notifications,
   # per-organization recents, search, export/deletion sagas and the

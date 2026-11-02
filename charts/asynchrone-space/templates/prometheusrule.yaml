@@ -1,0 +1,114 @@
+{{- if .Values.monitoring.enabled }}
+{{- $runbook := .Values.monitoring.runbookUrl }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-fleet-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: asynchrone-space
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    {{- with .Values.monitoring.ruleLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: asynchrone-space.fleet
+      rules:
+        # 5xx rate per app. Every app serves asynchrone_http_requests_total
+        # from /api/metrics (issue #170).
+        - alert: AsynchroneHighErrorRate
+          expr: |
+            (
+              sum by (app) (rate(asynchrone_http_requests_total{status=~"5.."}[5m]))
+              /
+              clamp_min(sum by (app) (rate(asynchrone_http_requests_total[5m])), 0.001)
+            ) > 0.02
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ `{{ $labels.app }}` }} is returning more than 2% 5xx"
+            description: "The app has served more than 2% 5xx responses for 10 minutes. Check Sentry for the app and the /api/health probe."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        # A pool at 80% of DATABASE_POOL_MAX is one slow query away from
+        # exhausting the shared PostgreSQL role (ADR 0038).
+        - alert: AsynchroneDatabasePoolSaturation
+          expr: max by (app) (asynchrone_db_pool_saturation) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ `{{ $labels.app }}` }} database pool is above 80%"
+            description: "The app is using more than 80% of its DATABASE_POOL_MAX for 10 minutes. Check for a slow query or a connection held by an upload/download."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        - alert: AsynchroneDatabasePoolWaiting
+          expr: max by (app) (asynchrone_db_pool_connections{state="waiting"}) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ `{{ $labels.app }}` }} requests are waiting for a database connection"
+            description: "The pool is exhausted; requests are queued. Scale out only after checking the fleet budget, or add PgBouncer."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        # Cron jobs. kube-state-metrics exposes the failed Job and the last
+        # successful CronJob time; the owner matrix is in docs/deployment/helm.md.
+        - alert: AsynchroneCronJobFailed
+          expr: kube_job_status_failed{job_name=~"asynchrone-space-.*"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ `{{ $labels.job_name }}` }} failed"
+            description: "A scheduled job owned by an Asynchrone Space app failed. Check its logs and the owning app's asynchrone_cron_runs_total{outcome=\"failure\"}."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        - alert: AsynchroneCronJobMissedHourly
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{cronjob="asynchrone-space-projects-repository-sync"} > 7200
+            and
+            kube_cronjob_status_last_successful_time{cronjob="asynchrone-space-projects-repository-sync"} > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "repository-sync has not succeeded for two hours"
+            description: "The hourly repository reconciliation job is missing or failing."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        - alert: AsynchroneCronJobMissedDaily
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{cronjob=~"asynchrone-space-copilot-.*|asynchrone-space-files-uploads-sweep"} > 129600
+            and
+            kube_cronjob_status_last_successful_time{cronjob=~"asynchrone-space-copilot-.*|asynchrone-space-files-uploads-sweep"} > 0
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ `{{ $labels.cronjob }}` }} has not succeeded for 36 hours"
+            description: "A daily identity/files job is missing or failing."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+        - alert: AsynchroneAppUnavailable
+          expr: kube_deployment_status_replicas_available{deployment=~"asynchrone-space-.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ `{{ $labels.deployment }}` }} has no available replica"
+            description: "One app is fully down. Each app is its own failure domain; check its own logs and /api/health."
+            {{- with $runbook }}
+            runbook_url: {{ . | quote }}
+            {{- end }}
+{{- end }}

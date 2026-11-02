@@ -12,6 +12,7 @@
     "test:contracts": "turbo test:contracts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "verify:helm": "node scripts/verify-helm-charts.mjs",
+    "verify:connection-budget": "node scripts/verify-connection-budget.mjs",
     "split:prisma": "node scripts/split-prisma-schema.mjs",
     "verify:prisma-schemas": "node scripts/verify-prisma-schemas.mjs",
     "db:create": "node scripts/create-databases.mjs",

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@workspace/contracts": "*",
+    "@workspace/observability": "*",
     "jose": "^6.2.3"
   },
   "devDependencies": {

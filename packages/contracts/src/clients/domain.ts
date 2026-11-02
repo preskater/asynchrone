@@ -62,6 +62,11 @@ export interface DomainCallOptions {
   signal?: AbortSignal
   /** Required for retrying a mutation without duplicating it. */
   idempotencyKey?: string
+  /**
+   * Correlation id of the inbound request. Forwarded as `x-request-id` so the
+   * target app's logs and metrics share one id with the caller (issue #170).
+   */
+  correlationId?: string | null
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -201,6 +206,9 @@ export class DomainClient {
             Authorization: `Bearer ${token}`,
             ...(options.idempotencyKey
               ? { "Idempotency-Key": options.idempotencyKey }
+              : {}),
+            ...(options.correlationId
+              ? { "x-request-id": options.correlationId }
               : {}),
           },
           body: JSON.stringify({ context, input }),

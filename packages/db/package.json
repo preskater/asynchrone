@@ -13,6 +13,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@workspace/db-core": "*",
     "pg": "^8.23.1"
   },
   "devDependencies": {

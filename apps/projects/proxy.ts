@@ -1,6 +1,8 @@
 import createMiddleware from "next-intl/middleware"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { withCorrelation } from "@workspace/observability/next"
+
 import { appOrigin } from "@workspace/contracts/server"
 import { routing } from "@workspace/i18n/routing"
 
@@ -39,7 +41,7 @@ const DOMAIN_SECTIONS: Record<string, "messages" | "calendars" | "files"> = {
  * workspace shape belongs to another app, so the proxy hands it to Copilot
  * before next-intl turns it into a locale-prefixed 404.
  */
-export default function proxy(request: NextRequest) {
+function handleRequest(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const segments = pathname.split("/").filter(Boolean)
   const [maybeLocale, , section] = segments
@@ -62,6 +64,15 @@ export default function proxy(request: NextRequest) {
   }
 
   return intl(request)
+}
+
+/**
+ * Adopt or mint the correlation id for every page request (issue #170),
+ * echo it on the response and keep it in a host-only cookie so a
+ * cross-app link can carry it as `?rid=`.
+ */
+export default function proxy(request: NextRequest) {
+  return withCorrelation(request, handleRequest(request))
 }
 
 export const config = {

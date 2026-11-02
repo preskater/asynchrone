@@ -16,6 +16,6 @@
  */
 import "@/lib/env"
 
-import { prisma } from "@workspace/db"
+import { pool, prisma } from "@workspace/db"
 
-export { prisma }
+export { pool, prisma }

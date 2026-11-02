@@ -45,6 +45,50 @@ global:
   imageTag: ""
   imagePullSecrets: []
 
+# ---------------------------------------------------------------------------
+# Fleet database-connection budget (ADR 0038, issue #170)
+#
+# Every app opens `replicas x DATABASE_POOL_MAX` connections. The template
+# `templates/validate-connections.yaml` fails the release when an app exceeds
+# its own ceiling or the fleet exceeds the limit, so a values edit cannot
+# silently exhaust the shared PostgreSQL role. The same numbers live in
+# `packages/db-core/src/budget.ts` (runtime clamp) and are cross-checked by
+# `npm run verify:connection-budget`.
+# ---------------------------------------------------------------------------
+connectionBudget:
+  enabled: true
+  # Assumed PostgreSQL `max_connections`. Raise it together with the budget.
+  maxConnections: 200
+  # Superuser, monitoring and ad-hoc sessions kept outside the app budget.
+  reservedConnections: 10
+  # Plan for this percentage of the usable connections.
+  ratioPercent: 70
+  # Hard ceiling for one app's DATABASE_POOL_MAX (see db-core budget.ts).
+  appPoolMax:
+    copilot: 8
+    projects: 4
+    calendars: 4
+    files: 6
+    messages: 4
+    clients: 4
+    employees: 4
+    control-tower: 3
+    migrate: 5
+
+# ---------------------------------------------------------------------------
+# Fleet monitoring (issue #170)
+#
+# The app chart annotates every pod for scraping; this block renders the
+# PrometheusRule with the 5xx, pool-saturation and cron-failure alerts. Leave
+# `enabled: false` when another PrometheusRule owns the fleet.
+# ---------------------------------------------------------------------------
+monitoring:
+  enabled: true
+  # Extra labels for the PrometheusRule so an operator's rule selector finds it.
+  ruleLabels: {}
+  # Optional runbook link added to every alert annotation.
+  runbookUrl: ""
+
 # Two cert-manager certificates cover the whole fleet. `ASYNCHRONE_WILDCARD_TLS`
 # covers the apex and every `*.asynchrone.space` host (landing, Copilot and the
 # control tower); `ASYNCHRONE_DOMAIN_TLS` covers every
@@ -103,7 +147,8 @@ landing:
           - asynchrone.space
           - www.asynchrone.space
 
-  # The landing has no runtime configuration and no Secret.
+  # The landing has no runtime configuration and no Secret. Its browser Sentry
+  # is enabled by the build-time SENTRY_DSN arg; server-side Sentry stays off.
   config: {}
   secret:
     enabled: false
@@ -135,6 +180,9 @@ copilot:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 4
 
   ingress:
     enabled: true
@@ -169,7 +217,7 @@ copilot:
     EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "8"
     # MCP protected-resource identifier. It is also the OAuth resource for the
     # MCP client; never point it at an app host.
     MCP_RESOURCE_URL: https://copilot.asynchrone.space/mcp
@@ -233,6 +281,9 @@ projects:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -250,7 +301,7 @@ projects:
   config:
     PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -282,6 +333,9 @@ messages:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -303,7 +357,7 @@ messages:
   config:
     MESSAGES_APP_URL: https://messages.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -324,6 +378,9 @@ calendars:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -341,7 +398,7 @@ calendars:
   config:
     CALENDARS_APP_URL: https://calendars.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -362,6 +419,9 @@ files:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -384,7 +444,7 @@ files:
   config:
     FILES_APP_URL: https://files.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "6"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -414,6 +474,9 @@ clients:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -431,7 +494,7 @@ clients:
   config:
     CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -452,6 +515,9 @@ employees:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 3
 
   ingress:
     enabled: true
@@ -469,7 +535,7 @@ employees:
   config:
     EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
 
@@ -492,6 +558,9 @@ control-tower:
     pullPolicy: IfNotPresent
 
   replicaCount: 2
+  autoscaling:
+    enabled: false
+    maxReplicas: 2
 
   ingress:
     enabled: true
@@ -514,7 +583,7 @@ control-tower:
     BETTER_AUTH_URL: https://control-tower.asynchrone.space
     PLATFORM_APP_URL: https://copilot.asynchrone.space
     PLATFORM_ALLOWED_IPS: ""
-    DATABASE_POOL_MAX: "10"
+    DATABASE_POOL_MAX: "3"
     DEPLOY_ENV: production
 
   secret:

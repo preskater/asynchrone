@@ -41,13 +41,16 @@ describe("landing is stateless", () => {
 
   it("keeps the landing's own import graph small", () => {
     // Guards the stateless build: if this list grows, a workspace package
-    // leaked into the marketing app.
+    // leaked into the marketing app. Sentry and the observability package are
+    // stateless: they hold no session and never open a database connection.
     const allowed = new Set([
       "@mdx-js/loader",
       "@mdx-js/react",
       "@hookform/resolvers",
+      "@sentry/nextjs",
       "@workspace/i18n",
       "@workspace/next-config",
+      "@workspace/observability",
       "@workspace/ui",
       "lucide-react",
       "next",

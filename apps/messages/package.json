@@ -15,6 +15,7 @@
     "test:e2e": "tsx e2e/bootstrap.ts && playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.10.0",
     "@workspace/app-shell": "*",
     "@workspace/appearance": "*",
     "@workspace/audit": "*",
@@ -26,6 +27,7 @@
     "@workspace/i18n": "*",
     "@workspace/messaging": "*",
     "@workspace/next-config": "*",
+    "@workspace/observability": "*",
     "@workspace/oidc": "*",
     "@workspace/organization": "*",
     "@workspace/service-auth": "*",

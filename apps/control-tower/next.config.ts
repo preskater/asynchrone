@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     "@workspace/db-control-tower",
     "@workspace/contracts",
     "@workspace/core",
+    "@workspace/observability",
     "@workspace/service-auth",
   ],
   // `pg` is a native CommonJS dependency of the per-app database package.

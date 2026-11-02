@@ -57,7 +57,8 @@ collection.
 | [0031](0031-add-copilot-app-with-persisted-conversations.md)               | accepted | Make Copilot the workspace shell with persisted conversations             |
 | [0032](0032-give-each-app-its-own-database.md)                             | accepted | Give each workspace app its own PostgreSQL database                       |
 | [0033](0033-keep-audit-export-and-deletion-consistent-across-databases.md) | accepted | Keep audit, export and deletion consistent across databases               |
-| [0034](0034-cut-the-control-tower-over-to-its-own-database.md)              | accepted | Cut the control tower over to its own database                            |
+| [0034](0034-cut-the-control-tower-over-to-its-own-database.md)             | accepted | Cut the control tower over to its own database                            |
 | [0035](0035-rename-web-app-to-copilot.md)                                  | accepted | Rename `apps/web` to `apps/copilot` and its deployment artefacts          |
 | [0036](0036-use-a-per-domain-app-template.md)                              | accepted | Move the domain apps with one documented template                         |
 | [0037](0037-deploy-the-fleet-from-one-generic-helm-chart.md)               | accepted | Deploy the app fleet from one generic Helm chart                          |
+| [0038](0038-budget-connections-and-observe-each-app.md)                    | accepted | Budget database connections and observe every app independently           |
