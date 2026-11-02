@@ -17,10 +17,12 @@
     "cutover:control-tower": "tsx scripts/cutover-control-tower.ts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.10.0",
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/db-control-tower": "*",
     "@workspace/next-config": "*",
+    "@workspace/observability": "*",
     "@workspace/service-auth": "*",
     "@workspace/ui": "*",
     "better-auth": "^1.7.13",

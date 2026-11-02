@@ -128,18 +128,19 @@ that schema. When a domain package still reads identity tables, keep
 importing a second database client. `apps/clients` and `apps/employees` use that
 transitional `@workspace/db` binding today (their own packages already carry the
 domain tables and `oidcSession`).
+
 ## Environment
 
 Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to the
 `env` arrays in the root `turbo.json` (build + dev):
 
-| Key | Purpose |
-| --- | --- |
-| `<DOMAIN>_APP_URL` | Public origin; redirect, logout and back-channel URIs derive from it |
-| `COPILOT_APP_URL` | OIDC issuer and identity server |
-| `<DOMAIN>_OAUTH_CLIENT_ID/SECRET` | Provisioned client credentials (`npm run oauth:clients --workspace=copilot -- --apply`) |
-| `DATABASE_URL` / `<DOMAIN>_DATABASE_URL` | Database connection (the pilot uses `DATABASE_URL` until #190) |
-| `TRUSTED_IP_HEADERS` | Audit IP column; empty stores no address |
+| Key                                      | Purpose                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| `<DOMAIN>_APP_URL`                       | Public origin; redirect, logout and back-channel URIs derive from it                    |
+| `COPILOT_APP_URL`                        | OIDC issuer and identity server                                                         |
+| `<DOMAIN>_OAUTH_CLIENT_ID/SECRET`        | Provisioned client credentials (`npm run oauth:clients --workspace=copilot -- --apply`) |
+| `DATABASE_URL` / `<DOMAIN>_DATABASE_URL` | Database connection (the pilot uses `DATABASE_URL` until #190)                          |
+| `TRUSTED_IP_HEADERS`                     | Audit IP column; empty stores no address                                                |
 
 `next build` must not connect to anything: add build-time placeholders in the
 `Dockerfile` and in the CI `ci` job when a key is read at build time.
@@ -163,6 +164,30 @@ Add a `lib/env.ts` with the required keys, an `.env.example`, and the keys to th
   list in `scripts/verify-helm-charts.mjs`.
 - `packages/contracts` already has the app key, host env, database name,
   audience and OAuth client env names; check it before adding anything.
+- Add the app to the connection budget in `packages/db-core/src/budget.ts`
+  (`poolMax`, default replicas, HPA ceiling), to
+  `charts/asynchrone-space/values.yaml` (`config.DATABASE_POOL_MAX`,
+  `replicaCount`, `autoscaling.maxReplicas`) and to
+  `connectionBudget.appPoolMax`; `npm run verify:connection-budget` fails
+  otherwise (ADR 0038).
+
+## Observability
+
+Copy the four files every app has (see `docs/observability.md`):
+
+- `instrumentation.ts` and `instrumentation-client.ts` (Sentry, disabled while
+  `SENTRY_DSN` is empty);
+- `app/api/health/route.ts` using `createHealthRoute` with the app's own
+  database check and pool;
+- `app/api/metrics/route.ts` using `createMetricsRoute`;
+- `lib/internal/invalidation.ts` plus
+  `app/internal/v1/invalidate/route.ts` using `createInvalidationHandler`, so
+  Copilot can clear this app's cached reads after a cross-domain mutation.
+
+Wrap the proxy response in `withCorrelation` and cron routes in
+`createCronRoute`. Add `@workspace/observability` to `transpilePackages` (the
+default list in `@workspace/next-config` already includes it) and to the app's
+`package.json`.
 
 ## Tests
 

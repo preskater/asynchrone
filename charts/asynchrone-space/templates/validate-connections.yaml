@@ -1,0 +1,46 @@
+{{- if .Values.connectionBudget.enabled }}
+{{- /*
+  Enforce the fleet connection budget (ADR 0038).
+
+  The sum over every enabled app of `max(replicaCount, autoscaling.maxReplicas)
+  x config.DATABASE_POOL_MAX` plus the migrate Job must stay below
+  `maxConnections - reservedConnections` scaled by `ratio`. A per-app ceiling
+  catches a single runaway pool before it consumes the whole fleet budget.
+
+  This template renders nothing; `fail` aborts the release during `helm
+  template`/`helm lint`, so an over-budget values edit never reaches the
+  cluster.
+*/ -}}
+{{- $budget := .Values.connectionBudget }}
+{{- $available := sub (int $budget.maxConnections) (int $budget.reservedConnections) }}
+{{- $limit := div (mul $available (int $budget.ratioPercent)) 100 }}
+{{- $apps := list "landing" "copilot" "projects" "calendars" "files" "messages" "clients" "employees" "control-tower" }}
+{{- $total := 0 }}
+{{- range $app := $apps }}
+  {{- $values := index $.Values $app | default dict }}
+  {{- if and $values (eq (toString (index $values "enabled")) "true") }}
+    {{- $config := index $values "config" | default dict }}
+    {{- $pool := int (index $config "DATABASE_POOL_MAX" | default 0) }}
+    {{- if gt $pool 0 }}
+      {{- $ceiling := int (index $budget.appPoolMax $app | default 0) }}
+      {{- if gt $pool $ceiling }}
+        {{- fail (printf "%s.config.DATABASE_POOL_MAX=%d exceeds its %d-connection budget (ADR 0038)" $app $pool $ceiling) }}
+      {{- end }}
+      {{- $replicas := int (index $values "replicaCount" | default 1) }}
+      {{- $autoscaling := index $values "autoscaling" | default dict }}
+      {{- $maxReplicas := int (index $autoscaling "maxReplicas" | default 1) }}
+      {{- if gt $maxReplicas $replicas }}
+        {{- $replicas = $maxReplicas }}
+      {{- end }}
+      {{- $total = add $total (mul $replicas $pool) }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if .Values.migrate.enabled }}
+  {{- $migratePool := int (index $budget.appPoolMax "migrate" | default 3) }}
+  {{- $total = add $total $migratePool }}
+{{- end }}
+{{- if gt $total $limit }}
+  {{- fail (printf "the fleet would open %d PostgreSQL connections, above the %d-connection budget (maxConnections=%d, reserved=%d, ratioPercent=%d); lower DATABASE_POOL_MAX or replica counts, or add PgBouncer (ADR 0038)" $total $limit (int $budget.maxConnections) (int $budget.reservedConnections) (int $budget.ratioPercent)) }}
+{{- end }}
+{{- end }}

@@ -59,6 +59,7 @@ const DEFAULT_WORKSPACE_PACKAGES = [
   "@workspace/i18n",
   "@workspace/meetings",
   "@workspace/notifications",
+  "@workspace/observability",
   "@workspace/organization",
   "@workspace/storage",
 ]

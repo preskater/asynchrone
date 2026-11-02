@@ -84,10 +84,7 @@ helm(["dependency", "build", CHART])
 // compare the contents with the source (the CI job repeats this check).
 const archive = execFileSync(
   "sh",
-  [
-    "-c",
-    `ls ${CHART}/charts/asynchrone-space-app-*.tgz`,
-  ],
+  ["-c", `ls ${CHART}/charts/asynchrone-space-app-*.tgz`],
   { cwd: ROOT, encoding: "utf8" }
 ).trim()
 const tmp = mkdtempSync(join(tmpdir(), "asynchrone-space-chart-"))
@@ -135,7 +132,9 @@ const rendered = helm([
 
 check(
   resourceNames(rendered, "Deployment").sort().join(",") ===
-    APPS.map((app) => `asynchrone-space-${app}`).sort().join(","),
+    APPS.map((app) => `asynchrone-space-${app}`)
+      .sort()
+      .join(","),
   "the umbrella renders one Deployment per app"
 )
 
@@ -152,7 +151,7 @@ check(certificates.length === 2, "two wildcard certificates render")
 check(
   certificates.some(
     (doc) =>
-      doc.includes('secretName: asynchrone-space-tls') &&
+      doc.includes("secretName: asynchrone-space-tls") &&
       doc.includes('- "asynchrone.space"') &&
       doc.includes('- "*.asynchrone.space"')
   ),
@@ -161,7 +160,7 @@ check(
 check(
   certificates.some(
     (doc) =>
-      doc.includes('secretName: asynchrone-space-domain-tls') &&
+      doc.includes("secretName: asynchrone-space-domain-tls") &&
       doc.includes('- "*.copilot.asynchrone.space"')
   ),
   "the domain certificate covers *.copilot.asynchrone.space"
@@ -189,8 +188,72 @@ check(
   "no shared AUTH_COOKIE_DOMAIN is rendered"
 )
 
+// Fleet observability (issue #170): every app exposes /api/metrics, the pods
+// carry the scrape annotations and the umbrella renders the alert rules.
+check(
+  (rendered.match(/prometheus\.io\/scrape: "true"/g) ?? []).length ===
+    APPS.length,
+  "every app pod template is annotated for Prometheus scraping"
+)
+check(
+  rendered.includes('prometheus.io/path: "/api/metrics"'),
+  "the scrape path is /api/metrics"
+)
+const alerts = documents(rendered).filter(
+  (doc) => kind(doc) === "PrometheusRule"
+)
+check(alerts.length === 1, "one fleet PrometheusRule renders")
+for (const alert of [
+  "AsynchroneHighErrorRate",
+  "AsynchroneDatabasePoolSaturation",
+  "AsynchroneDatabasePoolWaiting",
+  "AsynchroneCronJobFailed",
+  "AsynchroneCronJobMissedHourly",
+  "AsynchroneCronJobMissedDaily",
+  "AsynchroneAppUnavailable",
+]) {
+  check(alerts[0]?.includes(`alert: ${alert}`), `the ${alert} alert renders`)
+}
+
+// Connection budget (ADR 0038): the chart refuses an over-budget pool and an
+// over-budget fleet, so a values edit cannot exhaust the shared role.
+function renders(args) {
+  try {
+    helm(["template", "asynchrone-space", CHART, ...args])
+    return true
+  } catch {
+    return false
+  }
+}
+check(
+  !renders([
+    "--set",
+    "global.imageTag=ci",
+    "--set",
+    "copilot.config.DATABASE_POOL_MAX=99",
+  ]),
+  "an app pool above its ceiling fails the release"
+)
+check(
+  !renders([
+    "--set",
+    "global.imageTag=ci",
+    "--set",
+    "projects.autoscaling.maxReplicas=30",
+  ]),
+  "an over-budget fleet fails the release"
+)
+
 for (const app of APPS) {
-  const args = ["template", "asynchrone-space", CHART, "--namespace", "asynchrone-space", "--set", `global.imageTag=${IMAGE_TAG}`]
+  const args = [
+    "template",
+    "asynchrone-space",
+    CHART,
+    "--namespace",
+    "asynchrone-space",
+    "--set",
+    `global.imageTag=${IMAGE_TAG}`,
+  ]
   for (const other of APPS) {
     args.push("--set", `${other}.enabled=${other === app}`)
   }

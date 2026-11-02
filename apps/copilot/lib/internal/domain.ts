@@ -9,6 +9,7 @@ import {
 } from "@workspace/contracts"
 import { ServiceTokenClient } from "@workspace/service-auth"
 import type { RequestContext } from "@workspace/core/context"
+import { getCorrelationId } from "@workspace/observability/next"
 import type { PortalContext } from "@workspace/portal/types"
 
 /**
@@ -96,11 +97,11 @@ export async function callDomain<T>(
   schema: z.ZodType<T>,
   options?: { idempotencyKey?: string; signal?: AbortSignal }
 ): Promise<T> {
-  return requireDomainClient(app).call(
-    operation,
-    context,
-    input,
-    schema,
-    options
-  )
+  // Carry the inbound request's correlation id into the domain call so both
+  // apps' logs and metrics can be joined (issue #170).
+  const correlationId = await getCorrelationId()
+  return requireDomainClient(app).call(operation, context, input, schema, {
+    ...options,
+    correlationId,
+  })
 }

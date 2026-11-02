@@ -32,6 +32,7 @@ export const INTERNAL_ROUTES = {
   auditExport: internalPath("audit", "export"),
   auditFacets: internalPath("audit", "facets"),
   auditPrune: internalPath("audit", "prune"),
+  invalidate: internalPath("invalidate"),
   search: internalPath("search"),
   notifications: internalPath("notifications"),
   exportOrganization: (organizationId: string) =>
@@ -77,6 +78,8 @@ export const SERVICE_SCOPES = {
   deleteWrite: "internal:delete:write",
   domainRead: "internal:domain:read",
   domainWrite: "internal:domain:write",
+  /** Revalidate another app's cached reads after a cross-domain mutation. */
+  cacheWrite: "internal:cache:write",
 } as const
 
 export type ServiceScope = (typeof SERVICE_SCOPES)[keyof typeof SERVICE_SCOPES]

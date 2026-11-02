@@ -12,6 +12,9 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 export default createNextConfig({
   outputFileTracingRoot: path.join(projectRoot, "../../"),
   workspacePackages: ["@workspace/ui", "@workspace/i18n"],
+  // Observability holds no session and no database: it only adds the Sentry
+  // instrumentation, /api/health, /api/metrics and the correlation cookie.
+  transpilePackages: ["@workspace/observability"],
   experimental: {
     globalNotFound: true,
   },

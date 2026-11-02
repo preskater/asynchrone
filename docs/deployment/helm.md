@@ -57,18 +57,18 @@ covered in [Database operations](database-operations.md).
 every `v*` tag. Every row uses the same `Dockerfile`; the `runner` stage builds
 one Next.js app, the `migrate` stage ships the Prisma migration Job.
 
-| Image                                                | Stage / build arg                    | Purpose                                                        |
-| ---------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------- |
-| `ghcr.io/preskater/asynchrone-space-copilot`         | `runner`, `APP=copilot`              | Copilot, identity and OAuth (`copilot.asynchrone.space`)       |
-| `ghcr.io/preskater/asynchrone-space-projects`        | `runner`, `APP=projects`             | Projects (`projects.copilot.asynchrone.space`)                 |
-| `ghcr.io/preskater/asynchrone-space-calendars`       | `runner`, `APP=calendars`            | Calendars and meetings (`calendars.copilot.asynchrone.space`)  |
-| `ghcr.io/preskater/asynchrone-space-files`           | `runner`, `APP=files`                | Files (`files.copilot.asynchrone.space`)                       |
-| `ghcr.io/preskater/asynchrone-space-messages`        | `runner`, `APP=messages`             | Messages (`messages.copilot.asynchrone.space`)                 |
-| `ghcr.io/preskater/asynchrone-space-clients`         | `runner`, `APP=clients`              | Clients, the CRM (`clients.copilot.asynchrone.space`)          |
-| `ghcr.io/preskater/asynchrone-space-employees`       | `runner`, `APP=employees`            | Employees, the HR app (`employees.copilot.asynchrone.space`)   |
-| `ghcr.io/preskater/asynchrone-space-control-tower`   | `runner`, `APP=control-tower`        | Control tower (`control-tower.asynchrone.space`)               |
-| `ghcr.io/preskater/asynchrone-space-landing`         | `runner`, `APP=landing`              | Public site (`asynchrone.space`)                               |
-| `ghcr.io/preskater/asynchrone-space-migrate`         | `migrate`, `turbo prune @workspace/migrate` | One-shot monolith + per-app Prisma migrations           |
+| Image                                              | Stage / build arg                           | Purpose                                                       |
+| -------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`       | `runner`, `APP=copilot`                     | Copilot, identity and OAuth (`copilot.asynchrone.space`)      |
+| `ghcr.io/preskater/asynchrone-space-projects`      | `runner`, `APP=projects`                    | Projects (`projects.copilot.asynchrone.space`)                |
+| `ghcr.io/preskater/asynchrone-space-calendars`     | `runner`, `APP=calendars`                   | Calendars and meetings (`calendars.copilot.asynchrone.space`) |
+| `ghcr.io/preskater/asynchrone-space-files`         | `runner`, `APP=files`                       | Files (`files.copilot.asynchrone.space`)                      |
+| `ghcr.io/preskater/asynchrone-space-messages`      | `runner`, `APP=messages`                    | Messages (`messages.copilot.asynchrone.space`)                |
+| `ghcr.io/preskater/asynchrone-space-clients`       | `runner`, `APP=clients`                     | Clients, the CRM (`clients.copilot.asynchrone.space`)         |
+| `ghcr.io/preskater/asynchrone-space-employees`     | `runner`, `APP=employees`                   | Employees, the HR app (`employees.copilot.asynchrone.space`)  |
+| `ghcr.io/preskater/asynchrone-space-control-tower` | `runner`, `APP=control-tower`               | Control tower (`control-tower.asynchrone.space`)              |
+| `ghcr.io/preskater/asynchrone-space-landing`       | `runner`, `APP=landing`                     | Public site (`asynchrone.space`)                              |
+| `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate`, `turbo prune @workspace/migrate` | One-shot monolith + per-app Prisma migrations                 |
 
 The workflow tags images with the branch, the release tag and `sha-<shortsha>`.
 Use the immutable `sha-` tag:
@@ -111,16 +111,16 @@ the database. If it is rotated, clear the `jwks` table so new keys are generated
 
 Add optional keys to `asynchrone-space-copilot-secrets` as needed:
 
-| Key                     | Used by                                                     |
-| ----------------------- | ----------------------------------------------------------- |
-| `OPENAI_API_KEY`        | Assistant                                                   |
-| `RESEND_API_KEY`        | Verification and password-reset email                       |
-| `GITHUB_CLIENT_SECRET`  | GitHub OAuth account linking                                |
-| `GITLAB_CLIENT_SECRET`  | GitLab OAuth account linking                                |
-| `TURNSTILE_SECRET_KEY`  | Cloudflare Turnstile on sign-up and password reset          |
-| `STRIPE_SECRET_KEY`     | Billing: Checkout and the Customer Portal                   |
-| `STRIPE_WEBHOOK_SECRET` | Billing: signing secret of `/api/webhooks/stripe`           |
-| `SENTRY_DSN`            | Server-side error tracking and request timings              |
+| Key                     | Used by                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `OPENAI_API_KEY`        | Assistant                                                |
+| `RESEND_API_KEY`        | Verification and password-reset email                    |
+| `GITHUB_CLIENT_SECRET`  | GitHub OAuth account linking                             |
+| `GITLAB_CLIENT_SECRET`  | GitLab OAuth account linking                             |
+| `TURNSTILE_SECRET_KEY`  | Cloudflare Turnstile on sign-up and password reset       |
+| `STRIPE_SECRET_KEY`     | Billing: Checkout and the Customer Portal                |
+| `STRIPE_WEBHOOK_SECRET` | Billing: signing secret of `/api/webhooks/stripe`        |
+| `SENTRY_DSN`            | Copilot's server-side error tracking and request timings |
 
 Register the OAuth callbacks on the GitHub and GitLab apps:
 
@@ -152,31 +152,39 @@ for app in projects calendars files messages clients employees; do
     --from-literal=DATABASE_URL='postgresql://user:pass@db:5432/asynchrone-space?schema=public' \
     --from-literal="${PREFIX}_OAUTH_CLIENT_ID=$(grep ^${PREFIX}_OAUTH_CLIENT_ID= apps/copilot/.env.oauth | cut -d= -f2-)" \
     --from-literal="${PREFIX}_OAUTH_CLIENT_SECRET=$(grep ^${PREFIX}_OAUTH_CLIENT_SECRET= apps/copilot/.env.oauth | cut -d= -f2-)" \
+    --from-literal=SENTRY_DSN="$SENTRY_DSN" \
     "${EXTRA[@]}"
 done
 ```
 
 Registered redirect URIs (all on the domain wildcard):
 
-| App       | Redirect URI                                                     |
-| --------- | ---------------------------------------------------------------- |
-| projects  | `https://projects.copilot.asynchrone.space/api/auth/callback`    |
-| calendars | `https://calendars.copilot.asynchrone.space/api/auth/callback`   |
-| files     | `https://files.copilot.asynchrone.space/api/auth/callback`       |
-| messages  | `https://messages.copilot.asynchrone.space/api/auth/callback`    |
-| clients   | `https://clients.copilot.asynchrone.space/api/auth/callback`     |
-| employees | `https://employees.copilot.asynchrone.space/api/auth/callback`   |
+| App       | Redirect URI                                                   |
+| --------- | -------------------------------------------------------------- |
+| projects  | `https://projects.copilot.asynchrone.space/api/auth/callback`  |
+| calendars | `https://calendars.copilot.asynchrone.space/api/auth/callback` |
+| files     | `https://files.copilot.asynchrone.space/api/auth/callback`     |
+| messages  | `https://messages.copilot.asynchrone.space/api/auth/callback`  |
+| clients   | `https://clients.copilot.asynchrone.space/api/auth/callback`   |
+| employees | `https://employees.copilot.asynchrone.space/api/auth/callback` |
 
 Every app uses the same `CRON_SECRET` value as Copilot so the CronJob and the
-route agree. Only the owner app's Secret needs it.
+route agree. Only the owner app's Secret needs it. Add `SENTRY_DSN` to each
+domain Secret to enable that app's server-side error tracking; it is off while
+the key is empty. The landing mounts no Secret, so only its browser Sentry is
+enabled (from the build-time `SENTRY_DSN` arg).
 
 ### Control tower
 
 ```bash
 kubectl -n asynchrone-space create secret generic asynchrone-space-control-tower-secrets \
   --from-literal=CONTROL_TOWER_DATABASE_URL='postgresql://user:pass@db:5432/asynchrone_control_tower?schema=public' \
-  --from-literal=CONTROL_TOWER_BETTER_AUTH_SECRET='<at-least-32-chars>'
+  --from-literal=CONTROL_TOWER_BETTER_AUTH_SECRET='<at-least-32-chars>' \
+  --from-literal=SENTRY_DSN=''
 ```
+
+Add `SENTRY_DSN` to the control tower's Secret too if you want platform errors
+reported; it stays disabled while empty.
 
 The control tower reads `CONTROL_TOWER_DATABASE_URL` (never `DATABASE_URL`) so a
 copied customer secret cannot point platform sign-in at the identity database.
@@ -226,10 +234,10 @@ renders every app alias on its own and renders the generic chart standalone.
 
 Point both wildcard DNS records at the ingress controller's load balancer:
 
-| Record                       | Serves                                              |
-| ---------------------------- | --------------------------------------------------- |
-| `asynchrone.space`           | landing (apex)                                      |
-| `*.asynchrone.space`         | `www`, `copilot`, `control-tower` and future hosts  |
+| Record                       | Serves                                                   |
+| ---------------------------- | -------------------------------------------------------- |
+| `asynchrone.space`           | landing (apex)                                           |
+| `*.asynchrone.space`         | `www`, `copilot`, `control-tower` and future hosts       |
 | `*.copilot.asynchrone.space` | projects, calendars, files, messages, clients, employees |
 
 The umbrella renders two cert-manager `Certificate` resources by default:
@@ -261,30 +269,30 @@ at your own Secret). The rendered Ingress TLS entries remain in place.
 
 ## What gets created
 
-| Resource       | Name                                                                                     | Notes                              |
-| -------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- |
-| Deployment     | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,clients,employees,control-tower}` | 2 replicas by default |
-| Service        | same nine names                                                                          | ClusterIP, port 80 → container 3000 |
-| Ingress        | same nine names                                                                          | One host each, wildcard TLS        |
-| ConfigMap      | same nine names                                                                          | Non-secret runtime config          |
-| Certificate    | `asynchrone-space-tls`, `asynchrone-space-domain-tls`                                    | cert-manager, apex + both wildcards |
-| CronJob        | `asynchrone-space-copilot-{trial-expiry,organization-deletion,audit-retention,data-exports}` | Copilot identity jobs          |
-| CronJob        | `asynchrone-space-projects-repository-sync`                                              | Hourly repository safety net       |
-| CronJob        | `asynchrone-space-files-uploads-sweep`                                                   | Daily large-object sweep           |
-| Job (hook)     | `asynchrone-space-migrate`                                                               | Pre-install and pre-upgrade        |
-| ServiceAccount | the nine apps plus `asynchrone-space-migrate`                                            | Token automount disabled           |
-| PDB            | the nine apps                                                                            | `minAvailable: 1`                  |
+| Resource       | Name                                                                                                   | Notes                               |
+| -------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| Deployment     | `asynchrone-space-{landing,copilot,projects,calendars,files,messages,clients,employees,control-tower}` | 2 replicas by default               |
+| Service        | same nine names                                                                                        | ClusterIP, port 80 → container 3000 |
+| Ingress        | same nine names                                                                                        | One host each, wildcard TLS         |
+| ConfigMap      | same nine names                                                                                        | Non-secret runtime config           |
+| Certificate    | `asynchrone-space-tls`, `asynchrone-space-domain-tls`                                                  | cert-manager, apex + both wildcards |
+| CronJob        | `asynchrone-space-copilot-{trial-expiry,organization-deletion,audit-retention,data-exports}`           | Copilot identity jobs               |
+| CronJob        | `asynchrone-space-projects-repository-sync`                                                            | Hourly repository safety net        |
+| CronJob        | `asynchrone-space-files-uploads-sweep`                                                                 | Daily large-object sweep            |
+| Job (hook)     | `asynchrone-space-migrate`                                                                             | Pre-install and pre-upgrade         |
+| ServiceAccount | the nine apps plus `asynchrone-space-migrate`                                                          | Token automount disabled            |
+| PDB            | the nine apps                                                                                          | `minAvailable: 1`                   |
 
 No app owns another app's CronJob. The ownership matrix is:
 
-| Job                     | Owner     | Schedule        | Route                             |
-| ----------------------- | --------- | --------------- | --------------------------------- |
-| `trial-expiry`          | copilot   | `0 6 * * *`     | `/api/cron/trial-expiry`          |
-| `organization-deletion` | copilot   | `30 3 * * *`    | `/api/cron/organization-deletion` |
-| `audit-retention`       | copilot   | `45 3 * * *`    | `/api/cron/audit-retention`       |
-| `data-exports`          | copilot   | `*/15 * * * *`  | `/api/cron/data-exports`          |
-| `repository-sync`       | projects  | `0 * * * *`     | `/api/cron/repository-sync`       |
-| `uploads-sweep`         | files     | `0 3 * * *`     | `/api/files/uploads/sweep`        |
+| Job                     | Owner    | Schedule       | Route                             |
+| ----------------------- | -------- | -------------- | --------------------------------- |
+| `trial-expiry`          | copilot  | `0 6 * * *`    | `/api/cron/trial-expiry`          |
+| `organization-deletion` | copilot  | `30 3 * * *`   | `/api/cron/organization-deletion` |
+| `audit-retention`       | copilot  | `45 3 * * *`   | `/api/cron/audit-retention`       |
+| `data-exports`          | copilot  | `*/15 * * * *` | `/api/cron/data-exports`          |
+| `repository-sync`       | projects | `0 * * * *`    | `/api/cron/repository-sync`       |
+| `uploads-sweep`         | files    | `0 3 * * *`    | `/api/files/uploads/sweep`        |
 
 The repository webhook route (`/api/webhooks/repositories/:id`) stays in Copilot
 until #190; only the scheduled reconciliation moved to projects. The portal has
@@ -297,21 +305,26 @@ Values live under the alias key in `charts/asynchrone-space/values.yaml`
 `employees`, `control-tower`). Every app accepts the generic chart values; the
 most useful overrides are:
 
-| Value                              | Default                              | Purpose                                |
-| ---------------------------------- | ------------------------------------ | -------------------------------------- |
-| `global.imageTag`                  | `""` (required)                      | Tag shared by every image              |
-| `global.imagePullSecrets`          | `[]`                                 | Pull secrets for private GHCR packages |
-| `<app>.replicaCount`               | `2`                                  | Replicas                               |
-| `<app>.image.repository`           | per app                              | Image repository                       |
-| `<app>.ingress.hosts`              | per app                              | Host(s) and paths                      |
-| `<app>.ingress.className`          | `nginx`                              | Ingress controller class               |
-| `<app>.ingress.tls`                | wildcard Secret per app              | TLS secret(s) for the hosts            |
-| `<app>.config`                     | see values                           | Non-secret environment variables       |
-| `<app>.secret.existingSecret`      | per app                              | Secret mounted with `envFrom`          |
-| `<app>.networkPolicy.enabled`      | `false`                              | Least-privilege ingress/egress         |
-| `<app>.cronjobs.jobs.<job>.enabled`| owner only                           | Toggle the owner's scheduled job       |
-| `certificates.enabled`             | `true`                               | Render the two wildcard certificates   |
-| `migrate.enabled`                  | `true`                               | Toggle the migration hook              |
+| Value                               | Default                 | Purpose                                |
+| ----------------------------------- | ----------------------- | -------------------------------------- |
+| `global.imageTag`                   | `""` (required)         | Tag shared by every image              |
+| `global.imagePullSecrets`           | `[]`                    | Pull secrets for private GHCR packages |
+| `<app>.replicaCount`                | `2`                     | Replicas                               |
+| `<app>.image.repository`            | per app                 | Image repository                       |
+| `<app>.ingress.hosts`               | per app                 | Host(s) and paths                      |
+| `<app>.ingress.className`           | `nginx`                 | Ingress controller class               |
+| `<app>.ingress.tls`                 | wildcard Secret per app | TLS secret(s) for the hosts            |
+| `<app>.config`                      | see values              | Non-secret environment variables       |
+| `<app>.secret.existingSecret`       | per app                 | Secret mounted with `envFrom`          |
+| `<app>.networkPolicy.enabled`       | `false`                 | Least-privilege ingress/egress         |
+| `<app>.cronjobs.jobs.<job>.enabled` | owner only              | Toggle the owner's scheduled job       |
+| `certificates.enabled`              | `true`                  | Render the two wildcard certificates   |
+| `connectionBudget.enabled`          | `true`                  | Enforce the fleet connection budget    |
+| `connectionBudget.maxConnections`   | `200`                   | Assumed PostgreSQL `max_connections`   |
+| `connectionBudget.ratioPercent`     | `70`                    | Planning ratio of usable connections   |
+| `monitoring.enabled`                | `true`                  | Render the fleet `PrometheusRule`      |
+| `monitoring.ruleLabels`             | `{}`                    | Extra labels for the rule selector     |
+| `migrate.enabled`                   | `true`                  | Toggle the migration hook              |
 
 ### Copilot discovery URLs
 
@@ -329,17 +342,17 @@ The per-app internal audience is derived in `@workspace/contracts`
 (`urn:asynchrone:app:<key>`), not set as an environment variable. The OAuth
 client credentials are read from each app's Secret:
 
-| App           | Client ID / secret keys                         | Internal audience                 |
-| ------------- | ----------------------------------------------- | --------------------------------- |
-| copilot       | `COPILOT_OAUTH_CLIENT_ID`/`_SECRET`             | `urn:asynchrone:app:copilot`      |
-| projects      | `PROJECTS_OAUTH_CLIENT_ID`/`_SECRET`            | `urn:asynchrone:app:projects`     |
-| calendars     | `CALENDARS_OAUTH_CLIENT_ID`/`_SECRET`           | `urn:asynchrone:app:calendars`    |
-| files         | `FILES_OAUTH_CLIENT_ID`/`_SECRET`               | `urn:asynchrone:app:files`        |
-| messages      | `MESSAGES_OAUTH_CLIENT_ID`/`_SECRET`            | `urn:asynchrone:app:messages`     |
-| clients       | `CLIENTS_OAUTH_CLIENT_ID`/`_SECRET`             | `urn:asynchrone:app:clients`      |
-| employees     | `EMPLOYEES_OAUTH_CLIENT_ID`/`_SECRET`           | `urn:asynchrone:app:employees`    |
-| control-tower | `CONTROL_TOWER_OAUTH_CLIENT_ID`/`_SECRET`       | `urn:asynchrone:app:control-tower`|
-| landing       | none (stateless)                                | `urn:asynchrone:app:landing`      |
+| App           | Client ID / secret keys                   | Internal audience                  |
+| ------------- | ----------------------------------------- | ---------------------------------- |
+| copilot       | `COPILOT_OAUTH_CLIENT_ID`/`_SECRET`       | `urn:asynchrone:app:copilot`       |
+| projects      | `PROJECTS_OAUTH_CLIENT_ID`/`_SECRET`      | `urn:asynchrone:app:projects`      |
+| calendars     | `CALENDARS_OAUTH_CLIENT_ID`/`_SECRET`     | `urn:asynchrone:app:calendars`     |
+| files         | `FILES_OAUTH_CLIENT_ID`/`_SECRET`         | `urn:asynchrone:app:files`         |
+| messages      | `MESSAGES_OAUTH_CLIENT_ID`/`_SECRET`      | `urn:asynchrone:app:messages`      |
+| clients       | `CLIENTS_OAUTH_CLIENT_ID`/`_SECRET`       | `urn:asynchrone:app:clients`       |
+| employees     | `EMPLOYEES_OAUTH_CLIENT_ID`/`_SECRET`     | `urn:asynchrone:app:employees`     |
+| control-tower | `CONTROL_TOWER_OAUTH_CLIENT_ID`/`_SECRET` | `urn:asynchrone:app:control-tower` |
+| landing       | none (stateless)                          | `urn:asynchrone:app:landing`       |
 
 ### TLS and proxy limits
 
@@ -351,11 +364,24 @@ ingress body limit above the 3 MiB upload chunk.
 
 ### Database connections
 
-Each pod opens one pool (`DATABASE_POOL_MAX`, default 10 in the chart). The
-fleet-wide budget, per-app values, PgBouncer guidance and the failure drill are
-in [Database operations](database-operations.md). In-flight uploads and
-downloads hold one connection each; keep the total below 70% of
-`max_connections`.
+Each pod opens one pool, sized per app (`config.DATABASE_POOL_MAX`: Copilot 8,
+files 6, projects/calendars/messages/clients/employees 4, control tower 3) and
+clamped at runtime to the ceiling in `packages/db-core/src/budget.ts`
+(ADR 0038). The fleet at maximum scale (replicas × pool, plus the migrate Job)
+opens 121 connections against a budget of 133 (70% of 190 usable connections).
+
+The umbrella chart fails the release when an app exceeds its ceiling or the
+fleet exceeds the budget:
+
+```bash
+npm run verify:connection-budget
+helm template asynchrone-space charts/asynchrone-space --set global.imageTag=ci \
+  --set copilot.config.DATABASE_POOL_MAX=99   # fails on purpose
+```
+
+The full math, per-role `CONNECTION LIMIT`, PgBouncer guidance and the failure
+drill are in [Database operations](database-operations.md). In-flight uploads
+and downloads hold one connection each.
 
 Enable `<app>.networkPolicy.enabled` after setting the ingress and database
 namespaces. `/internal/v1/*` is never routed by the Ingress.
@@ -428,37 +454,53 @@ rejects a missing or incorrect token when `CRON_SECRET` is set.
 
 `docker compose up --build` starts PostgreSQL, the migration Job and every app:
 
-| Service       | Host port | Host name in production             |
-| ------------- | --------- | ----------------------------------- |
-| control-tower | 3001      | `control-tower.asynchrone.space`    |
-| landing       | 3002      | `asynchrone.space`                  |
-| copilot       | 3003      | `copilot.asynchrone.space`          |
-| projects      | 3004      | `projects.copilot.asynchrone.space` |
-| calendars     | 3005      | `calendars.copilot.asynchrone.space`|
-| files         | 3006      | `files.copilot.asynchrone.space`    |
-| messages      | 3007      | `messages.copilot.asynchrone.space` |
-| clients       | 3008      | `clients.copilot.asynchrone.space`  |
-| employees     | 3009      | `employees.copilot.asynchrone.space`|
-| postgres      | 5434      | —                                   |
+| Service       | Host port | Host name in production              |
+| ------------- | --------- | ------------------------------------ |
+| control-tower | 3001      | `control-tower.asynchrone.space`     |
+| landing       | 3002      | `asynchrone.space`                   |
+| copilot       | 3003      | `copilot.asynchrone.space`           |
+| projects      | 3004      | `projects.copilot.asynchrone.space`  |
+| calendars     | 3005      | `calendars.copilot.asynchrone.space` |
+| files         | 3006      | `files.copilot.asynchrone.space`     |
+| messages      | 3007      | `messages.copilot.asynchrone.space`  |
+| clients       | 3008      | `clients.copilot.asynchrone.space`   |
+| employees     | 3009      | `employees.copilot.asynchrone.space` |
+| postgres      | 5434      | —                                    |
 
 ## Observability
 
-Error tracking and request timings go to Sentry (`@sentry/nextjs`, issue #44).
-Nothing is sent while `SENTRY_DSN` is empty, so development and CI need no
-account.
+Every app reports independently (ADR 0038). See
+[Observability](../observability.md) for the full model.
 
-- **Server**: add `SENTRY_DSN` to `asynchrone-space-copilot-secrets`. Copilot
-  reads it at runtime in `apps/copilot/instrumentation.ts`, reports every request
-  error through `onRequestError`, and samples 10% of requests for latency.
+- **Sentry**: each app has `instrumentation.ts` and
+  `instrumentation-client.ts`. Add `SENTRY_DSN` to that app's Secret; it reads
+  it at runtime, reports every request error through `onRequestError` and
+  samples 10% of requests. Nothing is sent while it is empty.
 - **Browser**: the DSN is inlined at build time, so set the `SENTRY_DSN`
   repository variable in GitHub. `docker.yml` passes it as a build arg. The DSN
   is public; it only allows sending events.
+- **Health**: `GET /api/health` on every app (including the landing and the
+  control tower). Kubernetes uses it as the readiness probe; it checks only the
+  app's own database.
+- **Metrics**: `GET /api/metrics` on every app (Prometheus text format). The app
+  chart adds `prometheus.io/scrape` annotations; a cluster-wide scrape config
+  must honour them.
+- **Correlation ids**: the proxy adopts/mints `x-request-id` (or `?rid=`),
+  echoes it, and cross-app links carry it; delegated domain calls forward it.
+- **Alerts**: `monitoring.enabled` (default `true`) renders one
+  `PrometheusRule` with `AsynchroneHighErrorRate`,
+  `AsynchroneDatabasePoolSaturation`, `AsynchroneDatabasePoolWaiting`,
+  `AsynchroneCronJobFailed`, `AsynchroneCronJobMissedHourly`,
+  `AsynchroneCronJobMissedDaily` and `AsynchroneAppUnavailable`. Set
+  `monitoring.ruleLabels` to match your Prometheus rule selector and
+  `monitoring.runbookUrl` to add a runbook link.
 - Events use `DEPLOY_ENV` (falling back to `NODE_ENV`) as the environment and
-  `GIT_COMMIT_SHA` as the release when they are set.
+  `GIT_COMMIT_SHA` as the release; the app chart injects both from the image
+  tag.
 
-Recommended alerts: uptime on `GET https://copilot.asynchrone.space/api/health`
-every minute, a 5xx-rate alert above 2% over 5 minutes, and a p95 latency alert
-above 2 s over 10 minutes.
+Recommended extra alerts outside the chart: uptime on each app's
+`/api/health` every minute, PostgreSQL `pg_up`, backup age and WAL archive
+failures.
 
 ## Upgrades and rollback
 
@@ -480,6 +522,7 @@ still need a database plan.
 
 ```bash
 npm run verify:helm
+npm run verify:connection-budget
 helm lint --strict charts/asynchrone-space --set global.imageTag=ci
 helm template asynchrone-space charts/asynchrone-space -n asynchrone-space \
   --set global.imageTag=ci > /dev/null
@@ -493,7 +536,10 @@ kubectl -n asynchrone-space logs deploy/asynchrone-space-copilot --tail=100
 
 `npm run verify:helm` renders the umbrella, every app alias on its own and the
 generic chart standalone, and asserts the two wildcard certificates, the www
-redirect, the Copilot discovery URLs and the six-owner CronJob set.
+redirect, the Copilot discovery URLs, the six-owner CronJob set, the scrape
+annotations, the seven alert names, and that an over-budget pool or fleet fails
+the release. `npm run verify:connection-budget` cross-checks the chart values
+against the runtime budget module.
 
 ## Troubleshooting
 

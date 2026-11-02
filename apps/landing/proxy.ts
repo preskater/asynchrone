@@ -1,6 +1,8 @@
 import createMiddleware from "next-intl/middleware"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { withCorrelation } from "@workspace/observability/next"
+
 import { routing } from "@workspace/i18n/routing"
 
 import { legacyCopilotTarget, workspaceUrl } from "./lib/workspace"
@@ -26,7 +28,7 @@ const intl = createMiddleware({
  * This middleware never reads a session and never sets a cookie (not even the
  * next-intl locale cookie): the landing is anonymous marketing only.
  */
-export default function proxy(request: NextRequest) {
+function handleRequest(request: NextRequest) {
   const target = legacyCopilotTarget(
     request.nextUrl.pathname,
     request.nextUrl.search
@@ -37,6 +39,15 @@ export default function proxy(request: NextRequest) {
   }
 
   return intl(request)
+}
+
+/**
+ * Adopt or mint the correlation id for every page request (issue #170),
+ * echo it on the response and keep it in a host-only cookie so a
+ * cross-app link can carry it as `?rid=`.
+ */
+export default function proxy(request: NextRequest) {
+  return withCorrelation(request, handleRequest(request))
 }
 
 export const config = {

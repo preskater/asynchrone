@@ -4,9 +4,13 @@ import { createPool } from "@workspace/db-core"
 
 import { PrismaClient } from "../lib/generated/prisma/client"
 
-const pool = createPool(process.env.MESSAGES_DATABASE_URL ?? process.env.DATABASE_URL, {
-  label: "MESSAGES_DATABASE_URL",
-})
+const pool = createPool(
+  process.env.MESSAGES_DATABASE_URL ?? process.env.DATABASE_URL,
+  {
+    app: "messages",
+    label: "MESSAGES_DATABASE_URL",
+  }
+)
 const adapter = new PrismaPg(pool, { disposeExternalPool: false })
 
 export const prisma = new PrismaClient({ adapter })

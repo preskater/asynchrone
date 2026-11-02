@@ -65,8 +65,7 @@ Create the name of the service account to use.
 Fully qualified image reference. `image.tag` wins over `global.imageTag` so the
 chart can be installed standalone as well as from the umbrella chart.
 */}}
-{{- define "asynchrone-space-app.image" -}}
-{{- $repository := required "asynchrone-space-app.image.repository is required" .Values.image.repository -}}
+{{- define "asynchrone-space-app.imageTag" -}}
 {{- $tag := .Values.image.tag -}}
 {{- if not $tag }}
 {{- $global := index .Values "global" | default dict -}}
@@ -75,7 +74,12 @@ chart can be installed standalone as well as from the umbrella chart.
 {{- if not $tag }}
 {{- fail "asynchrone-space-app.image.tag or global.imageTag must be set" -}}
 {{- end }}
-{{- printf "%s:%s" $repository $tag -}}
+{{- $tag -}}
+{{- end }}
+
+{{- define "asynchrone-space-app.image" -}}
+{{- $repository := required "asynchrone-space-app.image.repository is required" .Values.image.repository -}}
+{{- printf "%s:%s" $repository (include "asynchrone-space-app.imageTag" .) -}}
 {{- end }}
 
 {{/*

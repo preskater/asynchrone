@@ -31,6 +31,17 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Runtime environment label used by Sentry, the structured logs and the ops
+# page. `GIT_COMMIT_SHA` is injected from the image tag below.
+deployEnv: production
+
+# Prometheus scrape annotations on the pod template. Every app serves
+# `/api/metrics` in the Prometheus text format (issue #170).
+metrics:
+  scrape: true
+  path: /api/metrics
+  interval: 30s
+
 serviceAccount:
   create: true
   automount: false

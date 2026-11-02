@@ -5,6 +5,7 @@ import { MailIcon } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
 import { Link, usePathname, useRouter } from "@workspace/i18n/navigation"
+import { correlateUrl, readCorrelationCookie } from "@workspace/observability"
 import { Button } from "@workspace/ui/components/button"
 import {
   SidebarGroup,
@@ -56,14 +57,32 @@ export function NavMain({
   const router = useRouter()
   const { recents, setActive } = useRecents()
 
+  /**
+   * Carry the request correlation id into a cross-app navigation (issue #170).
+   * Every app keeps a host-only cookie, so the id travels as `?rid=` and the
+   * target app's proxy adopts it, tying both apps' log lines together.
+   */
+  function withCorrelation(url: string): string {
+    if (typeof document === "undefined") return url
+    const id = readCorrelationCookie(document.cookie)
+    return id ? correlateUrl(url, id) : url
+  }
+
   function openRecent(app: NavApp, id: string) {
     if (!app.key) return
     setActive(app.key, id)
     if (app.external) {
-      window.location.href = app.url
+      window.location.href = withCorrelation(app.url)
       return
     }
     router.push(app.url)
+  }
+
+  function carryCorrelation(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (typeof document === "undefined") return
+    const id = readCorrelationCookie(document.cookie)
+    if (id)
+      event.currentTarget.href = correlateUrl(event.currentTarget.href, id)
   }
 
   return (
@@ -79,7 +98,10 @@ export function NavMain({
               variant="outline"
               render={
                 messagesUrl ? (
-                  <a href={`${messagesUrl}/${locale}/${orgSlug}/messages`} />
+                  <a
+                    href={`${messagesUrl}/${locale}/${orgSlug}/messages`}
+                    onClick={carryCorrelation}
+                  />
                 ) : (
                   <Link href={`/${orgSlug}/messages`} prefetch={false} />
                 )
@@ -103,7 +125,7 @@ export function NavMain({
                   pathname === route || pathname.startsWith(`${route}/`)
               )
             const link = item.external ? (
-              <a href={item.url} />
+              <a href={item.url} onClick={carryCorrelation} />
             ) : (
               <Link href={item.url} prefetch={false} />
             )

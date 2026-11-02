@@ -7,21 +7,54 @@ orchestration is #184.
 
 ## Packages
 
-| Database                   | Package                       | Owner                                                                                                                    |
-| -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Database                   | Package                       | Owner                                                                                                                                                                           |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `asynchrone_identity`      | `@workspace/db-identity`      | Copilot: users, sessions, organizations, members, OAuth, billing, notifications, assistant, portal, rate limits, exports, the projects/calendars/files OIDC sessions until #190 |
-| `asynchrone_projects`      | `@workspace/db-projects`      | Projects, tasks, templates, comments, activity, repository sync, its own `oidcSession`                                   |
-| `asynchrone_calendars`     | `@workspace/db-calendars`     | Calendars, events, meeting requests/settings, its own `oidcSession`                                                      |
-| `asynchrone_files`         | `@workspace/db-files`         | File nodes, versions, shares, upload sessions, its own `oidcSession`; large objects live in the database that holds the metadata |
-| `asynchrone_messages`      | `@workspace/db-messages`      | Conversations, messages, reactions, attachment metadata, its own `oidcSession`                                            |
-| `asynchrone_clients`       | `@workspace/db-clients`       | Clients, contacts, pipelines, deals, activities, documents                                                               |
-| `asynchrone_employees`     | `@workspace/db-employees`     | Employees profiles, attendance, leave, settings, salary, internal activities                                             |
-| `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff copy (see [control-tower-database.md](./control-tower-database.md))            |
+| `asynchrone_projects`      | `@workspace/db-projects`      | Projects, tasks, templates, comments, activity, repository sync, its own `oidcSession`                                                                                          |
+| `asynchrone_calendars`     | `@workspace/db-calendars`     | Calendars, events, meeting requests/settings, its own `oidcSession`                                                                                                             |
+| `asynchrone_files`         | `@workspace/db-files`         | File nodes, versions, shares, upload sessions, its own `oidcSession`; large objects live in the database that holds the metadata                                                |
+| `asynchrone_messages`      | `@workspace/db-messages`      | Conversations, messages, reactions, attachment metadata, its own `oidcSession`                                                                                                  |
+| `asynchrone_clients`       | `@workspace/db-clients`       | Clients, contacts, pipelines, deals, activities, documents                                                                                                                      |
+| `asynchrone_employees`     | `@workspace/db-employees`     | Employees profiles, attendance, leave, settings, salary, internal activities                                                                                                    |
+| `asynchrone_control_tower` | `@workspace/db-control-tower` | Platform auth/2FA, platform audit, handoff copy (see [control-tower-database.md](./control-tower-database.md))                                                                  |
 
-`@workspace/db-core` owns the shared pool factory and `DATABASE_POOL_MAX`
-validation. `@workspace/db` remains the monolith database until #185, and the
-projects, calendars, files and messages apps bind it until #190/#171 (their
-domain packages still read identity tables and other apps' rows).
+`@workspace/db-core` owns the shared pool factory, the fleet connection budget
+(`budget.ts`, ADR 0038) and `DATABASE_POOL_MAX` validation. `@workspace/db`
+remains the monolith database until #185, and the projects, calendars, files
+and messages apps bind it until #190/#171 (their domain packages still read
+identity tables and other apps' rows).
+
+## Connection budget
+
+Every app instance owns one `pg.Pool`. `packages/db-core/src/budget.ts` is the
+single source of truth for the fleet budget; `createPool` clamps
+`DATABASE_POOL_MAX` to the app's ceiling, so a bad value cannot exhaust the
+shared PostgreSQL role. The Helm chart publishes the same numbers under
+`connectionBudget` and fails the release when an app or the fleet exceeds them.
+
+| App           | Default replicas | HPA ceiling | `DATABASE_POOL_MAX` | Peak connections |
+| ------------- | ---------------- | ----------- | ------------------- | ---------------- |
+| copilot       | 2                | 4           | 8                   | 32               |
+| projects      | 2                | 3           | 4                   | 12               |
+| calendars     | 2                | 3           | 4                   | 12               |
+| files         | 2                | 3           | 6                   | 18               |
+| messages      | 2                | 3           | 4                   | 12               |
+| clients       | 2                | 3           | 4                   | 12               |
+| employees     | 2                | 3           | 4                   | 12               |
+| control-tower | 2                | 2           | 3                   | 6                |
+| migrate Job   | 1                | 1           | 5                   | 5                |
+| **Fleet**     |                  |             |                     | **121**          |
+
+With PostgreSQL `max_connections=200`, 10 reserved connections and a 70%
+planning ratio, the budget is **133**. The default install opens 79, the
+maximum scale-out 121. Check drift with:
+
+```bash
+npm run verify:connection-budget
+```
+
+The math, PgBouncer guidance and the role-level `CONNECTION LIMIT` are in
+[Database operations](./deployment/database-operations.md#pool-budget).
 
 Every package declares its own `DATABASE_URL` env:
 
@@ -120,6 +153,7 @@ Each database has a `20261031120000_init` baseline; projects, calendars, files,
 messages, clients and employees add an `add_oidc_session` migration. The Docker
 `migrate` stage runs the monolith migration and then the orchestrator. The Helm
 migrate Job reads every `*_DATABASE_URL` from the existing migrate secret.
+
 ## Boundaries
 
 - A domain package imports only its own `@workspace/db-<domain>` package.

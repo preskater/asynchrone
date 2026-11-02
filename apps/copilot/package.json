@@ -63,6 +63,7 @@
     "@workspace/messaging": "*",
     "@workspace/next-config": "*",
     "@workspace/notifications": "*",
+    "@workspace/observability": "*",
     "@workspace/organization": "*",
     "@workspace/portal": "*",
     "@workspace/projects": "*",

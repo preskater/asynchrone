@@ -27,10 +27,19 @@ describe("landing proxy", () => {
     )
   })
 
-  it("does not set any cookie, not even a locale cookie", () => {
+  it("sets no locale or session cookie", () => {
     for (const path of ["/sign-in", "/en", "/en/pricing", "/blog/search"]) {
-      expect(proxy(request(path)).headers.get("set-cookie")).toBeNull()
+      const cookie = proxy(request(path)).headers.get("set-cookie")
+      // The only cookie is the observability correlation id (issue #170): it
+      // is host-only, not auth, and never a next-intl locale cookie.
+      expect(cookie ?? "").not.toMatch(/NEXT_LOCALE|session|token/i)
+      if (cookie) expect(cookie).toContain("asynchrone_rid=")
     }
+  })
+
+  it("echoes a correlation id on the response", () => {
+    const response = proxy(request("/en/pricing"))
+    expect(response.headers.get("x-request-id")).toMatch(/[A-Za-z0-9-]{8,}/)
   })
 
   it("leaves marketing pages to next-intl", () => {

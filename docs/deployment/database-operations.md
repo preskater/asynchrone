@@ -59,34 +59,75 @@ clear.
 
 ## Pool budget
 
-`DATABASE_POOL_MAX` defaults to `3`. Budget the **sum of every app's replicas ×
-pool**, plus the migrate Job and any PgBouncer clients. A safe starting point:
+`DATABASE_POOL_MAX` is the per-pod pool. `@workspace/db-core` clamps it to the
+app ceiling in `packages/db-core/src/budget.ts` (ADR 0038), so a copied value
+can never make one app exhaust the shared role. Budget the **sum of every app's
+replicas at its HPA ceiling × pool**, plus the migrate Job and any PgBouncer
+clients.
 
-| Fleet                  | Replicas | Pool | Connections |
-| ---------------------- | -------- | ---- | ----------- |
-| Copilot (identity)     | 2        | 10   | 20          |
-| 7 domain apps          | 2 each   | 3    | 42          |
-| Control tower          | 2        | 3    | 6           |
-| Migrate Job / one-offs | 1        | 3    | 3           |
-| **Total**              |          |      | **71**      |
+Assumed server configuration: `max_connections=200`, 10 reserved for
+superuser/monitoring/ad-hoc sessions, and a 70% planning ratio, which leaves
+**133 usable connections**.
 
-Keep the total below 70% of `max_connections`. If it does not fit, put a
-PgBouncer in transaction mode in front of the databases and point the apps at
-it; never raise `max_connections` first.
+| App           | Replicas (max) | Pool | Connections |
+| ------------- | -------------- | ---- | ----------- |
+| Copilot       | 4              | 8    | 32          |
+| projects      | 3              | 4    | 12          |
+| calendars     | 3              | 4    | 12          |
+| files         | 3              | 6    | 18          |
+| messages      | 3              | 4    | 12          |
+| clients       | 3              | 4    | 12          |
+| employees     | 3              | 4    | 12          |
+| control tower | 2              | 3    | 6           |
+| migrate Job   | 1              | 5    | 5           |
+| **Total**     |                |      | **121**     |
+
+A default install (two replicas each, no HPA) opens 79. The umbrella chart's
+`templates/validate-connections.yaml` fails the release when an app exceeds its
+ceiling or the fleet exceeds 133; `npm run verify:connection-budget` fails CI
+when the chart, the budget module and this table disagree.
+
+If the topology does not fit, put a **PgBouncer in transaction mode** in front
+of the databases and point the apps at it. Never raise `max_connections` first.
+Defense in depth: give each app its own PostgreSQL role with a connection limit
+matching its allocation (plus one for the migration role):
+
+```sql
+ALTER ROLE app_copilot CONNECTION LIMIT 32;
+ALTER ROLE app_projects CONNECTION LIMIT 12;
+ALTER ROLE app_files CONNECTION LIMIT 18;
+-- … one per app, matching the table above
+```
+
+`createPool` sets `idle_in_transaction_session_timeout=30s`, a 5-minute
+`statement_timeout` and `application_name=<app>`, so a stuck transaction
+releases its connection instead of holding the budget all night.
 
 ## Metrics and alerts
 
-Scrape PostgreSQL and the apps. Minimum alerts:
+Every app exposes:
 
-- `pg_up == 0` per database;
-- pool saturation (active / max connections) above 80% for 10 minutes;
-- replication/WAL archive failures and backup age above 24 hours;
-- `migrate` Job failed or a schema drift (`verify:migrations`) in CI;
-- files large-object growth and orphaned `pg_largeobject` OIDs;
-- `internal` API 5xx rate and audit fan-out `unavailableApps`.
+- `GET /api/health` — its own dependency checks plus the pool snapshot; used by
+  the readiness probe. A domain app's failure never fails Copilot's probe.
+- `GET /api/metrics` — Prometheus text format: `asynchrone_http_requests_total`,
+  `asynchrone_http_errors_total`, `asynchrone_http_request_duration_seconds`,
+  `asynchrone_db_pool_connections{state}`, `asynchrone_db_pool_saturation` and
+  `asynchrone_cron_runs_total{outcome}`.
 
-Use the app `podAnnotations` for Prometheus scrape settings. The health
-endpoint is `/api/health`; it checks the database and is used by readiness.
+The app chart annotates every pod with `prometheus.io/scrape`, and the umbrella
+chart renders one `PrometheusRule` (`monitoring.enabled`, on by default) with:
+
+- `AsynchroneHighErrorRate` — more than 2% 5xx for 10 minutes, per app;
+- `AsynchroneDatabasePoolSaturation` — pool above 80% for 10 minutes;
+- `AsynchroneDatabasePoolWaiting` — requests queued for a connection;
+- `AsynchroneCronJobFailed` / `AsynchroneCronJobMissedHourly` /
+  `AsynchroneCronJobMissedDaily` — kube-state-metrics Job and CronJob state;
+- `AsynchroneAppUnavailable` — a deployment with zero available replicas.
+
+Also scrape PostgreSQL and alert on `pg_up == 0` per database, replication/WAL
+archive failures, backup age above 24 hours, a failed `migrate` Job, files
+large-object growth and orphaned OIDs, and the audit fan-out
+`unavailableApps`.
 
 ## Failure drill
 
