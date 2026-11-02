@@ -807,11 +807,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
-      # The identity tables still live in the monolith database until the split
-      # (#185/#171), so Copilot's admin and saga stores must resolve the same
-      # rows its Better Auth session writes. Every other e2e job leaves this
-      # pointing at the unused asynchrone_identity database.
-      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
+      IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_identity?schema=public
       PROJECTS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_projects?schema=public
       CALENDARS_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_calendars?schema=public
       FILES_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone_files?schema=public
@@ -898,4 +894,10 @@ jobs:
         working-directory: packages/e2e
 
       - name: Cross-app e2e
+        # The identity tables still live in the monolith database until the
+        # split (#185/#171), so Copilot's admin and saga stores must resolve the
+        # same rows its Better Auth session writes. The per-app migration step
+        # above uses the separate asynchrone_identity database.
+        env:
+          IDENTITY_DATABASE_URL: postgresql://asynchrone:asynchrone@localhost:5432/asynchrone?schema=public
         run: npm run test:e2e --workspace=@workspace/e2e
