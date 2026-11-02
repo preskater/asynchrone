@@ -1,0 +1,465 @@
+# Staging values for the Asynchrone Space umbrella chart.
+#
+# Hostnames follow the nested scheme:
+#   staging.asynchrone.space
+#   copilot.staging.asynchrone.space
+#   <domain>.copilot.staging.asynchrone.space
+#   control-tower.staging.asynchrone.space
+#
+# This file contains no secrets. Create the Secrets listed in
+# deploy/staging/README.md before installing.
+#
+# The single staging d2-4 node is memory constrained. Keep one replica per app
+# and low requests; the deployment runbook checks memory between phases.
+
+global:
+  imageTag: sha-113034c
+  imagePullSecrets: []
+
+connectionBudget:
+  enabled: true
+  maxConnections: 100
+  reservedConnections: 10
+  ratioPercent: 70
+
+monitoring:
+  enabled: false
+
+# HTTP-01 cannot issue wildcards, so use explicit SANs per staging host.
+certificates:
+  enabled: true
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  entries:
+    - name: asynchrone-space-staging-tls
+      secretName: asynchrone-space-staging-tls
+      dnsNames:
+        - staging.asynchrone.space
+        - www.staging.asynchrone.space
+        - copilot.staging.asynchrone.space
+        - control-tower.staging.asynchrone.space
+    - name: asynchrone-space-staging-domain-tls
+      secretName: asynchrone-space-staging-domain-tls
+      dnsNames:
+        - projects.copilot.staging.asynchrone.space
+        - calendars.copilot.staging.asynchrone.space
+        - files.copilot.staging.asynchrone.space
+        - messages.copilot.staging.asynchrone.space
+        - clients.copilot.staging.asynchrone.space
+        - employees.copilot.staging.asynchrone.space
+
+landing:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 192Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($host = "www.staging.asynchrone.space") {
+          return 308 https://staging.asynchrone.space$request_uri;
+        }
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+      - host: www.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-tls
+        hosts:
+          - staging.asynchrone.space
+          - www.staging.asynchrone.space
+
+copilot:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-tls
+        hosts:
+          - copilot.staging.asynchrone.space
+  config:
+    BETTER_AUTH_URL: https://copilot.staging.asynchrone.space
+    NEXT_PUBLIC_APP_URL: https://copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    PLATFORM_APP_URL: https://copilot.staging.asynchrone.space
+    PROJECTS_APP_URL: https://projects.copilot.staging.asynchrone.space
+    CALENDARS_APP_URL: https://calendars.copilot.staging.asynchrone.space
+    FILES_APP_URL: https://files.copilot.staging.asynchrone.space
+    MESSAGES_APP_URL: https://messages.copilot.staging.asynchrone.space
+    CLIENTS_APP_URL: https://clients.copilot.staging.asynchrone.space
+    EMPLOYEES_APP_URL: https://employees.copilot.staging.asynchrone.space
+    CONTROL_TOWER_URL: https://control-tower.staging.asynchrone.space
+    DATABASE_POOL_MAX: "8"
+    DEPLOY_ENV: staging
+    MCP_RESOURCE_URL: https://copilot.staging.asynchrone.space/mcp
+    OPENAI_API_URL: ""
+    ASSISTANT_MODEL: gpt-4o-mini
+    EMAIL_FROM: ""
+    REQUIRE_EMAIL_VERIFICATION: "false"
+    GITHUB_CLIENT_ID: ""
+    GITLAB_CLIENT_ID: ""
+    TURNSTILE_SITE_KEY: ""
+    SIGNUP_INVITE_ONLY: "true"
+    SIGNUP_BLOCKED_EMAIL_DOMAINS: ""
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+    STRIPE_PRICE_TEAM_MONTHLY: ""
+    STRIPE_PRICE_TEAM_YEARLY: ""
+    STRIPE_AUTOMATIC_TAX: ""
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ""
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-copilot-secrets
+  cronjobs:
+    enabled: false
+
+projects:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: projects.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - projects.copilot.staging.asynchrone.space
+  config:
+    PROJECTS_APP_URL: https://projects.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "4"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-projects-secrets
+  cronjobs:
+    enabled: false
+
+calendars:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: calendars.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - calendars.copilot.staging.asynchrone.space
+  config:
+    CALENDARS_APP_URL: https://calendars.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "4"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-calendars-secrets
+
+files:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: files.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - files.copilot.staging.asynchrone.space
+  config:
+    FILES_APP_URL: https://files.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "6"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-files-secrets
+  cronjobs:
+    enabled: false
+
+messages:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: messages.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - messages.copilot.staging.asynchrone.space
+  config:
+    MESSAGES_APP_URL: https://messages.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "4"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-messages-secrets
+
+clients:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: clients.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - clients.copilot.staging.asynchrone.space
+  config:
+    CLIENTS_APP_URL: https://clients.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "4"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-clients-secrets
+
+employees:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: employees.copilot.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-domain-tls
+        hosts:
+          - employees.copilot.staging.asynchrone.space
+  config:
+    EMPLOYEES_APP_URL: https://employees.copilot.staging.asynchrone.space
+    COPILOT_APP_URL: https://copilot.staging.asynchrone.space
+    DATABASE_POOL_MAX: "4"
+    DEPLOY_ENV: staging
+    TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-employees-secrets
+
+control-tower:
+  enabled: true
+  deployEnv: staging
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    maxReplicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        add_header X-Robots-Tag "noindex, nofollow" always;
+    hosts:
+      - host: control-tower.staging.asynchrone.space
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: asynchrone-space-staging-tls
+        hosts:
+          - control-tower.staging.asynchrone.space
+  config:
+    BETTER_AUTH_URL: https://control-tower.staging.asynchrone.space
+    PLATFORM_APP_URL: https://copilot.staging.asynchrone.space
+    PLATFORM_ALLOWED_IPS: ""
+    DATABASE_POOL_MAX: "3"
+    DEPLOY_ENV: staging
+  secret:
+    enabled: true
+    existingSecret: asynchrone-space-control-tower-secrets
+
+migrate:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
