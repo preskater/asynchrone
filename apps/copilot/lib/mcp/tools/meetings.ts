@@ -1,4 +1,6 @@
-import { meetingService } from "@/lib/meetings"
+import { z } from "zod"
+
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import {
   acceptMeetingRequestSchema,
   declineMeetingRequestSchema,
@@ -6,6 +8,27 @@ import {
 } from "@workspace/meetings/schemas"
 
 import type { McpTool } from "./projects"
+
+const result = z.unknown()
+
+function call(
+  ctx: Parameters<McpTool["run"]>[0],
+  operation:
+    | "list-meeting-requests"
+    | "accept-meeting-request"
+    | "decline-meeting-request"
+    | "get-meeting-settings"
+    | "update-meeting-settings",
+  input: unknown
+) {
+  return callDomain(
+    "calendars",
+    operation,
+    delegatedContext(ctx),
+    input,
+    result
+  )
+}
 
 export const meetingTools: McpTool[] = [
   {
@@ -15,7 +38,7 @@ export const meetingTools: McpTool[] = [
       "List client meeting proposals with their slots (each flagged when it overlaps another meeting) and the booking rules.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => meetingService.listRequests(ctx),
+    run: (ctx) => call(ctx, "list-meeting-requests", {}),
   },
   {
     name: "accept_meeting_request",
@@ -25,8 +48,9 @@ export const meetingTools: McpTool[] = [
     inputSchema: acceptMeetingRequestSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      meetingService.acceptRequest(
+      call(
         ctx,
+        "accept-meeting-request",
         acceptMeetingRequestSchema.parse(input)
       ),
   },
@@ -38,8 +62,9 @@ export const meetingTools: McpTool[] = [
     inputSchema: declineMeetingRequestSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      meetingService.declineRequest(
+      call(
         ctx,
+        "decline-meeting-request",
         declineMeetingRequestSchema.parse(input)
       ),
   },
@@ -50,7 +75,7 @@ export const meetingTools: McpTool[] = [
       "Read the organization meeting booking rules (client requests, overlaps, window, notice, provider).",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => meetingService.getSettings(ctx),
+    run: (ctx) => call(ctx, "get-meeting-settings", {}),
   },
   {
     name: "update_meeting_settings",
@@ -60,8 +85,9 @@ export const meetingTools: McpTool[] = [
     inputSchema: updateMeetingSettingsSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      meetingService.updateSettings(
+      call(
         ctx,
+        "update-meeting-settings",
         updateMeetingSettingsSchema.parse(input)
       ),
   },

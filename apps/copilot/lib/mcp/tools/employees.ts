@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { employeesService } from "@/lib/employees"
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import {
   attendanceStatusSchema,
   createLeaveBase,
@@ -8,6 +8,29 @@ import {
 } from "@workspace/employees/schemas"
 
 import type { McpTool } from "./projects"
+
+const result = z.unknown()
+
+function call(
+  ctx: Parameters<McpTool["run"]>[0],
+  operation:
+    | "get-employees-overview"
+    | "fetch-attendance"
+    | "set-attendance"
+    | "set-day-status"
+    | "create-leave"
+    | "decide-leave"
+    | "fetch-tracking",
+  input: unknown
+) {
+  return callDomain(
+    "employees",
+    operation,
+    delegatedContext(ctx),
+    input,
+    result
+  )
+}
 
 export const employeeTools: McpTool[] = [
   {
@@ -17,7 +40,7 @@ export const employeeTools: McpTool[] = [
       "Get the time & attendance dashboard: today's presence, leave requests, balances, capacity, alerts, clients, activities and projects.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => employeesService.getOverview(ctx),
+    run: (ctx) => call(ctx, "get-employees-overview", {}),
   },
   {
     name: "list_attendance",
@@ -29,10 +52,8 @@ export const employeeTools: McpTool[] = [
       to: z.string().describe("End day, inclusive"),
     },
     readOnly: true,
-    run: (ctx, input) => {
-      const range = fetchRangeSchema.parse(input)
-      return employeesService.fetchAttendance(ctx, range.from, range.to)
-    },
+    run: (ctx, input) =>
+      call(ctx, "fetch-attendance", fetchRangeSchema.parse(input)),
   },
   {
     name: "set_attendance",
@@ -54,15 +75,12 @@ export const employeeTools: McpTool[] = [
       const date = String(input.date)
       const period = input.period as "morning" | "afternoon" | undefined
       if (!period) {
-        return employeesService.setDayStatus(ctx, {
-          date,
-          status: input.status as never,
-        })
+        return call(ctx, "set-day-status", { date, status: input.status })
       }
-      return employeesService.setAttendance(ctx, {
+      return call(ctx, "set-attendance", {
         date,
         period,
-        status: input.status as never,
+        status: input.status,
         projectId: (input.projectId as string | undefined) ?? undefined,
         internalActivityId:
           (input.internalActivityId as string | undefined) ?? undefined,
@@ -87,7 +105,7 @@ export const employeeTools: McpTool[] = [
     },
     readOnly: false,
     run: (ctx, input) =>
-      employeesService.createLeave(ctx, createLeaveBase.parse(input)),
+      call(ctx, "create-leave", createLeaveBase.parse(input)),
   },
   {
     name: "decide_leave",
@@ -101,9 +119,10 @@ export const employeeTools: McpTool[] = [
     },
     readOnly: false,
     run: (ctx, input) =>
-      employeesService.decideLeave(ctx, String(input.requestId), {
-        decision: input.decision as "approved" | "rejected",
-        comment: (input.comment as string | undefined) ?? undefined,
+      call(ctx, "decide-leave", {
+        requestId: String(input.requestId),
+        decision: input.decision,
+        comment: input.comment,
       }),
   },
   {
@@ -116,9 +135,7 @@ export const employeeTools: McpTool[] = [
       to: z.string().describe("End day, inclusive"),
     },
     readOnly: true,
-    run: (ctx, input) => {
-      const range = fetchRangeSchema.parse(input)
-      return employeesService.fetchTracking(ctx, range.from, range.to)
-    },
+    run: (ctx, input) =>
+      call(ctx, "fetch-tracking", fetchRangeSchema.parse(input)),
   },
 ]

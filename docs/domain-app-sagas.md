@@ -51,6 +51,18 @@ archive and records `dataExportApp`. `canMarkExportReady` returns true only when
 every expected part is `complete`; a missing or failed part keeps the export
 `processing`/`failed` and never `ready`.
 
+## Delegated calls and idempotency
+
+The assistant, MCP and portal are not sagas: each tool call is one delegated
+domain request (`POST /internal/v1/domain/:operation`). Mutations accept an
+`Idempotency-Key`; the target app replays the first result for the same caller
+and key instead of running the write twice. Reads never replay. A failed call
+returns a typed `DomainClientError`/`InternalError` and the caller decides
+whether to retry (reads automatically, mutations only with the same key).
+Portal document upload is two steps (files app creates the file, clients app
+links it); a failure between them leaves an unlinked file, never a duplicate
+link, and a retry with the same key reuses the first file id.
+
 ## Status and operations
 
 `SagaClient` in `@workspace/contracts` is the typed caller. The identity adapter

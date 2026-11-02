@@ -89,8 +89,8 @@ function buildService() {
       identifier: "PRJ-1",
       title: "Design",
       description: "Mockups",
-      status: "done",
-      priority: "high",
+      status: "done" as const,
+      priority: "high" as const,
       dueDate: createdAt,
       endDate: null,
       createdAt,
@@ -165,6 +165,83 @@ function buildService() {
     markInviteAccepted: vi.fn(async () => ({ id: "invite_a" })),
   }
 
+  const projects = {
+    listProjects: vi.fn(async () => [
+      {
+        id: "project_a",
+        name: "Website",
+        status: "active",
+        dueDate: createdAt.toISOString(),
+        doneTasks: 1,
+        totalTasks: 2,
+      },
+    ]),
+    listUnreadMessages: vi.fn(async () => [
+      { projectId: "project_a" },
+      { projectId: "project_a" },
+    ]),
+    findProject: vi.fn(async () => ({
+      id: "project_a",
+      name: "Website",
+      description: "The new site",
+      status: "active",
+      dueDate: createdAt.toISOString(),
+      createdAt: createdAt.toISOString(),
+      tasks: [
+        {
+          id: "task_a",
+          title: "Design",
+          status: "done",
+          dueDate: createdAt.toISOString(),
+        },
+        { id: "task_b", title: "Build", status: "todo" },
+      ],
+      discussionPolicy: "read_write" as const,
+      taskCommentsPolicy: "read" as const,
+    })),
+    findProjectPolicy: vi.fn(async () => ({
+      clientDiscussion: "read_write" as const,
+      clientTaskComments: "read_write" as const,
+    })),
+    findProjectTask: vi.fn(async () => ({
+      id: "task_a",
+      identifier: "PRJ-1",
+      title: "Design",
+      description: "Mockups",
+      status: "done" as const,
+      priority: "high" as const,
+      dueDate: createdAt.toISOString(),
+      createdAt: createdAt.toISOString(),
+      labels: ["design"],
+      subtasks: [{ id: "sub_a", title: "Sketch", done: true }],
+    })),
+    findTask: vi.fn(async () => ({ id: "task_a" })),
+  }
+  const clientDocuments = {
+    listDocuments: vi.fn(async () => [
+      {
+        id: "doc_a",
+        fileId: "file_a",
+        name: "brief.pdf",
+        sizeBytes: 2048,
+        createdAt: createdAt.toISOString(),
+        addedByName: "Sam",
+      },
+    ]),
+    findDocumentLink: vi.fn(async () => ({
+      name: "brief.pdf",
+      oid: "42",
+      mimeType: "application/pdf",
+      trashed: false,
+    })),
+    createDocument: vi.fn(async () => ({
+      id: "doc_new",
+      createdAt: createdAt.toISOString(),
+    })),
+    findClient: vi.fn(async () => ({ ownerId: "user_owner", name: "Acme" })),
+    findClientInOrganization: vi.fn(async () => ({ id: "client_a" })),
+  }
+
   const storage = {
     upload: vi.fn(async () => ({
       oid: 7,
@@ -225,29 +302,30 @@ function buildService() {
       email: "alice@example.com",
     })),
   }
-  const audit = vi.fn(async () => undefined)
   const notify = vi.fn(async () => undefined)
 
   const service = new PortalService({
     repository: repo as unknown as PortalRepository,
     storage,
+    projects,
+    clientDocuments,
     files,
     collaboration,
     meetings,
     invitations,
-    audit,
     notify,
   })
 
   return {
     service,
     repo,
+    projects,
+    clientDocuments,
     storage,
     files,
     collaboration,
     meetings,
     invitations,
-    audit,
     notify,
   }
 }
@@ -258,14 +336,18 @@ beforeEach(() => {
 
 describe("PortalService client-member scope", () => {
   it("reads the dashboard of the caller's own company only", async () => {
-    const { service, repo } = buildService()
+    const { service, projects, clientDocuments } = buildService()
 
     const data = await service.getDashboard(ctxA)
 
-    expect(repo.listDashboardProjects).toHaveBeenCalledWith("org_a", "client_a")
-    expect(repo.listClientDocuments).toHaveBeenCalledWith("org_a", "client_a")
-    expect(repo.listUnreadMessages).toHaveBeenCalledWith(
+    expect(projects.listProjects).toHaveBeenCalledWith("org_a", "client_a")
+    expect(clientDocuments.listDocuments).toHaveBeenCalledWith(
       "org_a",
+      "client_a"
+    )
+    expect(projects.listUnreadMessages).toHaveBeenCalledWith(
+      "org_a",
+      "client_a",
       ["project_a"],
       "user_client_a",
       expect.any(Date)
@@ -284,13 +366,13 @@ describe("PortalService client-member scope", () => {
   })
 
   it("returns not found when a project belongs to another organization", async () => {
-    const { service, repo } = buildService()
-    repo.findProject.mockResolvedValueOnce(null as never)
+    const { service, projects } = buildService()
+    projects.findProject.mockResolvedValueOnce(null as never)
 
     await expect(service.getProject(ctxB, "project_a")).rejects.toMatchObject({
       message: expect.stringContaining("Project"),
     })
-    expect(repo.findProject).toHaveBeenCalledWith(
+    expect(projects.findProject).toHaveBeenCalledWith(
       "org_b",
       "client_b",
       "project_a"
@@ -298,8 +380,8 @@ describe("PortalService client-member scope", () => {
   })
 
   it("refuses to post into a project of another organization", async () => {
-    const { service, repo, collaboration } = buildService()
-    repo.findProjectPolicy.mockResolvedValueOnce(null as never)
+    const { service, projects, collaboration } = buildService()
+    projects.findProjectPolicy.mockResolvedValueOnce(null as never)
 
     await expect(
       service.postMessage(ctxB, "project_a", "hi")
@@ -310,10 +392,11 @@ describe("PortalService client-member scope", () => {
   })
 
   it("refuses to post when the project discussion is read-only", async () => {
-    const { service, repo, collaboration } = buildService()
-    repo.findProjectPolicy.mockResolvedValueOnce(
-      projectRow({ clientDiscussion: "read" }) as never
-    )
+    const { service, projects, collaboration } = buildService()
+    projects.findProjectPolicy.mockResolvedValueOnce({
+      clientDiscussion: "read",
+      clientTaskComments: "read_write",
+    } as never)
 
     await expect(
       service.postMessage(ctxA, "project_a", "hi")
@@ -322,10 +405,11 @@ describe("PortalService client-member scope", () => {
   })
 
   it("does not expose task comments when the project hides them", async () => {
-    const { service, repo, collaboration } = buildService()
-    repo.findProjectPolicy.mockResolvedValueOnce(
-      projectRow({ clientTaskComments: "none" }) as never
-    )
+    const { service, projects, collaboration } = buildService()
+    projects.findProjectPolicy.mockResolvedValueOnce({
+      clientDiscussion: "read_write",
+      clientTaskComments: "none",
+    } as never)
 
     const detail = await service.getTaskDetail(ctxA, "project_a", "task_a")
 
@@ -334,8 +418,8 @@ describe("PortalService client-member scope", () => {
   })
 
   it("refuses task comments written for another organization", async () => {
-    const { service, repo, collaboration } = buildService()
-    repo.findProjectPolicy.mockResolvedValueOnce(null as never)
+    const { service, projects, collaboration } = buildService()
+    projects.findProjectPolicy.mockResolvedValueOnce(null as never)
 
     await expect(
       service.postTaskComment(ctxB, "project_a", "task_a", "hi")
@@ -462,11 +546,11 @@ describe("PortalService access management", () => {
 
 describe("PortalService documents", () => {
   it("opens only documents linked to the caller's client company", async () => {
-    const { service, repo, storage } = buildService()
+    const { service, clientDocuments, storage } = buildService()
 
     const file = await service.openDocument(ctxA, "file_a")
 
-    expect(repo.findClientDocumentLink).toHaveBeenCalledWith(
+    expect(clientDocuments.findDocumentLink).toHaveBeenCalledWith(
       "org_a",
       "client_a",
       "file_a"
@@ -480,8 +564,8 @@ describe("PortalService documents", () => {
   })
 
   it("does not open a document shared with another company", async () => {
-    const { service, repo, storage } = buildService()
-    repo.findClientDocumentLink.mockResolvedValueOnce(null as never)
+    const { service, clientDocuments, storage } = buildService()
+    clientDocuments.findDocumentLink.mockResolvedValueOnce(null as never)
 
     await expect(service.openDocument(ctxB, "file_a")).rejects.toMatchObject({
       message: expect.stringContaining("Document"),
@@ -490,15 +574,13 @@ describe("PortalService documents", () => {
   })
 
   it("does not open a trashed file or a missing large object", async () => {
-    const { service, repo, storage } = buildService()
-    repo.findClientDocumentLink.mockResolvedValueOnce({
-      file: {
-        name: "brief.pdf",
-        oid: 42n,
-        mimeType: "application/pdf",
-        trashed: true,
-      },
-    } as never)
+    const { service, clientDocuments, storage } = buildService()
+    clientDocuments.findDocumentLink.mockResolvedValueOnce({
+      name: "brief.pdf",
+      oid: "42",
+      mimeType: "application/pdf",
+      trashed: true,
+    })
 
     await expect(service.openDocument(ctxA, "file_a")).rejects.toMatchObject({
       message: expect.stringContaining("Document"),
@@ -507,7 +589,7 @@ describe("PortalService documents", () => {
   })
 
   it("uploads a document into the files tree, links it to the client and notifies the team", async () => {
-    const { service, repo, storage, files, audit, notify } = buildService()
+    const { service, clientDocuments, storage, files, notify } = buildService()
 
     const document = await service.uploadDocument(ctxA, {
       name: "photo.png",
@@ -531,23 +613,16 @@ describe("PortalService documents", () => {
         oid: 7,
       })
     )
-    expect(repo.createClientDocument).toHaveBeenCalledWith({
+    expect(clientDocuments.createDocument).toHaveBeenCalledWith({
       organizationId: "org_a",
       fileId: "file_new",
       clientId: "client_a",
+      name: "photo.png",
+      sizeBytes: 11,
       addedBy: "user_client_a",
+      addedByName: "Alice",
+      addedByEmail: "alice@example.com",
     })
-    expect(audit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        organizationId: "org_a",
-        userId: "user_client_a",
-      }),
-      expect.objectContaining({
-        action: "client.document.linked",
-        entityId: "client_a",
-        after: { fileName: "photo.png" },
-      })
-    )
     expect(notify).toHaveBeenCalledTimes(2)
     expect(document).toMatchObject({
       id: "doc_new",

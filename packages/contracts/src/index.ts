@@ -17,11 +17,13 @@ export type {
 } from "./apps"
 
 export * from "./internal/contracts"
+export * from "./internal/domain"
 export * from "./internal/auth"
 export * from "./internal/audit"
 export * from "./internal/admin"
 export * from "./clients/identity"
 export * from "./clients/identity-admin"
+export * from "./clients/domain"
 export * from "./clients/audit"
 export * from "./clients/search"
 export * from "./clients/notifications"

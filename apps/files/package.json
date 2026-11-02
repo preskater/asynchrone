@@ -27,6 +27,7 @@
     "@workspace/next-config": "*",
     "@workspace/oidc": "*",
     "@workspace/organization": "*",
+    "@workspace/service-auth": "*",
     "@workspace/storage": "*",
     "@workspace/ui": "*",
     "lucide-react": "^1.61.0",

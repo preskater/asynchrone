@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { fileService } from "@/lib/files"
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import {
   createFilesSchema,
   createFolderSchema,
@@ -10,6 +10,22 @@ import {
 
 import type { McpTool } from "./projects"
 
+const result = z.unknown()
+
+function call(
+  ctx: Parameters<McpTool["run"]>[0],
+  operation:
+    | "list-files"
+    | "create-folder"
+    | "create-files"
+    | "rename-file"
+    | "move-file"
+    | "trash-file",
+  input: unknown
+) {
+  return callDomain("files", operation, delegatedContext(ctx), input, result)
+}
+
 export const fileTools: McpTool[] = [
   {
     name: "list_files",
@@ -17,7 +33,7 @@ export const fileTools: McpTool[] = [
     description: "List all files and folders in the workspace.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => fileService.list(ctx),
+    run: (ctx) => call(ctx, "list-files", {}),
   },
   {
     name: "create_folder",
@@ -26,7 +42,7 @@ export const fileTools: McpTool[] = [
     inputSchema: createFolderSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      fileService.createFolder(ctx, createFolderSchema.parse(input)),
+      call(ctx, "create-folder", createFolderSchema.parse(input)),
   },
   {
     name: "create_files",
@@ -35,7 +51,7 @@ export const fileTools: McpTool[] = [
     inputSchema: createFilesSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      fileService.createFiles(ctx, createFilesSchema.parse(input)),
+      call(ctx, "create-files", createFilesSchema.parse(input)),
   },
   {
     name: "rename_file",
@@ -45,7 +61,10 @@ export const fileTools: McpTool[] = [
     readOnly: false,
     run: (ctx, input) => {
       const { fileId, ...rest } = input
-      return fileService.renameFile(ctx, String(fileId), renameFileSchema.parse(rest))
+      return call(ctx, "rename-file", {
+        fileId: String(fileId),
+        ...renameFileSchema.parse(rest),
+      })
     },
   },
   {
@@ -56,7 +75,10 @@ export const fileTools: McpTool[] = [
     readOnly: false,
     run: (ctx, input) => {
       const { fileId, ...rest } = input
-      return fileService.moveFile(ctx, String(fileId), moveFileSchema.parse(rest))
+      return call(ctx, "move-file", {
+        fileId: String(fileId),
+        ...moveFileSchema.parse(rest),
+      })
     },
   },
   {
@@ -65,6 +87,7 @@ export const fileTools: McpTool[] = [
     description: "Move a file or folder to the trash.",
     inputSchema: { fileId: z.string() },
     readOnly: false,
-    run: (ctx, input) => fileService.trashFile(ctx, String(input.fileId)),
+    run: (ctx, input) =>
+      call(ctx, "trash-file", { fileId: String(input.fileId) }),
   },
 ]

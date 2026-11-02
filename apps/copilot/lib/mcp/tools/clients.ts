@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { clientsService } from "@/lib/clients"
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import {
   activityInputSchema,
   clientInputSchema,
@@ -14,6 +14,29 @@ import {
 
 import type { McpTool } from "./projects"
 
+const result = z.unknown()
+
+function call(
+  ctx: Parameters<McpTool["run"]>[0],
+  operation:
+    | "get-clients-overview"
+    | "get-client"
+    | "get-deal"
+    | "save-client"
+    | "save-contact"
+    | "save-deal"
+    | "move-deal"
+    | "create-client-activity"
+    | "list-client-documents"
+    | "link-client-document"
+    | "unlink-client-document"
+    | "link-client-project"
+    | "unlink-client-project",
+  input: unknown
+) {
+  return callDomain("clients", operation, delegatedContext(ctx), input, result)
+}
+
 export const clientTools: McpTool[] = [
   {
     name: "get_clients_overview",
@@ -22,7 +45,7 @@ export const clientTools: McpTool[] = [
       "Get the client workspace: companies, contacts, pipelines with stages, deals (with status), recent activity and custom field definitions.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => clientsService.getOverview(ctx),
+    run: (ctx) => call(ctx, "get-clients-overview", {}),
   },
   {
     name: "get_client",
@@ -32,7 +55,7 @@ export const clientTools: McpTool[] = [
     inputSchema: { clientId: z.string().describe("The company id") },
     readOnly: true,
     run: (ctx, input) =>
-      clientsService.getClientDetail(ctx, String(input.clientId)),
+      call(ctx, "get-client", { id: String(input.clientId) }),
   },
   {
     name: "get_deal",
@@ -41,8 +64,7 @@ export const clientTools: McpTool[] = [
       "Fetch one deal with its timeline, contacts and pipeline configuration.",
     inputSchema: { dealId: z.string().describe("The deal id") },
     readOnly: true,
-    run: (ctx, input) =>
-      clientsService.getDealDetail(ctx, String(input.dealId)),
+    run: (ctx, input) => call(ctx, "get-deal", { id: String(input.dealId) }),
   },
   {
     name: "save_client",
@@ -52,7 +74,7 @@ export const clientTools: McpTool[] = [
     inputSchema: clientInputSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.saveClient(ctx, clientInputSchema.parse(input)),
+      call(ctx, "save-client", clientInputSchema.parse(input)),
   },
   {
     name: "save_contact",
@@ -62,7 +84,7 @@ export const clientTools: McpTool[] = [
     inputSchema: contactInputSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.saveContact(ctx, contactInputSchema.parse(input)),
+      call(ctx, "save-contact", contactInputSchema.parse(input)),
   },
   {
     name: "save_deal",
@@ -71,8 +93,7 @@ export const clientTools: McpTool[] = [
       "Create a deal (without `id`) or update one (with `id`). Moving a deal to a won/lost stage updates its status automatically.",
     inputSchema: dealInputSchema.shape,
     readOnly: false,
-    run: (ctx, input) =>
-      clientsService.saveDeal(ctx, dealInputSchema.parse(input)),
+    run: (ctx, input) => call(ctx, "save-deal", dealInputSchema.parse(input)),
   },
   {
     name: "move_deal",
@@ -81,8 +102,7 @@ export const clientTools: McpTool[] = [
       "Move a deal to a pipeline stage at a given position. Ask for a loss reason when moving to a lost stage.",
     inputSchema: moveDealSchema.shape,
     readOnly: false,
-    run: (ctx, input) =>
-      clientsService.moveDeal(ctx, moveDealSchema.parse(input)),
+    run: (ctx, input) => call(ctx, "move-deal", moveDealSchema.parse(input)),
   },
   {
     name: "log_client_activity",
@@ -90,9 +110,7 @@ export const clientTools: McpTool[] = [
     description:
       "Log a note, call, email or meeting on at least one company, contact or deal.",
     inputSchema: {
-      type: z
-        .enum(["note", "call", "email", "meeting"])
-        .default("note"),
+      type: z.enum(["note", "call", "email", "meeting"]).default("note"),
       subject: z.string().optional(),
       body: z.string().describe("The content of the entry"),
       occurredAt: z
@@ -105,7 +123,7 @@ export const clientTools: McpTool[] = [
     },
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.createActivity(ctx, activityInputSchema.parse(input)),
+      call(ctx, "create-client-activity", activityInputSchema.parse(input)),
   },
   {
     name: "list_client_documents",
@@ -118,11 +136,10 @@ export const clientTools: McpTool[] = [
     },
     readOnly: true,
     run: (ctx, input) =>
-      clientsService.listDocuments(
-        ctx,
-        input.entity as "client" | "contact" | "deal",
-        String(input.entityId)
-      ),
+      call(ctx, "list-client-documents", {
+        entity: input.entity,
+        entityId: String(input.entityId),
+      }),
   },
   {
     name: "link_client_document",
@@ -137,7 +154,7 @@ export const clientTools: McpTool[] = [
     },
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.linkDocument(ctx, linkDocumentSchema.parse(input)),
+      call(ctx, "link-client-document", linkDocumentSchema.parse(input)),
   },
   {
     name: "unlink_client_document",
@@ -147,7 +164,7 @@ export const clientTools: McpTool[] = [
     inputSchema: { documentId: z.string() },
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.unlinkDocument(ctx, String(input.documentId)),
+      call(ctx, "unlink-client-document", { id: String(input.documentId) }),
   },
   {
     name: "link_client_project",
@@ -157,7 +174,7 @@ export const clientTools: McpTool[] = [
     inputSchema: { clientId: z.string(), projectId: z.string() },
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.linkProject(ctx, linkProjectSchema.parse(input)),
+      call(ctx, "link-client-project", linkProjectSchema.parse(input)),
   },
   {
     name: "unlink_client_project",
@@ -167,6 +184,6 @@ export const clientTools: McpTool[] = [
     inputSchema: { clientId: z.string(), projectId: z.string() },
     readOnly: false,
     run: (ctx, input) =>
-      clientsService.unlinkProject(ctx, unlinkProjectSchema.parse(input)),
+      call(ctx, "unlink-client-project", unlinkProjectSchema.parse(input)),
   },
 ]

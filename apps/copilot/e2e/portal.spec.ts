@@ -53,6 +53,13 @@ test("a portal client sees its shared project and uploads and downloads document
   const clientId = await createClient(slug, clientName)
   await linkProjectToClient(sharedProjectId, clientId)
 
+  // A second company of the same organization must stay invisible: the portal
+  // visibility filter runs in the projects app, not in Copilot.
+  const otherClientId = await createClient(slug, `Other ${Date.now()}`)
+  const otherProject = `Other client ${Date.now()}`
+  const otherProjectId = await createProject(slug, otherProject)
+  await linkProjectToClient(otherProjectId, otherClientId)
+
   const email = uniqueEmail()
   const invitationId = await invitePortalClient(page, slug, clientId, email)
   const invitationUrl = `/accept-invitation?id=${encodeURIComponent(invitationId)}`
@@ -74,6 +81,16 @@ test("a portal client sees its shared project and uploads and downloads document
     await expect(
       client.page.getByText(privateProject, { exact: true })
     ).toHaveCount(0)
+    await expect(
+      client.page.getByText(otherProject, { exact: true })
+    ).toHaveCount(0)
+
+    // A direct project URL of another company is not found, even inside the
+    // same organization (the projects internal API scopes by portal client id).
+    const foreignProject = await client.page.request.get(
+      `/en/portal/projects/${otherProjectId}`
+    )
+    expect([403, 404]).toContain(foreignProject.status())
 
     // Upload a document from the portal and download the same bytes back.
     const content = `portal document ${Date.now()}`

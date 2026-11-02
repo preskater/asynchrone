@@ -1,13 +1,24 @@
 import { z } from "zod"
 
 import type { RequestContext } from "@workspace/core/context"
-import { messagingService } from "@/lib/messaging"
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import {
   createChannelSchema,
   sendMessageSchema,
 } from "@workspace/messaging/schemas"
 
 import type { McpTool } from "./projects"
+
+const result = z.unknown()
+
+function call(
+  ctx: RequestContext,
+  operation:
+    "list-conversations" | "list-messages" | "send-message" | "create-channel",
+  input: unknown
+) {
+  return callDomain("messages", operation, delegatedContext(ctx), input, result)
+}
 
 export const messagingTools: McpTool[] = [
   {
@@ -17,7 +28,7 @@ export const messagingTools: McpTool[] = [
       "List the workspace conversations (channels and direct messages). Each conversation includes its latest message preview; use list_messages for history.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => messagingService.list(ctx),
+    run: (ctx) => call(ctx, "list-conversations", {}),
   },
   {
     name: "list_messages",
@@ -29,14 +40,11 @@ export const messagingTools: McpTool[] = [
       cursor: z.string().optional(),
     },
     readOnly: true,
-    run: async (ctx, input) => {
-      const page = await messagingService.listMessages(
-        ctx,
-        String(input.conversationId),
-        { cursor: input.cursor as string | undefined }
-      )
-      return page.items
-    },
+    run: (ctx, input) =>
+      call(ctx, "list-messages", {
+        conversationId: String(input.conversationId),
+        cursor: input.cursor,
+      }),
   },
   {
     name: "send_message",
@@ -46,7 +54,7 @@ export const messagingTools: McpTool[] = [
     inputSchema: sendMessageSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      messagingService.sendMessage(ctx, sendMessageSchema.parse(input)),
+      call(ctx, "send-message", sendMessageSchema.parse(input)),
   },
   {
     name: "create_channel",
@@ -55,7 +63,7 @@ export const messagingTools: McpTool[] = [
     inputSchema: createChannelSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      messagingService.createChannel(ctx, createChannelSchema.parse(input)),
+      call(ctx, "create-channel", createChannelSchema.parse(input)),
   },
 ]
 

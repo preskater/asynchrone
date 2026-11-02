@@ -72,6 +72,54 @@ rejected.
 
 `SERVICE_SCOPES` in `@workspace/contracts` is the source of truth.
 
+## Delegated domain calls
+
+The assistant, MCP tools and the client portal run inside Copilot but their
+data belongs to the domain apps. They use the same client-credentials token and
+add a **delegated context** to the request:
+
+```ts
+POST /internal/v1/domain/create-project
+Authorization: Bearer <client-credentials token>
+Idempotency-Key: 7f4c…
+
+{
+  "context": {
+    "userId": "user_123",
+    "userName": "Alice",
+    "userEmail": "alice@example.com",
+    "organizationId": "org_123",
+    "role": "admin",
+    "impersonatedBy": null,
+    "portal": null
+  },
+  "input": { "name": "Launch" }
+}
+```
+
+- One operation per path (`/internal/v1/domain/:operation`), shared by the
+  domain apps.
+- The token proves the calling app; the delegated context proves on whose
+  behalf it acts. The target app still applies its own organization, role,
+  portal-visibility and row-level rules and never trusts an id from the caller.
+- Portal callers set `portal.clientId` / `portal.clientName`. The projects and
+  clients apps filter every read by that company, so a portal account cannot
+  read another company's project or document.
+- Mutations accept an optional `Idempotency-Key`. A retry with the same key
+  replays the first result instead of running the mutation twice; reads are
+  never replayed.
+- The target app writes the audit row (`recordUserAudit` with its own database
+  client) and its notification side effects.
+- Copilot's typed client lives in `@workspace/contracts` (`DomainClient`); the
+  gateway binds the token cache in `apps/copilot/lib/internal/domain.ts`.
+- Failures are typed: `DomainClientError` carries `code`, `status` and a
+  `retryable` flag. Reads retry transient failures; writes retry only with an
+  idempotency key.
+
+`createDomainHandler` from `@workspace/service-auth` implements the verifier,
+scope check, envelope, typed error mapping and per-process idempotency cache for
+a domain app.
+
 ## Network boundary
 
 `/internal/*` is never exposed through public ingress. The deployment adds a

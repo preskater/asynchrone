@@ -105,6 +105,15 @@ The handler reads `@workspace/db-identity` (`IDENTITY_DATABASE_URL`). It does no
 use the monolith database. Local tests use a fake `IdentityRepository`; after
 #185 the identity database is the source of truth.
 
+## Domain callers
+
+The assistant, MCP tools and the client portal resolve the user, organization
+and role in Copilot, then send that identity as a **delegated context** to the
+domain apps (`POST /internal/v1/domain/:operation`). They do not call the
+identity API per tool call. Portal access management (`listAccess`, `invite`,
+`revoke`, `cancelInvite`, `claim`) stays in Copilot because it owns Better Auth
+invitations and the `Member.clientId` link.
+
 ## Tests
 
 ```bash

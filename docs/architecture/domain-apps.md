@@ -106,9 +106,12 @@ caller and handler cannot drift. Audience is always the target app's
 
 - `INTERNAL_BASE_PATH` (`/internal/v1`) and `INTERNAL_ROUTES`;
 - Zod schemas for members, organizations, entitlements, audit events and pages,
-  search results, notifications, export manifests, deletion results and
-  service-token claims;
+  search results, notifications, export manifests, deletion results,
+  service-token claims and delegated domain calls (`DomainCallSchema`,
+  `DOMAIN_OPERATIONS`, portal read models);
 - `SERVICE_SCOPES` and the service-token helpers;
+- `DomainCallSchema`, `DOMAIN_OPERATIONS`, the portal read models and the typed
+  `DomainClient` for `POST /internal/v1/domain/:operation`;
 - `internalEnvelope(schema)` for the standard success response.
 
 The surface-by-surface inventory, internal endpoint map and parity checklist
@@ -130,10 +133,12 @@ The verifier and token cache live in `@workspace/service-auth` (#181).
   [Cross-database export and deletion](../domain-app-sagas.md).
 - Search and notifications use their own internal contracts; see
   [Search, notifications and recents](../search-and-notifications.md).
-- The assistant, MCP and portal call domain internal APIs; they do not import a
-  domain's Prisma client (#190). That wiring lands with the domain apps in
-  milestone #1; the foundation already ships the contracts, tokens and
-  failure-mode tests.
+- The assistant, MCP and portal call the domain apps through
+  `/internal/v1/domain/:operation`; they never import a domain Prisma client or
+  in-process service. The delegated context carries the user, organization,
+  role, impersonation and portal company, and the target app enforces its own
+  authorization and writes its own audit row. See
+  [Internal service authentication](../internal-service-auth.md).
 - Assistant conversations are private to one user in one organization. Copilot
   stores them in the identity database (`AssistantConversation`,
   `AssistantMessage`) and rebuilds the model history on the server; see
@@ -220,7 +225,8 @@ also catches imports in files that are not currently reachable from a route.
 - [x] Assistant conversations persisted with server-owned history (#165)
 - [x] Clients and employees apps at `clients.copilot.asynchrone.space` and
       `employees.copilot.asynchrone.space` (#163)
-- [ ] Assistant/MCP/portal domain wiring and control-tower DB cutover (#190, milestone #1)
+- [x] Assistant, MCP and portal moved onto the domain internal APIs (#190)
+- [ ] Control-tower DB cutover (milestone #1)
 - [x] Calendars and files apps at `calendars.copilot.asynchrone.space` and
       `files.copilot.asynchrone.space`, with the upload sweep cron and meeting
       settings moved out of Copilot (#161)

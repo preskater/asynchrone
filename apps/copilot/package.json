@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:contracts": "vitest run --config vitest.contracts.config.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx e2e/bootstrap.ts && playwright test",
     "verify:data-export": "tsx scripts/verify-data-export.ts",
     "verify:authorization": "tsx scripts/verify-authorization.ts",
     "verify:account-deletion": "tsx scripts/verify-account-deletion.ts",
