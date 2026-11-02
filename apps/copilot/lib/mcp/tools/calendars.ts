@@ -1,10 +1,26 @@
 import { z } from "zod"
 
-import { calendarService } from "@/lib/calendars"
+import { callDomain, delegatedContext } from "@/lib/internal/domain"
 import { createEventSchema } from "@workspace/calendars/schemas"
 import type { RequestContext } from "@workspace/core/context"
 
 import type { McpTool } from "./projects"
+
+const result = z.unknown()
+
+function call(
+  ctx: RequestContext,
+  operation: "list-calendars" | "create-event" | "respond-to-event",
+  input: unknown
+) {
+  return callDomain(
+    "calendars",
+    operation,
+    delegatedContext(ctx),
+    input,
+    result
+  )
+}
 
 export const calendarTools: McpTool[] = [
   {
@@ -13,7 +29,7 @@ export const calendarTools: McpTool[] = [
     description: "List the workspace calendars and their scheduled events.",
     inputSchema: {},
     readOnly: true,
-    run: (ctx) => calendarService.list(ctx),
+    run: (ctx) => call(ctx, "list-calendars", {}),
   },
   {
     name: "create_event",
@@ -23,7 +39,7 @@ export const calendarTools: McpTool[] = [
     inputSchema: createEventSchema.shape,
     readOnly: false,
     run: (ctx, input) =>
-      calendarService.createEvent(ctx, createEventSchema.parse(input)),
+      call(ctx, "create-event", createEventSchema.parse(input)),
   },
   {
     name: "respond_to_event",
@@ -36,9 +52,9 @@ export const calendarTools: McpTool[] = [
     },
     readOnly: false,
     run: (ctx, input) =>
-      calendarService.setAttendeeResponse(ctx, String(input.eventId), {
-        response: input.response as
-          "accepted" | "tentative" | "declined" | "pending",
+      call(ctx, "respond-to-event", {
+        eventId: String(input.eventId),
+        response: input.response,
       }),
   },
 ]

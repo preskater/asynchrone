@@ -1,6 +1,5 @@
 import type { Readable } from "node:stream"
 
-import { AUDIT_ACTIONS } from "@workspace/audit"
 import type { RequestContext } from "@workspace/core/context"
 import {
   ConflictError,
@@ -12,21 +11,18 @@ import {
 import type { PortalMeetingsData } from "@workspace/meetings/types"
 import type { ProjectMessageData } from "@workspace/projects/thread"
 import type { TaskCommentData } from "@workspace/projects/task-comments"
-import type {
-  PortalPolicy,
-  TaskPriority,
-  TaskStatus,
-} from "@workspace/projects/types"
+import type { PortalPolicy } from "@workspace/projects/types"
 import { MaxBytesExceededError } from "@workspace/storage"
 
 import { requireInternalMember, requirePortalManager } from "./context"
 import type {
-  PortalAudit,
+  PortalClientDocuments,
   PortalCollaboration,
   PortalFiles,
   PortalInvitations,
   PortalMeetings,
   PortalNotify,
+  PortalProjects,
   PortalStorage,
 } from "./deps"
 import type { PortalRepository } from "./repository"
@@ -44,18 +40,15 @@ import type {
 /** Direct uploads from the portal are capped to keep the single request sane. */
 export const MAX_PORTAL_UPLOAD_BYTES = 25 * 1024 * 1024
 
-function iso(value: Date | null | undefined): string | undefined {
-  return value ? value.toISOString() : undefined
-}
-
 export interface PortalServiceDeps {
   repository: PortalRepository
   storage: PortalStorage
   files: PortalFiles
+  projects: PortalProjects
+  clientDocuments: PortalClientDocuments
   collaboration: PortalCollaboration
   meetings: PortalMeetings
   invitations: PortalInvitations
-  audit: PortalAudit
   notify: PortalNotify
 }
 
@@ -85,8 +78,8 @@ export class PortalService {
   async getDashboard(ctx: PortalContext): Promise<PortalDashboardData> {
     const lastSeen = await this.lastSeenAt(ctx)
     const [projects, links] = await Promise.all([
-      this.repo.listDashboardProjects(ctx.organizationId, ctx.clientId),
-      this.repo.listClientDocuments(ctx.organizationId, ctx.clientId),
+      this.deps.projects.listProjects(ctx.organizationId, ctx.clientId),
+      this.deps.clientDocuments.listDocuments(ctx.organizationId, ctx.clientId),
     ])
 
     // Unread messages per project: anything the client has not seen yet,
@@ -94,8 +87,9 @@ export class PortalService {
     const projectIds = projects.map((project) => project.id)
     const unreadByProject = new Map<string, number>()
     if (projectIds.length > 0) {
-      const messages = await this.repo.listUnreadMessages(
+      const messages = await this.deps.projects.listUnreadMessages(
         ctx.organizationId,
+        ctx.clientId,
         projectIds,
         ctx.userId,
         lastSeen
@@ -115,21 +109,21 @@ export class PortalService {
         id: project.id,
         name: project.name,
         status: project.status,
-        dueDate: iso(project.dueDate),
-        doneTasks: project.tasks.filter((task) => task.status === "done")
-          .length,
-        totalTasks: project.tasks.length,
+        dueDate: project.dueDate,
+        doneTasks: project.doneTasks,
+        totalTasks: project.totalTasks,
         unreadCount: unreadByProject.get(project.id) ?? 0,
       })),
       documents: links.map((link) => ({
         id: link.id,
         fileId: link.fileId,
-        name: link.file.name,
-        sizeBytes: link.file.sizeBytes
-          ? Number(link.file.sizeBytes)
-          : undefined,
-        createdAt: link.createdAt.toISOString(),
-        isNew: lastSeen ? link.createdAt.getTime() > lastSeen.getTime() : true,
+        name: link.name,
+        sizeBytes: link.sizeBytes,
+        createdAt: link.createdAt,
+        addedByName: link.addedByName,
+        isNew: lastSeen
+          ? new Date(link.createdAt).getTime() > lastSeen.getTime()
+          : true,
       })),
     }
   }
@@ -139,29 +133,13 @@ export class PortalService {
     ctx: PortalContext,
     projectId: string
   ): Promise<PortalProjectDetailData> {
-    const project = await this.repo.findProject(
+    const project = await this.deps.projects.findProject(
       ctx.organizationId,
       ctx.clientId,
       projectId
     )
     if (!project) throw new NotFoundError("Project")
-
-    return {
-      id: project.id,
-      name: project.name,
-      description: project.description ?? undefined,
-      status: project.status,
-      dueDate: iso(project.dueDate),
-      createdAt: project.createdAt.toISOString(),
-      tasks: project.tasks.map((task) => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        dueDate: iso(task.dueDate),
-      })),
-      discussionPolicy: project.clientDiscussion as PortalPolicy,
-      taskCommentsPolicy: project.clientTaskComments as PortalPolicy,
-    }
+    return project
   }
 
   /** The client-facing meetings read model, bound to `@workspace/meetings`. */
@@ -178,14 +156,18 @@ export class PortalService {
     ctx: PortalContext,
     projectId: string
   ): Promise<ProjectMessageData[]> {
-    const project = await this.repo.findProjectPolicy(
+    const project = await this.deps.projects.findProjectPolicy(
       ctx.organizationId,
       ctx.clientId,
       projectId
     )
     if (!project) throw new NotFoundError("Project")
     if (project.clientDiscussion === "none") return []
-    return this.deps.collaboration.listMessages(ctx.organizationId, projectId)
+    return this.deps.collaboration.listMessages(
+      ctx.organizationId,
+      ctx.clientId,
+      projectId
+    )
   }
 
   /** Post a message as the client; the team gets an in-app notification. */
@@ -196,7 +178,7 @@ export class PortalService {
   ): Promise<ProjectMessageData> {
     const text = body.trim()
     if (!text) throw new ValidationError("The message is empty.")
-    const project = await this.repo.findProjectPolicy(
+    const project = await this.deps.projects.findProjectPolicy(
       ctx.organizationId,
       ctx.clientId,
       projectId
@@ -209,8 +191,11 @@ export class PortalService {
     }
     return this.deps.collaboration.createMessage({
       organizationId: ctx.organizationId,
+      clientId: ctx.clientId,
+      clientName: ctx.clientName,
       projectId,
       authorId: ctx.userId,
+      authorName: ctx.userName,
       authorKind: "client",
       body: text,
     })
@@ -226,15 +211,16 @@ export class PortalService {
     comments: TaskCommentData[]
     commentsPolicy: PortalPolicy
   }> {
-    const project = await this.repo.findProjectPolicy(
+    const project = await this.deps.projects.findProjectPolicy(
       ctx.organizationId,
       ctx.clientId,
       projectId
     )
     if (!project) throw new NotFoundError("Project")
 
-    const task = await this.repo.findProjectTask(
+    const task = await this.deps.projects.findProjectTask(
       ctx.organizationId,
+      ctx.clientId,
       projectId,
       taskId
     )
@@ -246,27 +232,12 @@ export class PortalService {
         ? []
         : await this.deps.collaboration.listTaskComments(
             ctx.organizationId,
+            ctx.clientId,
             taskId
           )
 
     return {
-      task: {
-        id: task.id,
-        identifier: task.identifier,
-        title: task.title,
-        description: task.description ?? undefined,
-        status: task.status as TaskStatus,
-        priority: task.priority as TaskPriority,
-        dueDate: iso(task.dueDate),
-        endDate: iso(task.endDate),
-        createdAt: task.createdAt.toISOString(),
-        labels: task.labels.map((entry) => entry.label.name),
-        subtasks: task.subtasks.map((subtask) => ({
-          id: subtask.id,
-          title: subtask.title,
-          done: subtask.done,
-        })),
-      },
+      task,
       comments,
       commentsPolicy: policy,
     }
@@ -281,7 +252,7 @@ export class PortalService {
   ): Promise<TaskCommentData> {
     const text = body.trim()
     if (!text) throw new ValidationError("The comment is empty.")
-    const project = await this.repo.findProjectPolicy(
+    const project = await this.deps.projects.findProjectPolicy(
       ctx.organizationId,
       ctx.clientId,
       projectId
@@ -292,10 +263,17 @@ export class PortalService {
         code: "portal_read_only",
       })
     }
-    const task = await this.repo.findTask(ctx.organizationId, projectId, taskId)
+    const task = await this.deps.projects.findTask(
+      ctx.organizationId,
+      ctx.clientId,
+      projectId,
+      taskId
+    )
     if (!task) throw new NotFoundError("Task")
     return this.deps.collaboration.createTaskComment({
       organizationId: ctx.organizationId,
+      clientId: ctx.clientId,
+      clientName: ctx.clientName,
       taskId,
       authorId: ctx.userId,
       authorKind: "client",
@@ -306,26 +284,10 @@ export class PortalService {
 
   /** All documents shared with the client's company. */
   async getDocuments(ctx: PortalContext): Promise<PortalDocumentData[]> {
-    const links = await this.repo.listClientDocuments(
+    return this.deps.clientDocuments.listDocuments(
       ctx.organizationId,
       ctx.clientId
     )
-
-    const nameById = new Map<string, string>()
-    const addedByIds = [...new Set(links.map((link) => link.addedBy))]
-    if (addedByIds.length > 0) {
-      const users = await this.repo.listUserNames(addedByIds)
-      for (const user of users) nameById.set(user.id, user.name)
-    }
-
-    return links.map((link) => ({
-      id: link.id,
-      fileId: link.fileId,
-      name: link.file.name,
-      sizeBytes: link.file.sizeBytes ? Number(link.file.sizeBytes) : undefined,
-      createdAt: link.createdAt.toISOString(),
-      addedByName: nameById.get(link.addedBy),
-    }))
   }
 
   /**
@@ -337,19 +299,19 @@ export class PortalService {
     ctx: PortalContext,
     fileId: string
   ): Promise<PortalDocumentFile> {
-    const link = await this.repo.findClientDocumentLink(
+    const link = await this.deps.clientDocuments.findDocumentLink(
       ctx.organizationId,
       ctx.clientId,
       fileId
     )
-    if (!link || link.file.trashed || link.file.oid === null) {
+    if (!link || link.trashed || link.oid === null) {
       throw new NotFoundError("Document")
     }
 
-    const { size, stream } = await this.deps.storage.open(Number(link.file.oid))
+    const { size, stream } = await this.deps.storage.open(Number(link.oid))
     return {
-      name: link.file.name,
-      mimeType: link.file.mimeType ?? undefined,
+      name: link.name,
+      mimeType: link.mimeType ?? undefined,
       size,
       stream,
     }
@@ -420,22 +382,18 @@ export class PortalService {
       sha256: uploaded.sha256,
     })
 
-    const link = await this.repo.createClientDocument({
+    const link = await this.deps.clientDocuments.createDocument({
       organizationId: ctx.organizationId,
-      fileId: file.id,
       clientId: ctx.clientId,
+      fileId: file.id,
+      name: input.name,
+      sizeBytes: uploaded.size,
       addedBy: ctx.userId,
+      addedByName: ctx.userName,
+      addedByEmail: ctx.userEmail,
     })
 
-    // Surface the upload on the company timeline like an internal link would.
-    await this.deps.audit(ctx, {
-      action: AUDIT_ACTIONS.clientDocumentLinked,
-      entityType: "client",
-      entityId: ctx.clientId,
-      entityLabel: ctx.clientName,
-      after: { fileName: input.name },
-    })
-
+    // The clients app writes the `client.document.linked` audit row.
     await this.notifyTeamOfClientDocument(ctx, input.name)
 
     return {
@@ -443,7 +401,7 @@ export class PortalService {
       fileId: file.id,
       name: input.name,
       sizeBytes: uploaded.size,
-      createdAt: link.createdAt.toISOString(),
+      createdAt: link.createdAt,
       addedByName: ctx.userName,
       isNew: true,
     }
@@ -455,7 +413,7 @@ export class PortalService {
     fileName: string
   ): Promise<void> {
     const [client, admins] = await Promise.all([
-      this.repo.findClient(ctx.clientId),
+      this.deps.clientDocuments.findClient(ctx.organizationId, ctx.clientId),
       this.repo.listClientAdmins(ctx.organizationId),
     ])
 
@@ -534,7 +492,7 @@ export class PortalService {
   ): Promise<{ invite: { id: string; email: string; invitationId?: string } }> {
     requirePortalManager(ctx)
 
-    const client = await this.repo.findClientInOrganization(
+    const client = await this.deps.clientDocuments.findClientInOrganization(
       ctx.organizationId,
       input.clientId
     )

@@ -1,10 +1,11 @@
 import type {
-  PortalAudit,
+  PortalClientDocuments,
   PortalCollaboration,
   PortalFiles,
   PortalInvitations,
   PortalMeetings,
   PortalNotify,
+  PortalProjects,
   PortalStorage,
 } from "./deps"
 import { PortalRepository, type PortalDb } from "./repository"
@@ -17,14 +18,16 @@ export interface PortalRuntimeOptions {
   storage: PortalStorage
   /** Copilot's `@workspace/files` service, quota and usage readers. */
   files: PortalFiles
+  /** Projects app reads through its internal API. */
+  projects: PortalProjects
+  /** Clients app reads and document links through its internal API. */
+  clientDocuments: PortalClientDocuments
   /** Copilot's `@workspace/projects` thread and task-comment adapters. */
   collaboration: PortalCollaboration
   /** Copilot's `@workspace/meetings` service. */
   meetings: PortalMeetings
   /** Better Auth invitations, bound with the request headers. */
   invitations: PortalInvitations
-  /** `recordUserAudit` from Copilot's audit adapter. */
-  audit: PortalAudit
   /** Copilot's notification inbox. */
   notify: PortalNotify
 }
@@ -50,10 +53,11 @@ export function createPortalRuntime(
     repository,
     storage: options.storage,
     files: options.files,
+    projects: options.projects,
+    clientDocuments: options.clientDocuments,
     collaboration: options.collaboration,
     meetings: options.meetings,
     invitations: options.invitations,
-    audit: options.audit,
     notify: options.notify,
   })
 

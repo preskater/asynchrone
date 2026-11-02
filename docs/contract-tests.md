@@ -26,7 +26,7 @@ clients, migrates and runs the suite.
 | Recents             | The storage key is per organization and every app bucket normalizes.                                                                                                                                 |
 | Search              | Copilot keeps the fan-out but reads in-process domains through their packages; an in-process adapter never answers for another organization and never exposes a conversation to an uninvited member. |
 | Export/deletion     | Owners only, one export in flight, grace period, tenant isolation, saga readiness and authorized internal handlers.                                                                                  |
-| MCP/assistant tools | Every tool runs through a package adapter, never `fetch`/app routes/service clients, and cross-organization ids are rejected at the tool boundary.                                                   |
+| MCP/assistant tools | Every tool runs through `DomainClient` (`/internal/v1/domain/:operation`), never an in-process domain adapter, Prisma client or ad-hoc `fetch`; reads retry, unkeyed mutations do not, and cross-organization calls surface a typed `not_found`. |
 | Assistant history   | Accepted user turns and completed assistant parts are stored, the reload rebuilds the same model input, the list is scoped to the signed-in user, deleting a conversation cascades its messages, and another organization or another member cannot read, extend or delete a conversation. |
 | Issue #40           | The cross-org subtask toggle, forged context, reaction and calendar-attendee attacks are replayed against the packages and the database is inspected afterwards.                                     |
 
@@ -44,8 +44,7 @@ clients, migrates and runs the suite.
 4. If it exposes MCP/assistant tools, add the adapter assertion in
    [`mcp-assistant.contract.test.ts`](../apps/copilot/scripts/contracts/mcp-assistant.contract.test.ts).
 
-Search and the MCP/assistant tools currently call the domain **packages in
-process**. When #190 moves them onto `/internal/v1/*`, those adapters are the
-only files that need to change; the contract suite then pins the typed internal
-clients instead of the package services, and keeps the same cross-organization
-cases.
+Search still reads in-process domains through their packages. The assistant,
+MCP tools and portal call `/internal/v1/domain/:operation` through
+`DomainClient`; the contract suite pins the typed client (retry, typed errors,
+idempotency keys) and the live domain apps reject the cross-organization cases.

@@ -2,107 +2,112 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
-import type { RequestContext } from "@workspace/core/context"
+import { DomainClient, type DelegatedContext } from "@workspace/contracts"
 
 import { allMcpTools } from "@/lib/mcp/server"
 import { assistantTools } from "@/lib/assistant/tools"
-
-import { createContractFixture, type ContractFixture } from "./fixtures"
 
 const toolsDir = fileURLToPath(new URL("../../lib/mcp/tools", import.meta.url))
 const assistantFile = fileURLToPath(
   new URL("../../lib/assistant/tools.ts", import.meta.url)
 )
-const webLib = fileURLToPath(new URL("../../lib", import.meta.url))
-
-/** Tool module → the domain package its app adapter must bind in process. */
-const ADAPTER_PACKAGES: Record<string, string> = {
-  "calendars.ts": "@workspace/calendars",
-  "clients.ts": "@workspace/clients",
-  "employees.ts": "@workspace/employees",
-  "files.ts": "@workspace/files",
-  "meetings.ts": "@workspace/meetings",
-  "messaging.ts": "@workspace/messaging",
-  "projects.ts": "@workspace/projects",
-}
+const portalFile = fileURLToPath(
+  new URL("../../lib/portal/index.ts", import.meta.url)
+)
+const gatewayFile = fileURLToPath(
+  new URL("../../lib/internal/domain.ts", import.meta.url)
+)
 
 function toolSources() {
-  const files = readdirSync(toolsDir)
-    .filter((name) => name.endsWith(".ts"))
-    .map((name) => ({
-      name,
-      source: readFileSync(join(toolsDir, name), "utf8"),
-    }))
   return [
-    ...files,
+    ...readdirSync(toolsDir)
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => ({
+        name,
+        source: readFileSync(join(toolsDir, name), "utf8"),
+      })),
     { name: "assistant/tools.ts", source: readFileSync(assistantFile, "utf8") },
   ]
 }
 
-function adapterSource(relative: string) {
-  return readFileSync(join(webLib, relative), "utf8")
+const DOMAIN_ADAPTERS = [
+  "@/lib/projects",
+  "@/lib/calendars",
+  "@/lib/files",
+  "@/lib/messaging",
+  "@/lib/clients",
+  "@/lib/employees",
+  "@/lib/meetings",
+]
+
+const context: DelegatedContext = {
+  userId: "user_a",
+  userName: "Alice",
+  userEmail: "alice@example.com",
+  organizationId: "org_a",
+  role: "member",
+  impersonatedBy: null,
+  portal: null,
 }
 
-function tool(name: string) {
-  const found = allMcpTools.find((candidate) => candidate.name === name)
-  expect(found, `missing MCP tool ${name}`).toBeDefined()
-  return found!
-}
-
-describe("MCP and assistant tool contract", () => {
-  it("never reaches for an HTTP route or a service client", () => {
-    for (const { name, source } of toolSources()) {
-      expect(source, `${name} must not call fetch`).not.toMatch(/\bfetch\s*\(/)
-      expect(source, `${name} must not import an app route`).not.toMatch(
-        /from\s+["']@\/app\//
-      )
-      expect(source, `${name} must not use the search fan-out`).not.toMatch(
-        /@\/lib\/search/
-      )
-      expect(source, `${name} must not build service clients`).not.toMatch(
-        /\b(SearchClient|SagaClient|ServiceTokenClient|IdentityAdminClient)\b/
-      )
-      expect(source, `${name} must not hard-code an origin`).not.toMatch(
-        /https?:\/\//
-      )
-    }
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify({ data }), {
+    status,
+    headers: { "Content-Type": "application/json" },
   })
+}
 
-  it("runs every domain tool through the package adapter", () => {
-    const assistant = readFileSync(assistantFile, "utf8")
-    for (const adapter of [
-      "@/lib/projects",
-      "@/lib/calendars",
-      "@/lib/files",
-      "@/lib/messaging",
-    ]) {
-      expect(assistant).toContain(adapter)
-    }
+function errorResponse(
+  status: number,
+  code: string,
+  message: string
+): Response {
+  return new Response(JSON.stringify({ error: { code, message } }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
 
-    for (const [file, packageName] of Object.entries(ADAPTER_PACKAGES)) {
-      const source = readFileSync(join(toolsDir, file), "utf8")
-      expect(source, `${file} must import a package schema`).toMatch(
-        new RegExp(`["']${packageName.replace("/", "\\/")}`)
+function client(fetchImpl: typeof fetch) {
+  return new DomainClient({
+    app: "projects",
+    baseUrl: "https://projects.test",
+    getToken: async () => "service-token",
+    fetchImpl,
+    retryDelayMs: 0,
+  })
+}
+
+describe("assistant, MCP and portal call typed domain clients", () => {
+  it("never imports an in-process domain adapter or a Prisma client", () => {
+    for (const { name, source } of toolSources()) {
+      for (const adapter of DOMAIN_ADAPTERS) {
+        expect(source, `${name} must not import ${adapter}`).not.toContain(
+          `from "${adapter}"`
+        )
+      }
+      expect(source, `${name} must use the internal gateway`).toContain(
+        "@/lib/internal/domain"
+      )
+      expect(source, `${name} must not call fetch`).not.toMatch(/\bfetch\s*\(/)
+      expect(source, `${name} must not import Prisma`).not.toMatch(
+        /@prisma\/client|@workspace\/db/
       )
     }
 
-    expect(adapterSource("projects/index.ts")).toContain(
-      "@workspace/projects/service"
-    )
-    expect(adapterSource("clients/index.ts")).toContain(
-      "@workspace/clients/service"
-    )
-    expect(adapterSource("employees/index.ts")).toContain(
-      "@workspace/employees/service"
-    )
-    expect(adapterSource("calendars/index.ts")).toContain(
-      "@workspace/calendars"
-    )
-    expect(adapterSource("meetings/index.ts")).toContain("@workspace/meetings")
-    expect(adapterSource("files.ts")).toContain("@workspace/files")
-    expect(adapterSource("messaging.ts")).toContain("@workspace/messaging")
+    const portal = readFileSync(portalFile, "utf8")
+    expect(portal).toContain("@/lib/internal/domain")
+    expect(portal).not.toContain("@/lib/projects")
+    expect(portal).not.toContain("@/lib/files")
+    expect(portal).not.toContain("@/lib/messaging")
+    expect(portal).not.toContain("@/lib/meetings")
+
+    const gateway = readFileSync(gatewayFile, "utf8")
+    expect(gateway).toContain("DomainClient")
+    expect(gateway).toContain("delegatedPortalContext")
   })
 
   it("keeps a well-formed, read/write annotated surface", () => {
@@ -119,65 +124,99 @@ describe("MCP and assistant tool contract", () => {
   })
 })
 
-describe("MCP tools against another organization", () => {
-  let fixture: ContractFixture
+describe("DomainClient failure modes", () => {
+  it("retries a transient read and returns the typed payload", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(503, "unavailable", "try again"))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          projects: [{ id: "project_a" }],
+        })
+      )
 
-  beforeAll(async () => {
-    fixture = await createContractFixture()
-  })
-
-  afterAll(async () => {
-    await fixture?.cleanup()
-  })
-
-  function run(
-    name: string,
-    ctx: RequestContext,
-    input: Record<string, unknown>
-  ) {
-    return tool(name).run(ctx, input)
-  }
-
-  it("lists only the active organization's projects", async () => {
-    const projects = (await run("list_projects", fixture.ctxAlice, {})) as {
-      projects: { id: string }[]
-    }
-    expect(projects.projects.map((project) => project.id)).toContain(
-      fixture.projectA
+    const result = await client(fetchImpl).call(
+      "list-projects",
+      context,
+      {},
+      z.object({ projects: z.array(z.object({ id: z.string() })) })
     )
-    expect(projects.projects.map((project) => project.id)).not.toContain(
-      fixture.projectB
-    )
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(result.projects[0]?.id).toBe("project_a")
   })
 
-  it("rejects cross-organization ids at every domain boundary", async () => {
-    const attempts = [
-      run("get_project", fixture.ctxMallory, { projectId: fixture.projectA }),
-      run("get_client", fixture.ctxMallory, { clientId: fixture.clientA }),
-      run("rename_file", fixture.ctxMallory, {
-        fileId: fixture.fileA,
-        name: "hijacked.txt",
-      }),
-      run("list_messages", fixture.ctxMallory, {
-        conversationId: fixture.conversationA,
-      }),
-      run("respond_to_event", fixture.ctxMallory, {
-        eventId: fixture.eventA,
-        response: "declined",
-      }),
-      run("decide_leave", fixture.ctxMallory, {
-        requestId: fixture.leaveA,
-        decision: "approved",
-      }),
-      run("accept_meeting_request", fixture.ctxMallory, {
-        id: fixture.meetingRequestA,
-        slotId: fixture.meetingSlotA,
-      }),
-    ]
+  it("does not retry an unkeyed mutation", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(errorResponse(503, "unavailable", "try again"))
 
-    const results = await Promise.allSettled(attempts)
-    for (const result of results) {
-      expect(result.status).toBe("rejected")
+    await expect(
+      client(fetchImpl).call(
+        "create-project",
+        context,
+        { name: "Nope" },
+        z.unknown()
+      )
+    ).rejects.toMatchObject({ code: "unavailable" })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("retries a keyed mutation and forwards the idempotency key", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(503, "unavailable", "try again"))
+      .mockResolvedValueOnce(jsonResponse({ id: "project_a" }))
+
+    await client(fetchImpl).call(
+      "create-project",
+      context,
+      { name: "Project" },
+      z.object({ id: z.string() }),
+      { idempotencyKey: "same-request" }
+    )
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    for (const call of fetchImpl.mock.calls) {
+      expect(
+        (call[1]?.headers as Record<string, string>)["Idempotency-Key"]
+      ).toBe("same-request")
     }
+  })
+
+  it("surfaces a cross-organization rejection as a typed error", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(errorResponse(404, "not_found", "Project not found"))
+
+    await expect(
+      client(fetchImpl).getPortalProject(context, "project_b")
+    ).rejects.toMatchObject({
+      name: "DomainClientError",
+      code: "not_found",
+      status: 404,
+    })
+  })
+
+  it("times out instead of hanging a tool call", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      (_input, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"))
+          })
+        })
+    )
+
+    await expect(
+      new DomainClient({
+        app: "projects",
+        baseUrl: "https://projects.test",
+        getToken: async () => "service-token",
+        fetchImpl,
+        timeoutMs: 5,
+        readRetries: 0,
+      }).call("list-projects", context, {}, z.unknown())
+    ).rejects.toMatchObject({ code: "domain_unavailable" })
   })
 })

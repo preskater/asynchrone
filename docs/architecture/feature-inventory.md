@@ -204,8 +204,8 @@ Target: `apps/projects` / `@workspace/projects`.
 Extracted in #153, moved to its own app in #160: pages, actions, shell, OIDC
 session and deployment live in `apps/projects`, which serves
 `projects.copilot.asynchrone.space/{locale}/{orgSlug}/projects`. Copilot keeps
-only a redirect (`apps/copilot/proxy.ts`) and the in-process adapters the
-assistant, MCP and portal still use until #190.
+only a redirect (`apps/copilot/proxy.ts`); the assistant, MCP and portal call
+its `/internal/v1/domain/:operation` API (#190).
 
 Transitional gap: `@workspace/projects` reads `member`, `user` and `account`
 (member list, invitations/roles, personal repository tokens), so `apps/projects`
@@ -281,14 +281,14 @@ Target: `apps/calendars` / `@workspace/calendars` + `@workspace/meetings`.
 
 | Package                | Ships                                                                                                  | Bound by                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers            | `apps/calendars/lib/calendars/index.ts` binds `CalendarDb` over the transitional shared client; `apps/copilot/lib/calendars/index.ts` keeps the in-process adapter for the assistant/MCP/search until #190 |
-| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters | `apps/calendars/lib/meetings/index.ts` binds `MeetingDb` and the notification inbox; Copilot keeps its own instance for the portal and MCP until #190 |
+| `@workspace/calendars` | Calendar/event/attendee types, Zod schemas, membership and event rules, date/layout helpers            | `apps/calendars/lib/calendars/index.ts` binds `CalendarDb`; the assistant, MCP and portal use the delegated internal API (#190) |
+| `@workspace/meetings`  | Meeting settings, client requests, proposed slots, booking rules and the meeting-app provider adapters | `apps/calendars/lib/meetings/index.ts` binds `MeetingDb` and the notification inbox; the portal and MCP call it through the internal API (#190) |
 
 Both packages are Next-free and depend only on `@workspace/core` and
 `@workspace/organization`. Repositories take narrow structural ports
 (`CalendarDb`, `MeetingDb`), so the same service runs in the calendars app, the
-portal (in-process until #190) and Copilot without importing another app's
-client. Unit tests use the repository ports.
+portal (through the calendars internal API) and Copilot without importing
+another app's client. Unit tests use the repository ports.
 
 ### Routes and surfaces
 
@@ -311,8 +311,8 @@ Target: `apps/files` / `@workspace/files`. The package landed in #155 and the
 screens, actions, upload/download APIs and the `uploads-sweep` route moved to
 `apps/files` in #161, bound through `apps/files/lib/files.ts` and
 `apps/files/components/files-provider.tsx`. Copilot keeps
-`apps/copilot/lib/files.ts` for the portal, assistant, MCP, search, export and
-deletion adapters until #190.
+`apps/copilot/lib/files.ts` for search, export and deletion; the portal,
+assistant and MCP call the files internal API (#190).
 
 | Surface                                       | Location                                                                                                                                                                                                                       | Notes                                                                                                      |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -400,7 +400,7 @@ shell, the host-only OIDC session and the audit/notification wiring.
 | `packages/clients/src/components/use-clients.ts`             | Formatting, CSV download and `datetime-local` helpers                                                       |
 | `apps/clients/lib/clients/index.ts`                               | Adapter: binds the Prisma client, `recordAuditMany`/`withActorIdentity` and the notification inbox          |
 | `apps/clients/lib/client-actions.ts`                              | Builds `CLIENT_ACTIONS` from `actions/clients.ts` and exposes it through `ClientActionsProvider`             |
-| `apps/copilot/lib/clients/index.ts`                               | Copilot adapter for the assistant, MCP, portal and search (in-process until #190)                            |
+| `apps/copilot/lib/clients/index.ts`                               | Copilot search adapter; assistant, MCP and portal use the clients internal API (#190)                       |
 
 ### Routes
 
@@ -469,7 +469,7 @@ shell, the host-only OIDC session and the audit wiring.
 | `packages/employees/src/components/actions.tsx`            | `EmployeeActions` port + `EmployeeActionsProvider` / `useEmployeeActions()`                        |
 | `apps/employees/lib/employees/index.ts`                          | Adapter: binds the Prisma client and `recordAuditMany`/`withActorIdentity`                         |
 | `apps/employees/lib/employee-actions.ts`                         | Builds `EMPLOYEE_ACTIONS` from `actions/employees.ts` and mounts the provider                      |
-| `apps/copilot/lib/employees/index.ts`                            | Copilot adapter for the assistant and MCP (in-process until #190)                                  |
+| `apps/copilot/lib/employees/index.ts`                            | Copilot search adapter; assistant and MCP use the employees internal API (#190)                   |
 
 ### Routes
 
@@ -511,7 +511,7 @@ package landed in #158: `@workspace/portal` owns the context and authorization
 rules, the dashboard/project/task/document read models, document upload and
 download, the shared thread and task comments, portal access management and the
 meetings read model. Portal reads still run in-process through the domain
-packages until #190 replaces them with internal API calls.
+packages until #190 replaced them with internal API calls (`DomainClient`).
 
 | Surface        | Inventory                                                                                                                                                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -522,7 +522,7 @@ packages until #190 replaces them with internal API calls.
 | Models         | `PortalInvite`, `Member.clientId` (identity); `Client` (clients); `Project`, `Task`, `ProjectMessage`, `TaskComment` (projects); `FileNode` (files)                                                                           |
 | Access rules   | per-project client access policy: portal visibility, discussion and task comments each `hidden` / `read` / `read & write`; portal accounts are `role=client` and blocked from the workspace, server actions, file API and MCP |
 | Badges         | “new since last visit” state per portal user                                                                                                                                                                                  |
-| Audit          | portal document upload writes `client.document.linked`; portal message/task-comment mutations still write no `AuditLog` row; #190 must preserve that behavior or add a deliberate action                                      |
+| Audit          | `client.document.linked` is written by the clients app for a portal upload; portal message/task-comment mutations still write no `AuditLog` row (preserved)                                                                   |
 | Tests          | `packages/portal/src/service.unit.test.ts` (client scope, cross-org, access management, upload/download), `e2e/portal.spec.ts` (invitation → portal, project visibility, document upload/download, workspace and portal rejection), `verify:portal`, `verify:data-export`, `verify:organization-deletion` |
 
 ### Package layout (#158)
@@ -577,7 +577,7 @@ always applies its own organization, role, visibility and portal rules.
 | `GET /organizations/:id/export`          | each domain | `@workspace/sagas` `createExportHandler`, `ExportPartSchema`                 | `internal:export:read`         | handler exists, not wired             |
 | `DELETE /organizations/:id`              | each domain | `@workspace/sagas` `createDeleteOrganizationHandler`, `DeletionResultSchema` | `internal:delete:write`        | handler exists, not wired             |
 | `DELETE /users/:id`                      | each domain | `@workspace/sagas` `createDeleteUserHandler`, `DeletionResultSchema`         | `internal:delete:write`        | handler exists, not wired             |
-| Domain CRUD used by assistant/MCP/portal | each domain | to be defined by #190                                                        | `internal:domain:read/write`   | planned                               |
+| Domain CRUD used by assistant/MCP/portal | each domain | `createDomainHandler` + `/internal/v1/domain/:operation`, `DomainCallSchema`   | `internal:domain:read/write`   | implemented (#190)                    |
 
 `packages/contracts/src/internal/contracts.ts` owns `INTERNAL_ROUTES` and the
 shared schemas; `packages/contracts/src/clients/*` owns the typed clients. Do
@@ -656,14 +656,15 @@ parentheses; keep the checklist honest rather than pre-checking it.
 - [x] The client portal stays here: `/{locale}/portal` pages, `/api/portal/*`,
       the client invitation flow, document upload/download, project visibility
       and the workspace/portal redirects, with Playwright coverage (#164).
-- [ ] The portal reads domain data through internal APIs instead of the
+- [x] The portal reads domain data through internal APIs instead of the
       in-process packages (#190).
 - [x] Conversations persist and the server owns model history (#165).
 - [x] Copilot is the organization home: `/{locale}/{orgSlug}` renders the
       server-loaded conversation list, new chat, streaming transcript and tool
       cards with create/reopen/delete, and no separate shell redirect is needed
       (#166).
-- [ ] No domain Prisma import remains after #190.
+- [x] No domain Prisma import remains in the assistant, MCP tools or portal
+      adapter (#190).
 
 ### Projects (#153, #160)
 
@@ -684,7 +685,8 @@ parentheses; keep the checklist honest rather than pre-checking it.
       (`/api/cron/repository-sync`, `CRON_SECRET`) (#168).
 - [ ] MCP tools and repository webhooks move to the projects app (#190).
 - [ ] Search, export and deletion endpoints are wired.
-- [ ] Assistant, MCP and portal reach it through internal clients.
+- [x] Assistant, MCP and portal reach it through `DomainClient` and
+      `/internal/v1/domain/:operation` (#190).
 
 ### Calendars (#154, #161)
 
@@ -694,7 +696,7 @@ parentheses; keep the checklist honest rather than pre-checking it.
       (`APP=calendars`), chart, compose service and CI jobs (#161).
 - [ ] Calendar/event/meeting models in `asynchrone_calendars` (the app still
       binds the shared client until #190; `oidcSession` is already migrated).
-- [ ] MCP tools and the assistant keep their in-process adapter until #190.
+- [x] MCP tools and the assistant use the calendars internal API (#190).
 - [ ] Search, export and deletion endpoints are wired.
 - [ ] Meeting scheduling does not read another app's database (the portal and
       the task overlay still read in-process).

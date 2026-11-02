@@ -53,6 +53,13 @@ test("a portal client sees its shared project and uploads and downloads document
   const clientId = await createClient(slug, clientName)
   await linkProjectToClient(sharedProjectId, clientId)
 
+  // A second company of the same organization must stay invisible: the portal
+  // visibility filter runs in the projects app, not in Copilot.
+  const otherClientId = await createClient(slug, `Other ${Date.now()}`)
+  const otherProject = `Other client ${Date.now()}`
+  const otherProjectId = await createProject(slug, otherProject)
+  await linkProjectToClient(otherProjectId, otherClientId)
+
   const email = uniqueEmail()
   const invitationId = await invitePortalClient(page, slug, clientId, email)
   const invitationUrl = `/accept-invitation?id=${encodeURIComponent(invitationId)}`
@@ -73,6 +80,9 @@ test("a portal client sees its shared project and uploads and downloads document
     ).toBeVisible()
     await expect(
       client.page.getByText(privateProject, { exact: true })
+    ).toHaveCount(0)
+    await expect(
+      client.page.getByText(otherProject, { exact: true })
     ).toHaveCount(0)
 
     // Upload a document from the portal and download the same bytes back.

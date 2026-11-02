@@ -4,10 +4,10 @@
  * the "new since last visit" state, portal access management and the client
  * meetings read model.
  *
- * The package owns every rule; Copilot binds its database, large-object store,
- * files service, project thread, meetings service, Better Auth invitations,
- * audit writer and notification inbox through `createPortalRuntime`. The
- * portal has no app of its own: its routes and APIs stay in Copilot.
+ * The package owns every rule; Copilot binds its identity database, large-object
+ * store, Better Auth invitations, audit/notification adapters and the projects,
+ * clients, files and meetings internal clients through `createPortalRuntime`.
+ * The portal has no app of its own: its routes and APIs stay in Copilot.
  */
 export {
   isPortalContext,
@@ -16,13 +16,16 @@ export {
   requirePortalManager,
 } from "./context"
 export type {
-  PortalAudit,
+  PortalClientDocuments,
   PortalCollaboration,
   PortalFiles,
   PortalInvitations,
   PortalMeetings,
   PortalMessageInput,
   PortalNotify,
+  PortalProjectPolicy,
+  PortalProjectSummaryRow,
+  PortalProjects,
   PortalStorage,
   PortalTaskCommentInput,
 } from "./deps"
