@@ -93,6 +93,7 @@ export type ServiceErrorCode =
   | "account_platform_operator"
   | "account_sole_owner"
   | "account_impersonated"
+  | "account_deletion_partial"
 
 export type ErrorCode = AppErrorCode | ServiceErrorCode
 

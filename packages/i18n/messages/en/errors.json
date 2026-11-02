@@ -112,5 +112,6 @@
   "accountPasswordInvalid": "The password is incorrect.",
   "accountPlatformOperator": "Platform operator accounts cannot be deleted here. Ask another platform admin to remove your platform role first.",
   "accountSoleOwner": "You are the only owner of {organizations}. Transfer ownership or delete the organization first.",
-  "accountImpersonated": "This account cannot be deleted from a session opened by the control tower."
+  "accountImpersonated": "This account cannot be deleted from a session opened by the control tower.",
+  "accountDeletionPartial": "Some apps could not delete the account yet. Please retry."
 }

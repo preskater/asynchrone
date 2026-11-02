@@ -7,6 +7,7 @@ import type {
 } from "@workspace/sagas"
 import { prisma } from "@workspace/db-identity"
 
+import { anonymizeUserIdentity } from "@/lib/account/deletion-service"
 import { deleteOrganization } from "@/lib/organization/deletion-service"
 
 const DAY = 24 * 60 * 60 * 1000
@@ -175,7 +176,7 @@ export const deletionSagaStore: DeletionSagaStore = {
   },
 
   async deleteUserIdentity(userId) {
-    await prisma.user.delete({ where: { id: userId } })
+    await anonymizeUserIdentity(userId)
   },
 }
 

@@ -49,7 +49,10 @@ export async function soleOwnedOrganizations(userId: string) {
  * in again and can sign up afresh with the same address. Password and
  * impersonation checks happen in the action, which owns the request.
  */
-export async function deleteAccount(userId: string, confirmEmail: string) {
+export async function assertAccountDeletable(
+  userId: string,
+  confirmEmail: string
+): Promise<{ email: string }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, name: true, email: true, role: true },
@@ -72,6 +75,21 @@ export async function deleteAccount(userId: string, confirmEmail: string) {
       params: { organizations: soleOwned.map((org) => org.name).join(", ") },
     })
   }
+  return { email: user.email }
+}
+
+/**
+ * The identity step of the account-deletion saga.
+ *
+ * Domain apps anonymize their rows first; this runs last so a failed domain
+ * deletion keeps the account and can be retried.
+ */
+export async function anonymizeUserIdentity(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, name: true },
+  })
+  if (!user) return
 
   const memberships = await prisma.member.findMany({
     where: { userId },
@@ -128,4 +146,10 @@ export async function deleteAccount(userId: string, confirmEmail: string) {
   })
 
   sendAccountDeletedEmail({ to: user.email })
+}
+
+/** Direct path kept for callers that do not run the cross-app saga. */
+export async function deleteAccount(userId: string, confirmEmail: string) {
+  await assertAccountDeletable(userId, confirmEmail)
+  await anonymizeUserIdentity(userId)
 }
