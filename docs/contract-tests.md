@@ -48,3 +48,19 @@ Search still reads in-process domains through their packages. The assistant,
 MCP tools and portal call `/internal/v1/domain/:operation` through
 `DomainClient`; the contract suite pins the typed client (retry, typed errors,
 idempotency keys) and the live domain apps reject the cross-organization cases.
+
+## Browser coverage
+
+The contract suite never starts a browser. What only exists with several live
+hosts — the OIDC lifecycle, back-channel logout, organization-switch revocation,
+the impersonation handoff, audience-bound service tokens and a peer that is down
+— lives in the cross-app Playwright suite:
+
+```bash
+npm run test:e2e --workspace=@workspace/e2e
+```
+
+It drives Copilot, projects and calendars on separate hosts and provisions its
+OAuth clients by spawning the per-app bootstraps. See
+[cross-app-e2e.md](./cross-app-e2e.md) for the coverage table, the ports and the
+known gaps (the domain apps do not mount the audit/search/saga routes yet).

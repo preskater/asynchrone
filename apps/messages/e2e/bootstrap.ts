@@ -118,7 +118,7 @@ for (const resource of resources) {
     },
     update: {},
     create: {
-      id: `oauth_client_resource_e2e_${resource.name.toLowerCase()}`,
+      id: `oauth_client_resource_e2e_${client.clientId}_${resource.name.toLowerCase()}`,
       clientId: client.clientId,
       resourceId: resource.identifier,
       createdAt: now,

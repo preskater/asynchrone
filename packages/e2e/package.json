@@ -1,0 +1,30 @@
+{
+  "name": "@workspace/e2e",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "description": "Cross-app OIDC and domain end-to-end suite (#210)",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "bootstrap": "tsx e2e/bootstrap.ts",
+    "test:e2e": "tsx e2e/bootstrap.ts && playwright test"
+  },
+  "dependencies": {
+    "@workspace/contracts": "*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "dotenv": "^18.0.9",
+    "eslint": "^10.13.0",
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7"
+  }
+}

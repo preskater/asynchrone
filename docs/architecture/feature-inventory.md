@@ -639,6 +639,7 @@ Never bake secrets into an image.
 | Unit — Assistant          | `packages/ai/src/{chat,conversations}.unit.test.ts` (stream reducer, deterministic replay, list ordering); `apps/copilot/lib/assistant/history.unit.test.ts`; `apps/copilot/app/api/assistant/{route,conversations/route}.unit.test.ts` (server-owned history, failed stream, create/delete cross-origin) |
 | Contracts (DB)            | `apps/copilot/scripts/contracts/assistant-persistence.contract.test.ts` (stored turns, reload, cross-org/cross-user rejection)                                                                                                                                |
 | E2E                       | `apps/copilot/e2e/{a11y,assistant,audit-log,password-reset,portal}.spec.ts`; project authorization lives in `apps/projects/e2e/authorization.spec.ts` (#160); `apps/calendars/e2e/calendars.spec.ts` (sign-in, org switch, event, meeting settings) and `apps/files/e2e/{files,upload}.spec.ts` (sign-in, org switch, upload/download, chunk guards) (#161); `apps/messages/e2e/messages.spec.ts` (#162) |
+| Cross-app E2E             | `packages/e2e` (`npm run test:e2e --workspace=@workspace/e2e`): Copilot + projects + calendars on separate hosts — sign-in, token refresh, organization-switch revocation, back-channel logout, impersonation handoff/banner/one-hour TTL, audience binding, stale session, partial search/audit/export and the deletion-saga retry (#210); see `docs/cross-app-e2e.md` |
 | Verification scripts (DB) | `apps/copilot/scripts/verify-{authorization,audit-log,trial,data-export,organization-deletion,account-deletion,large-object,messaging,repository-sync}.ts`                                                                                                         |
 | Legal copy                | `apps/copilot/scripts/verify-legal-copy.ts`                                                                                                                                                                                                                        |
 | Control tower             | `apps/control-tower/scripts/verify-{auth-config,platform-authorization}.ts`                                                                                                                                                                                    |
@@ -822,3 +823,23 @@ are `clientActivity`, `clientFieldDefinition`, `clientDocument`,
 - [x] `docker compose up --build` starts all nine apps on ports 3001–3009.
 - [x] `npm run verify:helm` lints and renders the umbrella, each app alias and
       the generic chart standalone.
+
+### Cross-app coverage (#210)
+
+- [x] One Playwright suite (`packages/e2e`) drives Copilot plus two relying
+      parties on separate hosts: sign-in, access-token refresh, organization
+      switch (with cross-app revocation) and logout with back-channel logout.
+- [x] Impersonation: control-tower handoff call → single-use grant → Copilot
+      session with `impersonatedBy` → banner on Copilot and projects → the
+      one-hour gate on both → stop-impersonating fan-out.
+- [x] Failure injection: a configured-but-down app yields `partial` search and
+      audit results (page and export), a typed retryable delegated error, a
+      resolving switch fan-out and a deletion-saga retry that deletes identity
+      last; the shell keeps rendering.
+- [x] Audience binding: a projects service token is rejected by calendars (and
+      vice versa); the admin API requires the control-tower client.
+- [x] The `e2e-cross-app` CI job runs the suite on ports 3020–3022 against the
+      migrated per-app databases.
+- [ ] Replace the deletion-saga contract stub once the domain apps mount
+      `/internal/v1/{audit,search,organizations/:id}` (see
+      [cross-app-e2e.md](../cross-app-e2e.md#gaps)).
