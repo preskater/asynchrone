@@ -487,10 +487,15 @@ function RequestMeetingDialog({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={t("titlePlaceholder")}
                 aria-invalid={titleInvalid}
+                aria-describedby={
+                  titleInvalid ? "meeting-title-error" : undefined
+                }
                 autoFocus
               />
               {titleInvalid ? (
-                <FieldError>{t("requiredTitle")}</FieldError>
+                <FieldError id="meeting-title-error">
+                  {t("requiredTitle")}
+                </FieldError>
               ) : null}
             </Field>
 
@@ -544,6 +549,12 @@ function RequestMeetingDialog({
                 >
                   <div data-invalid={(submitted && !slot.date) || undefined}>
                     <DatePicker
+                      invalid={submitted && !slot.date}
+                      aria-describedby={
+                        submitted && !slot.date
+                          ? "meeting-slots-error"
+                          : undefined
+                      }
                       value={slot.date}
                       onChange={(value) =>
                         updateSlot(slot.key, { date: value })
@@ -578,7 +589,9 @@ function RequestMeetingDialog({
                 </div>
               ))}
               {dateInvalid ? (
-                <p className="text-sm text-destructive">{t("requiredSlots")}</p>
+                <FieldError id="meeting-slots-error">
+                  {t("requiredSlots")}
+                </FieldError>
               ) : null}
             </div>
 
@@ -638,10 +651,15 @@ function RequestMeetingDialog({
                     onChange={(event) => setMeetingUrl(event.target.value)}
                     placeholder={t("meetingUrlPlaceholder")}
                     aria-invalid={urlInvalid}
+                    aria-describedby={
+                      urlInvalid ? "meeting-url-error" : undefined
+                    }
                   />
                   <FieldDescription>{t("meetingUrlHint")}</FieldDescription>
                   {urlInvalid ? (
-                    <FieldError>{t("requiredUrl")}</FieldError>
+                    <FieldError id="meeting-url-error">
+                      {t("requiredUrl")}
+                    </FieldError>
                   ) : null}
                 </Field>
                 <Field>
@@ -667,9 +685,14 @@ function RequestMeetingDialog({
                   onChange={(event) => setAddress(event.target.value)}
                   placeholder={t("addressPlaceholder")}
                   aria-invalid={addressInvalid}
+                  aria-describedby={
+                    addressInvalid ? "meeting-address-error" : undefined
+                  }
                 />
                 {addressInvalid ? (
-                  <FieldError>{t("requiredAddress")}</FieldError>
+                  <FieldError id="meeting-address-error">
+                    {t("requiredAddress")}
+                  </FieldError>
                 ) : null}
               </Field>
             )}

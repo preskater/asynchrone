@@ -299,11 +299,19 @@ export function TaskForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor={`${formId}-due`}>{t("dueDate")}</FieldLabel>
-            <DatePicker value={dueDate} onChange={setDueDate} />
+            <DatePicker
+              id={`${formId}-due`}
+              value={dueDate}
+              onChange={setDueDate}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor={`${formId}-end`}>{t("endDate")}</FieldLabel>
-            <DatePicker value={endDate} onChange={setEndDate} />
+            <DatePicker
+              id={`${formId}-end`}
+              value={endDate}
+              onChange={setEndDate}
+            />
           </Field>
         </div>
         {canChooseIssue ? (
@@ -460,8 +468,11 @@ function TaskCustomFieldInput({
         </ToggleGroup>
       ) : (
         <DatePicker
+          id={id}
           value={textValue || undefined}
           onChange={(next) => onChange(next)}
+          invalid={invalid}
+          aria-describedby={errorId}
         />
       )}
       {invalid ? (

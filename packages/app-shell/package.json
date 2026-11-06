@@ -40,6 +40,7 @@
     "./recents-storage": "./src/recents-storage.ts",
     "./resolve-workspace": "./src/resolve-workspace.ts",
     "./shell": "./src/shell.tsx",
+    "./title-focus": "./src/title-focus.ts",
     "./trial-banner": "./src/trial-banner.tsx"
   }
 }

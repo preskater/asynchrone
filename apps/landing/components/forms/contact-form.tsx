@@ -58,10 +58,16 @@ export function ContactForm() {
                   {...field}
                   id="contact-name"
                   aria-invalid={fieldState.invalid}
+                  aria-describedby={
+                    fieldState.invalid ? "contact-name-error" : undefined
+                  }
                   placeholder={t("namePlaceholder")}
                 />
                 {fieldState.invalid ? (
-                  <FieldError errors={[fieldState.error]} />
+                  <FieldError
+                    id="contact-name-error"
+                    errors={[fieldState.error]}
+                  />
                 ) : null}
               </Field>
             )}
@@ -77,10 +83,16 @@ export function ContactForm() {
                   id="contact-email"
                   type="email"
                   aria-invalid={fieldState.invalid}
+                  aria-describedby={
+                    fieldState.invalid ? "contact-email-error" : undefined
+                  }
                   placeholder={t("emailPlaceholder")}
                 />
                 {fieldState.invalid ? (
-                  <FieldError errors={[fieldState.error]} />
+                  <FieldError
+                    id="contact-email-error"
+                    errors={[fieldState.error]}
+                  />
                 ) : null}
               </Field>
             )}
@@ -96,10 +108,16 @@ export function ContactForm() {
                 {...field}
                 id="contact-company"
                 aria-invalid={fieldState.invalid}
+                aria-describedby={
+                  fieldState.invalid ? "contact-company-error" : undefined
+                }
                 placeholder={t("companyPlaceholder")}
               />
               {fieldState.invalid ? (
-                <FieldError errors={[fieldState.error]} />
+                <FieldError
+                  id="contact-company-error"
+                  errors={[fieldState.error]}
+                />
               ) : null}
             </Field>
           )}
@@ -114,11 +132,17 @@ export function ContactForm() {
                 {...field}
                 id="contact-message"
                 aria-invalid={fieldState.invalid}
+                aria-describedby={
+                  fieldState.invalid ? "contact-message-error" : undefined
+                }
                 placeholder={t("messagePlaceholder")}
               />
               <FieldDescription>{t("hint")}</FieldDescription>
               {fieldState.invalid ? (
-                <FieldError errors={[fieldState.error]} />
+                <FieldError
+                  id="contact-message-error"
+                  errors={[fieldState.error]}
+                />
               ) : null}
             </Field>
           )}

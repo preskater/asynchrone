@@ -100,12 +100,19 @@ export function SetupTwoFactorForm() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "setup-password-error" : undefined}
                 />
                 <FieldDescription>
                   Used once to generate your secret. It is never stored here.
                 </FieldDescription>
               </Field>
-              {error ? <FieldError errors={[{ message: error }]} /> : null}
+              {error ? (
+                <FieldError
+                  id="setup-password-error"
+                  errors={[{ message: error }]}
+                />
+              ) : null}
               <Field>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Preparing…" : "Start setup"}
@@ -151,9 +158,16 @@ export function SetupTwoFactorForm() {
                   required
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "setup-code-error" : undefined}
                 />
               </Field>
-              {error ? <FieldError errors={[{ message: error }]} /> : null}
+              {error ? (
+                <FieldError
+                  id="setup-code-error"
+                  errors={[{ message: error }]}
+                />
+              ) : null}
               <Field>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Verifying…" : "Enable and continue"}

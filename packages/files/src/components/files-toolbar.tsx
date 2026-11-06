@@ -218,7 +218,7 @@ export function FilesToolbar({
         </ToggleGroup>
 
         <FolderDialog parentId={folderId}>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" aria-label={t("newFolder")}>
             <FolderPlusIcon data-icon="inline-start" />
             <span className="hidden sm:inline">{t("newFolder")}</span>
           </Button>

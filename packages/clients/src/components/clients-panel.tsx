@@ -231,7 +231,7 @@ export function ClientsPanel({
           value={statusFilter}
           onValueChange={(value) => setStatusFilter(value ?? "all")}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40" aria-label={t("common.status")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -145,10 +145,15 @@ function AddCalendarDialog() {
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Field Sales"
                 aria-invalid={nameInvalid}
+                aria-describedby={
+                  nameInvalid ? "calendar-name-error" : undefined
+                }
                 autoFocus
               />
               {nameInvalid ? (
-                <FieldError>{t("nameRequired")}</FieldError>
+                <FieldError id="calendar-name-error">
+                  {t("nameRequired")}
+                </FieldError>
               ) : null}
             </Field>
             <Field>

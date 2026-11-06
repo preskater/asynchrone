@@ -100,6 +100,8 @@ export function SignInForm() {
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "sign-in-error" : undefined}
                 />
               </Field>
               <Field>
@@ -111,9 +113,13 @@ export function SignInForm() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "sign-in-error" : undefined}
                 />
               </Field>
-              {error ? <FieldError errors={[{ message: error }]} /> : null}
+              {error ? (
+                <FieldError id="sign-in-error" errors={[{ message: error }]} />
+              ) : null}
               <Field>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Signing in…" : "Sign in"}
@@ -135,9 +141,16 @@ export function SignInForm() {
                   required
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "sign-in-code-error" : undefined}
                 />
               </Field>
-              {error ? <FieldError errors={[{ message: error }]} /> : null}
+              {error ? (
+                <FieldError
+                  id="sign-in-code-error"
+                  errors={[{ message: error }]}
+                />
+              ) : null}
               <Field>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Verifying…" : "Verify"}

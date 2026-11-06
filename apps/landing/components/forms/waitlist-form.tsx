@@ -50,6 +50,9 @@ export function WaitlistForm() {
                   {...field}
                   type="email"
                   aria-invalid={fieldState.invalid}
+                  aria-describedby={
+                    fieldState.invalid ? "waitlist-email-error" : undefined
+                  }
                   placeholder={t("placeholder")}
                 />
               </InputGroup>
@@ -58,7 +61,10 @@ export function WaitlistForm() {
               </Button>
             </div>
             {fieldState.invalid ? (
-              <FieldError errors={[fieldState.error]} />
+              <FieldError
+                id="waitlist-email-error"
+                errors={[fieldState.error]}
+              />
             ) : null}
           </Field>
         )}

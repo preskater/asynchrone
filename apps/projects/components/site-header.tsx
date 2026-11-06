@@ -1,11 +1,11 @@
 "use client"
 
-import * as React from "react"
 import { useTranslations } from "next-intl"
 
 import { ThemeToggle } from "@workspace/ui/components/theme-toggle"
 import { Separator } from "@workspace/ui/components/separator"
 import { SidebarTrigger } from "@workspace/ui/components/sidebar"
+import { useTitleFocus } from "@workspace/app-shell/title-focus"
 
 import { OrgSwitcher, type OrganizationChoice } from "@/components/org-switcher"
 import { UserMenu } from "@/components/user-menu"
@@ -26,7 +26,7 @@ export function SiteHeader({
 }) {
   const t = useTranslations("Common")
   const sidebar = useTranslations("Sidebar")
-  const titleRef = React.useRef<HTMLHeadingElement>(null)
+  const titleRef = useTitleFocus()
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

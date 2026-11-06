@@ -48,6 +48,9 @@ export function NewsletterForm() {
                 {...field}
                 type="email"
                 aria-invalid={fieldState.invalid}
+                aria-describedby={
+                  fieldState.invalid ? "newsletter-email-error" : undefined
+                }
                 placeholder={t("placeholder")}
               />
               <InputGroupAddon>
@@ -58,7 +61,10 @@ export function NewsletterForm() {
               </Button>
             </InputGroup>
             {fieldState.invalid ? (
-              <FieldError errors={[fieldState.error]} />
+              <FieldError
+                id="newsletter-email-error"
+                errors={[fieldState.error]}
+              />
             ) : null}
           </Field>
         )}
