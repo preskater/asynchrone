@@ -215,5 +215,49 @@
   "repositoryLinks": "Repository",
   "repositoryIssue": "Issue #{number}",
   "repositoryPullRequest": "Pull request #{number}",
-  "copyFailed": "Could not copy."
+  "copyFailed": "Could not copy.",
+  "import": {
+    "action": "Import tasks",
+    "title": "Import tasks",
+    "description": "Upload a CSV or JSON export, or paste a table. Up to {max} rows per import.",
+    "file": "File",
+    "paste": "Or paste a table",
+    "pastePlaceholder": "Title;Status;Due date",
+    "invalid": "This file could not be read. Use a CSV, a pasted table or a JSON array of objects.",
+    "tooManyRows": "This file has {count} rows. The limit is {max} rows per import.",
+    "rowsDetected": "{count, plural, one {# row} other {# rows}} detected.",
+    "mapping": "Columns",
+    "ignore": "Ignore",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee (email)",
+      "labels": "Labels",
+      "dueDate": "Due date"
+    },
+    "preview": "Preview import",
+    "confirm": "Import {count, plural, one {# task} other {# tasks}}",
+    "previewNote": "Nothing has been imported yet.",
+    "noIssuesCreated": "Imported tasks never open issues in a connected repository.",
+    "result": {
+      "toCreate": "{count} to create",
+      "created": "{count} created",
+      "skipped": "{count} duplicates skipped",
+      "errors": "{count} left out",
+      "warnings": "{count} warnings"
+    },
+    "rowLabel": "Row {row}",
+    "issues": {
+      "missing_title": "No title: row left out.",
+      "title_too_long": "Title longer than 240 characters: row left out.",
+      "unknown_status": "Unknown status \"{value}\": default status used.",
+      "unknown_priority": "Unknown priority \"{value}\": default priority used.",
+      "unknown_assignee": "No member with this email \"{value}\": left unassigned.",
+      "unknown_label": "Unknown label \"{value}\": not applied.",
+      "invalid_date": "Date not understood \"{value}\": left empty. Use YYYY-MM-DD.",
+      "description_truncated": "Description cut to 5,000 characters."
+    }
+  }
 }
