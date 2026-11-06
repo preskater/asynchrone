@@ -567,7 +567,7 @@ control-tower:
     className: nginx
     annotations: {}
       # Restrict at the edge as defense in depth. The app also enforces
-      # PLATFORM_ALLOWED_IPS against X-Forwarded-For / X-Real-IP.
+      # PLATFORM_ALLOWED_IPS against X-Real-IP, then the last X-Forwarded-For hop.
       # nginx.ingress.kubernetes.io/whitelist-source-range: "203.0.113.0/24"
     hosts:
       - host: control-tower.asynchrone.space
