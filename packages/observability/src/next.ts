@@ -56,7 +56,8 @@ export function withCorrelation<T extends Response>(
     cookie: request.cookies.get(CORRELATION_COOKIE)?.value ?? null,
   })
   response.headers.set(CORRELATION_RESPONSE_HEADER, correlationId)
-  if (response instanceof NextResponse) {
+  // A cookie set on a server action makes Next refresh the whole route tree.
+  if (response instanceof NextResponse && !request.headers.has("next-action")) {
     response.cookies.set(CORRELATION_COOKIE, correlationId, {
       httpOnly: false,
       sameSite: "lax",
