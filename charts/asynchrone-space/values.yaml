@@ -216,6 +216,9 @@ copilot:
     CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
     EMPLOYEES_APP_URL: https://employees.copilot.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.asynchrone.space
+    LANDING_APP_URL: https://asynchrone.space
+    # Hosted status page; /api/status redirects there (falls back to /support).
+    STATUS_PAGE_URL: ""
     # Keep replicas x DATABASE_POOL_MAX below the database connection limit.
     DATABASE_POOL_MAX: "8"
     # MCP protected-resource identifier. It is also the OAuth resource for the

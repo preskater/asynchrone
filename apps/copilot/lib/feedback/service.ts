@@ -1,5 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
-import { AppError, NotFoundError, ValidationError } from "@workspace/core/errors"
+import { NotFoundError, ValidationError } from "@workspace/core/errors"
 import { assertRateLimit } from "@/lib/core/rate-limit"
 import { deliverEmail, type EmailDelivery } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
@@ -15,6 +15,7 @@ import {
   FEEDBACK_RATE_LIMIT,
   FEEDBACK_RATE_LIMIT_WINDOW_MS,
   MAX_FEEDBACK_ATTACHMENT_BYTES,
+  type FeedbackDiagnostics,
   type FeedbackFieldId,
   type FeedbackSubmissionResult,
 } from "./types"
@@ -46,13 +47,15 @@ function normalizeReport(input: SubmitFeedbackParsed): SubmitFeedbackParsed {
 }
 
 /**
- * Sends one feedback report to the configured inbox (`FEEDBACK_EMAIL_TO`,
- * falling back to `EMAIL_FROM`). Nothing is stored in the database: the email
- * is the record of the report.
+ * Files one support ticket (#101) and notifies the configured inbox
+ * (`FEEDBACK_EMAIL_TO`, falling back to `EMAIL_FROM`). The `supportTicket` row
+ * is the record the control tower triages; the email is only a notification,
+ * so a failed delivery no longer loses the report.
  */
 export async function submitFeedback(
   ctx: RequestContext,
-  input: SubmitFeedbackParsed
+  input: SubmitFeedbackParsed,
+  diagnostics: FeedbackDiagnostics = { requestId: null }
 ): Promise<FeedbackSubmissionResult> {
   await assertRateLimit(
     `feedback:${ctx.userId}`,
@@ -81,14 +84,45 @@ export async function submitFeedback(
   })
   if (!organization) throw new NotFoundError("Organization")
 
-  const submittedAt = new Date()
+  const buildSha = process.env.GIT_COMMIT_SHA || "unknown"
+  const ticket = await prisma.supportTicket.create({
+    data: {
+      organizationId: organization.id,
+      userId: ctx.userId,
+      category: report.category,
+      impact: report.impact,
+      title: report.title,
+      description: report.description,
+      contactEmail: report.contactEmail,
+      allowContact: report.allowContact,
+      details: {
+        frequency: report.frequency,
+        steps: report.steps,
+        expected: report.expected,
+        problem: report.problem,
+        benefit: report.benefit,
+        suggestion: report.suggestion,
+        attachment: report.attachment?.filename ?? null,
+      },
+      context: {
+        ...report.context,
+        page: report.page,
+        role: ctx.role,
+        buildSha,
+        requestId: diagnostics.requestId,
+      },
+    },
+    select: { number: true, createdAt: true },
+  })
+
+  const submittedAt = ticket.createdAt
   const recipients = feedbackRecipients()
 
   let delivery: EmailDelivery = "disabled"
   if (recipients.length > 0) {
     delivery = await deliverEmail({
       to: recipients,
-      subject: feedbackSubject(report),
+      subject: feedbackSubject(report, ticket.number),
       html: renderFeedbackEmail({
         input: report,
         reporter: {
@@ -98,6 +132,8 @@ export async function submitFeedback(
         },
         organization,
         submittedAt,
+        ticketNumber: ticket.number,
+        diagnostics: { buildSha, requestId: diagnostics.requestId },
       }),
       // Replying in the mail client answers the tester directly.
       replyTo: report.contactEmail,
@@ -114,17 +150,18 @@ export async function submitFeedback(
   }
 
   if (delivery === "failed") {
-    throw new AppError(
-      "feedback_delivery_failed",
-      "Your feedback could not be sent. Please try again.",
-      { status: 502 }
-    )
+    // The ticket is stored and visible in the control tower; only the inbox
+    // notification is missing.
+    console.error("[feedback] support inbox notification failed", {
+      ticket: ticket.number,
+    })
   }
 
   if (delivery === "disabled") {
     // Local development and previews run without a mail provider: keep the
     // report in the server log instead of silently dropping it.
     console.info("[feedback] email delivery disabled; report follows:", {
+      ticket: ticket.number,
       organization: organization.slug,
       userId: ctx.userId,
       category: report.category,
@@ -151,5 +188,5 @@ export async function submitFeedback(
     })
   }
 
-  return { delivered: delivery === "sent" }
+  return { ticketNumber: ticket.number, delivered: delivery === "sent" }
 }

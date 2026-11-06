@@ -78,6 +78,9 @@ export const INTERNAL_ROUTES = {
   adminAudit: internalPath("admin", "audit"),
   adminOAuthClient: (clientId: string) =>
     internalPath("admin", "oauth-clients", clientId),
+  adminSupportTickets: internalPath("admin", "support-tickets"),
+  adminSupportTicket: (ticketId: string) =>
+    internalPath("admin", "support-tickets", ticketId),
 } as const
 
 export const SERVICE_SCOPES = {
@@ -147,9 +150,7 @@ export type AddWorkspaceMember = z.infer<typeof AddWorkspaceMemberSchema>
 export const UpdateWorkspaceMemberSchema = z.object({
   role: MemberRoleSchema,
 })
-export type UpdateWorkspaceMember = z.infer<
-  typeof UpdateWorkspaceMemberSchema
->
+export type UpdateWorkspaceMember = z.infer<typeof UpdateWorkspaceMemberSchema>
 
 export const PresenceEntrySchema = z.object({
   userId: z.string().min(1),
@@ -234,9 +235,7 @@ export const WorkspaceOrganizationSchema = OrganizationSchema.extend({
   role: MemberRoleSchema,
   clientId: z.string().nullable(),
 })
-export type WorkspaceOrganization = z.infer<
-  typeof WorkspaceOrganizationSchema
->
+export type WorkspaceOrganization = z.infer<typeof WorkspaceOrganizationSchema>
 
 /**
  * One read for a domain app's workspace gate: the Copilot sign-in, the user,

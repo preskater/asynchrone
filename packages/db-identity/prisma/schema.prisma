@@ -30,6 +30,7 @@ model User {
   twoFactor     TwoFactor[]
   customerTwoFactor CustomerTwoFactor[]
   assistantConversations AssistantConversation[]
+  supportTickets SupportTicket[]
 
   oauthClients       OauthClient[]
   oauthRefreshTokens OauthRefreshToken[]
@@ -132,6 +133,7 @@ model Organization {
   invoices     Invoice[]
   aiUsageEvents AiUsageEvent[]
   assistantConversations AssistantConversation[]
+  supportTickets SupportTicket[]
 
   @@unique([slug])
   @@map("organization")
@@ -748,6 +750,39 @@ model UserDeletionApp {
   @@unique([jobId, app])
   @@index([status])
   @@map("userDeletionApp")
+}
+
+model SupportTicket {
+  id             String       @id @default(cuid())
+  /// Human-facing reference ("#42") quoted in emails and replies.
+  number         Int          @unique @default(autoincrement())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "open" | "acknowledged" | "resolved"
+  status         String       @default("open")
+  category       String
+  impact         String
+  title          String
+  description    String
+  contactEmail   String
+  allowContact   Boolean      @default(true)
+  /// Category-specific answers (steps, expected, problem, …).
+  details        Json
+  /// Diagnostics: page, locale, viewport, user agent, build SHA, request id,
+  /// recent client errors.
+  context        Json
+  /// Email of the platform operator who owns the ticket.
+  assigneeEmail  String?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("supportTicket")
 }
 
 model AuditLog {

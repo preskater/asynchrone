@@ -146,6 +146,13 @@ package; add a test beside the module you change.
 We aim to review pull requests within a few business days. `main` is protected:
 changes land through pull requests once CI passes.
 
+## Customer support
+
+Customer requests are not GitHub issues. They arrive as support tickets from the
+in-app **Help → Contact support** menu and are worked from the control tower;
+see the [support runbook](./docs/operations/support.md) for triage, escalation
+and how to use impersonation, plan overrides and session revocation safely.
+
 ## Reporting security issues
 
 Please **do not** open a public issue for security vulnerabilities. See

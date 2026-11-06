@@ -51,6 +51,7 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 | `charts/asynchrone-space`    | Helm umbrella chart for deploying every app.                                         |
 | `charts/asynchrone-space-app`| Generic app chart instantiated once per app by the umbrella (aliases).               |
 | `docs/domain-app-template.md`| How the domain apps are built, tested and deployed (start here for a new app).       |
+| `docs/operations/support.md` | Support runbook: tickets, triage, escalation, status page, safe control-tower use.   |
 
 ## Getting started
 
@@ -381,7 +382,8 @@ covers the plan model, configuration and the test-mode procedure.
 Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for
 setup instructions and our workflow, and note our
 [Code of Conduct](./CODE_OF_CONDUCT.md). To report a security issue, see
-[SECURITY.md](./SECURITY.md).
+[SECURITY.md](./SECURITY.md). Customer support (tickets, SLAs, status page,
+escalation) is described in [docs/operations/support.md](./docs/operations/support.md).
 
 ## License
 

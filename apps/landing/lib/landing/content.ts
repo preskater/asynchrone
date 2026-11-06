@@ -34,7 +34,7 @@ export const resourceNav: NavColumn = {
     { key: "documentation", href: "/faq" },
     { key: "blog", href: "/blog" },
     { key: "community", href: "/blog" },
-    { key: "support", href: "/faq" },
+    { key: "support", href: "/support" },
   ],
 }
 
@@ -294,7 +294,7 @@ export const footerColumns: FooterColumn[] = [
     key: "resources",
     links: [
       { key: "documentation", href: "/faq" },
-      { key: "support", href: "/faq" },
+      { key: "support", href: "/support" },
       { key: "community", href: "/blog" },
       { key: "changelog", href: "/blog" },
     ],

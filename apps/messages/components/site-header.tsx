@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 
+import { HelpMenu } from "@workspace/app-shell/support"
 import { ThemeToggle } from "@workspace/ui/components/theme-toggle"
 import { Separator } from "@workspace/ui/components/separator"
 import { SidebarTrigger } from "@workspace/ui/components/sidebar"
@@ -68,6 +69,7 @@ export function SiteHeader({
             activeOrganizationId={activeOrganizationId}
             returnTo={returnTo}
           />
+          <HelpMenu />
           <ThemeToggle ariaLabel={t("toggleTheme")} />
           <UserMenu user={user} accountUrl={accountUrl} />
         </div>

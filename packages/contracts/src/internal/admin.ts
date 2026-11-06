@@ -274,3 +274,59 @@ export const AdminHandoffResultSchema = z.object({
   url: z.string().url(),
 })
 export type AdminHandoffResult = z.infer<typeof AdminHandoffResultSchema>
+
+/** Support ticket lifecycle (#101): created → acknowledged → resolved. */
+export const SUPPORT_TICKET_STATUSES = [
+  "open",
+  "acknowledged",
+  "resolved",
+] as const
+export type SupportTicketStatus = (typeof SUPPORT_TICKET_STATUSES)[number]
+
+export const AdminSupportTicketSchema = z.object({
+  id: z.string().min(1),
+  number: z.number().int(),
+  status: z.enum(SUPPORT_TICKET_STATUSES),
+  organizationId: z.string().min(1),
+  organizationName: z.string(),
+  organizationSlug: z.string(),
+  /** Effective plan at read time; drives the response target. */
+  plan: z.string(),
+  userId: z.string().min(1),
+  userName: z.string().nullable(),
+  category: z.string(),
+  impact: z.string(),
+  title: z.string(),
+  description: z.string(),
+  contactEmail: z.string(),
+  allowContact: z.boolean(),
+  details: z.record(z.string(), z.unknown()),
+  context: z.record(z.string(), z.unknown()),
+  assigneeEmail: z.string().nullable(),
+  acknowledgedAt: z.string().datetime().nullable(),
+  resolvedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})
+export type AdminSupportTicket = z.infer<typeof AdminSupportTicketSchema>
+
+export const AdminSupportTicketPageSchema = z.object({
+  items: z.array(AdminSupportTicketSchema),
+})
+export type AdminSupportTicketPage = z.infer<
+  typeof AdminSupportTicketPageSchema
+>
+
+export const AdminSupportTicketUpdateSchema = z
+  .object({
+    status: z.enum(SUPPORT_TICKET_STATUSES).optional(),
+    /** Operator email; `null` unassigns. */
+    assigneeEmail: z.string().email().max(200).nullable().optional(),
+  })
+  .refine(
+    (input) => input.status !== undefined || input.assigneeEmail !== undefined,
+    "Nothing to update"
+  )
+export type AdminSupportTicketUpdate = z.infer<
+  typeof AdminSupportTicketUpdateSchema
+>
