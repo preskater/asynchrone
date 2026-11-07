@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@workspace/eslint-config": "*",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "prisma": "^7.10.1"
   }
 }
