@@ -38,6 +38,7 @@
     "./trusted-ip": "./src/trusted-ip.ts",
     "./validation": "./src/validation.ts",
     "./plans": "./src/plans.ts",
-    "./trial": "./src/trial.ts"
+    "./trial": "./src/trial.ts",
+    "./support": "./src/support.ts"
   }
 }

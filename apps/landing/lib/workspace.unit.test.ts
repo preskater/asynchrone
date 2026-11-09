@@ -75,6 +75,8 @@ describe("legacyCopilotTarget", () => {
     "/legal/privacy",
     "/pricing",
     "/fr/pricing",
+    "/support",
+    "/fr/support",
   ])("never shadows the marketing path %s", (path) => {
     expect(legacyCopilotTarget(path)).toBeNull()
   })

@@ -13,6 +13,7 @@ import {
   MoonStar,
   ScrollText,
   ServerCog,
+  LifeBuoy,
   Users,
 } from "lucide-react"
 
@@ -32,6 +33,7 @@ const SECTIONS = [
   { title: "Overview", href: "/overview", icon: LayoutDashboard },
   { title: "Organizations", href: "/organizations", icon: Building2 },
   { title: "Users", href: "/users", icon: Users },
+  { title: "Support", href: "/support", icon: LifeBuoy },
   { title: "Audit", href: "/audit", icon: ScrollText },
   { title: "Operations", href: "/ops", icon: ServerCog },
 ]

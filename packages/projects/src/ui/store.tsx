@@ -77,6 +77,8 @@ interface ProjectStore {
   tasksLoaded: boolean
   /** Load tasks + activity once, when a project/calendar screen needs them. */
   ensureProjectData: () => void
+  /** Fetch tasks + activity again after a change made outside the store. */
+  reloadProjectData: () => void
   getProject: (id: string) => Project | undefined
   getMember: (id?: string) => Member | undefined
   getLabel: (id: string) => Label | undefined
@@ -194,6 +196,11 @@ export function ProjectStoreProvider({
       })
   }, [])
 
+  const reloadProjectData = React.useCallback(() => {
+    tasksLoadedRef.current = false
+    ensureProjectData()
+  }, [ensureProjectData])
+
   const pushActivity = React.useCallback(
     (projectId: string, action: string, target: string) => {
       setActivities((prev) => [
@@ -228,6 +235,7 @@ export function ProjectStoreProvider({
       canManageMembers,
       tasksLoaded,
       ensureProjectData,
+      reloadProjectData,
       getProject,
       getMember,
       getLabel,

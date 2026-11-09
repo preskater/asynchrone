@@ -215,5 +215,49 @@
   "repositoryLinks": "Dépôt",
   "repositoryIssue": "Issue #{number}",
   "repositoryPullRequest": "Pull request #{number}",
-  "copyFailed": "Impossible de copier."
+  "copyFailed": "Impossible de copier.",
+  "import": {
+    "action": "Importer des tâches",
+    "title": "Importer des tâches",
+    "description": "Envoyez un export CSV ou JSON, ou collez un tableau. {max} lignes maximum par import.",
+    "file": "Fichier",
+    "paste": "Ou collez un tableau",
+    "pastePlaceholder": "Titre;Statut;Échéance",
+    "invalid": "Ce fichier n'a pas pu être lu. Utilisez un CSV, un tableau collé ou un tableau JSON d'objets.",
+    "tooManyRows": "Ce fichier contient {count} lignes. La limite est de {max} lignes par import.",
+    "rowsDetected": "{count, plural, one {# ligne détectée} other {# lignes détectées}}.",
+    "mapping": "Colonnes",
+    "ignore": "Ignorer",
+    "fields": {
+      "title": "Titre",
+      "description": "Description",
+      "status": "Statut",
+      "priority": "Priorité",
+      "assignee": "Responsable (email)",
+      "labels": "Labels",
+      "dueDate": "Échéance"
+    },
+    "preview": "Prévisualiser l'import",
+    "confirm": "Importer {count, plural, one {# tâche} other {# tâches}}",
+    "previewNote": "Rien n'a encore été importé.",
+    "noIssuesCreated": "Les tâches importées n'ouvrent jamais d'issues dans un dépôt connecté.",
+    "result": {
+      "toCreate": "{count} à créer",
+      "created": "{count} créées",
+      "skipped": "{count} doublons ignorés",
+      "errors": "{count} exclues",
+      "warnings": "{count} avertissements"
+    },
+    "rowLabel": "Ligne {row}",
+    "issues": {
+      "missing_title": "Pas de titre : ligne exclue.",
+      "title_too_long": "Titre de plus de 240 caractères : ligne exclue.",
+      "unknown_status": "Statut inconnu « {value} » : statut par défaut utilisé.",
+      "unknown_priority": "Priorité inconnue « {value} » : priorité par défaut utilisée.",
+      "unknown_assignee": "Aucun membre avec l'email « {value} » : tâche non assignée.",
+      "unknown_label": "Label inconnu « {value} » : non appliqué.",
+      "invalid_date": "Date non comprise « {value} » : laissée vide. Utilisez AAAA-MM-JJ.",
+      "description_truncated": "Description coupée à 5 000 caractères."
+    }
+  }
 }

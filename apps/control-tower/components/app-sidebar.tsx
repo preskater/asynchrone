@@ -6,6 +6,7 @@ import {
   Building2,
   ExternalLink,
   LayoutDashboard,
+  LifeBuoy,
   ScrollText,
   ServerCog,
   ShieldCheck,
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
   { title: "Overview", href: "/overview", icon: LayoutDashboard },
   { title: "Organizations", href: "/organizations", icon: Building2 },
   { title: "Users", href: "/users", icon: Users },
+  { title: "Support", href: "/support", icon: LifeBuoy },
   { title: "Audit", href: "/audit", icon: ScrollText },
   { title: "Operations", href: "/ops", icon: ServerCog },
 ]
