@@ -8,6 +8,7 @@ import {
   SendIcon,
   XIcon,
 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -85,6 +86,18 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
   const te = useErrorTranslator()
   const locale = useLocale()
   const pathname = usePathname()
+  // The help menu of every app links here with the page the user came from
+  // (`from`) and the last client errors it saw (`error`, repeated).
+  const searchParams = useSearchParams()
+  const fromPage = (searchParams.get("from") ?? "").slice(0, 500)
+  const recentErrors = React.useMemo(
+    () =>
+      searchParams
+        .getAll("error")
+        .slice(-5)
+        .map((message) => message.slice(0, 300)),
+    [searchParams]
+  )
 
   const schema = React.useMemo(
     () =>
@@ -126,11 +139,11 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
       problem: "",
       benefit: "",
       suggestion: "",
-      page: pathname,
+      page: fromPage || pathname,
       contactEmail: initialEmail,
       allowContact: true,
     }),
-    [initialEmail, pathname]
+    [initialEmail, pathname, fromPage]
   )
 
   const form = useForm<z.infer<typeof schema>>({
@@ -225,15 +238,14 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "",
             viewport: `${window.innerWidth}×${window.innerHeight}`,
             userAgent: navigator.userAgent.slice(0, 500),
+            recentErrors,
           },
           attachment: uploaded,
         })
       )
 
-      toast.success(t("successTitle"), {
-        description: result.delivered
-          ? t("successDescription")
-          : t("successNotDelivered"),
+      toast.success(t("successTitle", { number: result.ticketNumber }), {
+        description: t("successDescription", { email: values.contactEmail }),
       })
       form.reset(emptyValues)
       setAttachment(null)

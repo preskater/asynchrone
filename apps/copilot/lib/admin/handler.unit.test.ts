@@ -41,6 +41,31 @@ const oauthClient = {
   createdAt: "2026-01-01T00:00:00.000Z",
 }
 
+const supportTicket = {
+  id: "ticket_1",
+  number: 1,
+  status: "open" as const,
+  organizationId: "org_1",
+  organizationName: "Acme",
+  organizationSlug: "acme",
+  plan: "team",
+  userId: "user_1",
+  userName: "Ada",
+  category: "bug",
+  impact: "high",
+  title: "Upload fails",
+  description: "The upload never completes.",
+  contactEmail: "ada@example.com",
+  allowContact: true,
+  details: {},
+  context: { buildSha: "abc123" },
+  assigneeEmail: null,
+  acknowledgedAt: null,
+  resolvedAt: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+}
+
 function repository(): AdminRepository {
   return {
     listOrganizations: vi.fn(async () => ({
@@ -139,6 +164,22 @@ function repository(): AdminRepository {
       ...oauthClient,
       disabled: input.disabled,
     })),
+    listSupportTickets: vi.fn(async () => ({ items: [supportTicket] })),
+    getSupportTicket: vi.fn(async (id) =>
+      id === "ticket_1" ? supportTicket : null
+    ),
+    updateSupportTicket: vi.fn(async (id, input) =>
+      id === "ticket_1"
+        ? {
+            ...supportTicket,
+            status: input.status ?? supportTicket.status,
+            assigneeEmail:
+              input.assigneeEmail === undefined
+                ? supportTicket.assigneeEmail
+                : input.assigneeEmail,
+          }
+        : null
+    ),
   }
 }
 
@@ -219,6 +260,34 @@ describe("admin handler", () => {
       disabled: true,
     })
     expect((await toggled.json()).data.disabled).toBe(true)
+  })
+
+  it("lists, reads and updates support tickets", async () => {
+    const list = await call(["support-tickets"])
+    expect((await list.json()).data.items[0].number).toBe(1)
+
+    const ticket = await call(["support-tickets", "ticket_1"])
+    expect((await ticket.json()).data.context.buildSha).toBe("abc123")
+
+    const updated = await call(["support-tickets", "ticket_1"], "POST", {
+      status: "acknowledged",
+      assigneeEmail: "ops@example.com",
+    })
+    const data = (await updated.json()).data
+    expect(data.status).toBe("acknowledged")
+    expect(data.assigneeEmail).toBe("ops@example.com")
+
+    expect((await call(["support-tickets", "missing"])).status).toBe(404)
+    expect(
+      (await call(["support-tickets", "ticket_1"], "POST", {})).status
+    ).toBe(400)
+    expect(
+      (
+        await call(["support-tickets", "ticket_1"], "POST", {
+          status: "closed",
+        })
+      ).status
+    ).toBe(400)
   })
 
   it("rejects an invalid body and a missing token", async () => {

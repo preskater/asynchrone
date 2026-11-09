@@ -82,6 +82,7 @@ export default async function OrgLayout({
               >
                 <WorkspaceShell
                   skipLabel={t("skipToContent")}
+                  copilotUrl={copilotUrl}
                   sidebar={<MessagesSidebar orgSlug={orgSlug} />}
                   banners={
                     workspace.impersonatedBy ? (

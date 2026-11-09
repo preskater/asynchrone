@@ -33,24 +33,25 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 
 ## Repository structure
 
-| Path                         | Description                                                                         |
-| ---------------------------- | ----------------------------------------------------------------------------------- |
-| `apps/copilot`               | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP). |
-| `apps/projects`              | Projects: domain app (`projects.copilot.asynchrone.space`), host-only OIDC session. |
-| `apps/calendars`             | Calendars and meetings (`calendars.copilot.asynchrone.space`): calendar screens, meeting inbox and settings. |
-| `apps/files`                 | Files (`files.copilot.asynchrone.space`): file tree, chunked upload/download APIs and the uploads-sweep cron. |
-| `apps/messages`              | Messages: the messaging domain app (`messages.copilot.asynchrone.space`), host-only OIDC session. |
-| `apps/clients`               | Clients: CRM domain app (`clients.copilot.asynchrone.space`), host-only OIDC session. |
-| `apps/employees`             | Employees: HR domain app (`employees.copilot.asynchrone.space`), host-only OIDC session. |
-| `apps/landing`               | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                |
-| `apps/control-tower`         | Internal platform administration app (organizations, users, audit, ops).            |
-| `packages/db`                | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`). |
-| `packages/ui`                | Shared UI component library.                                                        |
-| `packages/eslint-config`     | Shared ESLint configuration.                                                        |
-| `packages/typescript-config` | Shared TypeScript configuration.                                                    |
-| `charts/asynchrone-space`    | Helm umbrella chart for deploying every app.                                         |
-| `charts/asynchrone-space-app`| Generic app chart instantiated once per app by the umbrella (aliases).               |
-| `docs/domain-app-template.md`| How the domain apps are built, tested and deployed (start here for a new app).       |
+| Path                          | Description                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `apps/copilot`                | Copilot: workspace, identity and OAuth 2.1/OIDC authorization server (App Router, i18n, API + MCP).           |
+| `apps/projects`               | Projects: domain app (`projects.copilot.asynchrone.space`), host-only OIDC session.                           |
+| `apps/calendars`              | Calendars and meetings (`calendars.copilot.asynchrone.space`): calendar screens, meeting inbox and settings.  |
+| `apps/files`                  | Files (`files.copilot.asynchrone.space`): file tree, chunked upload/download APIs and the uploads-sweep cron. |
+| `apps/messages`               | Messages: the messaging domain app (`messages.copilot.asynchrone.space`), host-only OIDC session.             |
+| `apps/clients`                | Clients: CRM domain app (`clients.copilot.asynchrone.space`), host-only OIDC session.                         |
+| `apps/employees`              | Employees: HR domain app (`employees.copilot.asynchrone.space`), host-only OIDC session.                      |
+| `apps/landing`                | Stateless public marketing site at `asynchrone.space` (no auth, database or session).                         |
+| `apps/control-tower`          | Internal platform administration app (organizations, users, audit, ops).                                      |
+| `packages/db`                 | Shared Prisma schema, migrations, `pg` pool and generated client (`@workspace/db`).                           |
+| `packages/ui`                 | Shared UI component library.                                                                                  |
+| `packages/eslint-config`      | Shared ESLint configuration.                                                                                  |
+| `packages/typescript-config`  | Shared TypeScript configuration.                                                                              |
+| `charts/asynchrone-space`     | Helm umbrella chart for deploying every app.                                                                  |
+| `charts/asynchrone-space-app` | Generic app chart instantiated once per app by the umbrella (aliases).                                        |
+| `docs/domain-app-template.md` | How the domain apps are built, tested and deployed (start here for a new app).                                |
+| `docs/operations/support.md`  | Support runbook: tickets, triage, escalation, status page, safe control-tower use.                            |
 
 ## Getting started
 
@@ -108,6 +109,27 @@ Asynchrone Space is an AI‑first workspace that automates your workflow, centra
 > `DATABASE_URL` and the public URLs), so local dev and Docker share the same
 > secrets. The image is parameterised with
 > `--build-arg APP=copilot|projects|calendars|files|messages|clients|employees|control-tower|landing`.
+
+### Demo data
+
+Once the databases are migrated, fill them with a demo organization (`demo`)
+covering every app:
+
+```bash
+npm run seed
+```
+
+Sign in with `demo@example.com` and the password `asynchrone-demo-password`. The
+other accounts share that password: `demo.admin@example.com`,
+`demo.member@example.com`, `demo.designer@example.com`, `demo.viewer@example.com`
+and `demo.client@example.com` (client portal). The domain apps also need the
+OAuth clients provisioned below.
+
+`npm run seed -- --empty` creates only the organization and its accounts. The
+command is safe to re-run: existing rows are kept and only tasks, events, deals
+and leave dates move back around today. It refuses `NODE_ENV=production` and
+non-local databases unless `ALLOW_SEED=true`, which also requires your own
+`SEED_DEMO_PASSWORD`.
 
 ### Domain apps
 
@@ -210,16 +232,16 @@ stateless landing reads only `apps/landing/.env` (see
 [`apps/landing/.env.example`](./apps/landing/.env.example) for
 `NEXT_PUBLIC_WORKSPACE_URL` and `NEXT_PUBLIC_SITE_URL`).
 
-| Variable             | Required | Description                                                                                                                                                                    |
-| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`       | No*      | Retired monolith connection string used by the migration/split tooling. Each app reads its own `IDENTITY_DATABASE_URL`, `PROJECTS_DATABASE_URL`, … first; every `*_DATABASE_URL` falls back to `DATABASE_URL` for local convenience. |
-| `DATABASE_POOL_MAX`  | No       | Max Postgres connections per instance (default `3`).                                                                                                                           |
-| `BETTER_AUTH_SECRET` | Yes      | Secret used to sign sessions and encrypt the stored MCP/OAuth JWKS keys. Keep it stable across runtimes; clear the `jwks` table when rotating it.                              |
-| `BETTER_AUTH_URL`    | Yes      | Public base URL of Copilot (`https://copilot.asynchrone.space` in production): issuer, OAuth metadata and social callbacks.                                                       |
-| `OPENAI_API_KEY`     | No       | Enables AI assistant features.                                                                                                                                                 |
-| `OPENAI_API_URL`     | No       | Custom OpenAI-compatible base URL.                                                                                                                                             |
-| `ASSISTANT_MODEL`    | No       | Model used by the assistant (default `gpt-4o-mini`).                                                                                                                           |
-| `MCP_RESOURCE_URL`   | No       | Public identifier of the OAuth2-protected `/mcp` endpoint (defaults to `${BETTER_AUTH_URL}/mcp`).                                                                              |
+| Variable             | Required | Description                                                                                                                                                                                                                                               |
+| -------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | No*      | Retired monolith connection string used by the migration/split tooling. Each app reads its own `IDENTITY_DATABASE_URL`, `PROJECTS_DATABASE_URL`, … first; every `*_DATABASE_URL` falls back to `DATABASE_URL` for local convenience.                      |
+| `DATABASE_POOL_MAX`  | No       | Max Postgres connections per instance (default `3`).                                                                                                                                                                                                      |
+| `BETTER_AUTH_SECRET` | Yes      | Secret used to sign sessions and encrypt the stored MCP/OAuth JWKS keys. Keep it stable across runtimes; clear the `jwks` table when rotating it.                                                                                                         |
+| `BETTER_AUTH_URL`    | Yes      | Public base URL of Copilot (`https://copilot.asynchrone.space` in production): issuer, OAuth metadata and social callbacks.                                                                                                                               |
+| `OPENAI_API_KEY`     | No       | Enables AI assistant features.                                                                                                                                                                                                                            |
+| `OPENAI_API_URL`     | No       | Custom OpenAI-compatible base URL.                                                                                                                                                                                                                        |
+| `ASSISTANT_MODEL`    | No       | Model used by the assistant (default `gpt-4o-mini`).                                                                                                                                                                                                      |
+| `MCP_RESOURCE_URL`   | No       | Public identifier of the OAuth2-protected `/mcp` endpoint (defaults to `${BETTER_AUTH_URL}/mcp`).                                                                                                                                                         |
 | `CRON_SECRET`        | No       | Bearer token guarding the scheduled routes (`/api/cron/repository-sync` in `apps/projects`, `/api/files/uploads/sweep` in `apps/files`, the four identity jobs in `apps/copilot`); put it in the Kubernetes Secrets so the charts' CronJobs authenticate. |
 
 ## Available scripts
@@ -227,15 +249,15 @@ stateless landing reads only `apps/landing/.env` (see
 Run these from the repository root; Turborepo fans them out to the relevant
 workspaces.
 
-| Command             | Description                          |
-| ------------------- | ------------------------------------ |
-| `npm run dev`       | Start the dev servers in watch mode. |
-| `npm run build`     | Build all workspaces.                |
-| `npm run lint`      | Lint all workspaces.                 |
-| `npm run typecheck` | Type-check all workspaces.           |
-| `npm run format`    | Format with Prettier.                |
-| `npm run verify:helm` | Lint and render the umbrella and every app chart. |
-| `npm run check:boundaries` | Enforce workspace import boundaries. |
+| Command                    | Description                                       |
+| -------------------------- | ------------------------------------------------- |
+| `npm run dev`              | Start the dev servers in watch mode.              |
+| `npm run build`            | Build all workspaces.                             |
+| `npm run lint`             | Lint all workspaces.                              |
+| `npm run typecheck`        | Type-check all workspaces.                        |
+| `npm run format`           | Format with Prettier.                             |
+| `npm run verify:helm`      | Lint and render the umbrella and every app chart. |
+| `npm run check:boundaries` | Enforce workspace import boundaries.              |
 
 ## File storage
 
@@ -309,18 +331,18 @@ the cross-app suite.
 The Docker workflow publishes ten images to GHCR — one per app plus the
 migration image:
 
-| Image                                                      | Dockerfile stage               | Runs                        |
-| ---------------------------------------------------------- | ------------------------------ | --------------------------- |
-| `ghcr.io/preskater/asynchrone-space-copilot`               | `runner` (`APP=copilot`)       | Copilot (identity + OAuth)  |
-| `ghcr.io/preskater/asynchrone-space-projects`              | `runner` (`APP=projects`)      | Projects                    |
-| `ghcr.io/preskater/asynchrone-space-calendars`             | `runner` (`APP=calendars`)     | Calendars and meetings      |
-| `ghcr.io/preskater/asynchrone-space-files`                 | `runner` (`APP=files`)         | Files                       |
-| `ghcr.io/preskater/asynchrone-space-messages`              | `runner` (`APP=messages`)      | Messages                    |
-| `ghcr.io/preskater/asynchrone-space-clients`               | `runner` (`APP=clients`)       | Clients (CRM)               |
-| `ghcr.io/preskater/asynchrone-space-employees`             | `runner` (`APP=employees`)     | Employees (HR)              |
-| `ghcr.io/preskater/asynchrone-space-control-tower`         | `runner` (`APP=control-tower`) | Internal control tower      |
-| `ghcr.io/preskater/asynchrone-space-landing`               | `runner` (`APP=landing`)       | Public landing site         |
-| `ghcr.io/preskater/asynchrone-space-migrate`               | `migrate` (`APP=copilot`)      | One-shot Prisma migrations  |
+| Image                                              | Dockerfile stage               | Runs                       |
+| -------------------------------------------------- | ------------------------------ | -------------------------- |
+| `ghcr.io/preskater/asynchrone-space-copilot`       | `runner` (`APP=copilot`)       | Copilot (identity + OAuth) |
+| `ghcr.io/preskater/asynchrone-space-projects`      | `runner` (`APP=projects`)      | Projects                   |
+| `ghcr.io/preskater/asynchrone-space-calendars`     | `runner` (`APP=calendars`)     | Calendars and meetings     |
+| `ghcr.io/preskater/asynchrone-space-files`         | `runner` (`APP=files`)         | Files                      |
+| `ghcr.io/preskater/asynchrone-space-messages`      | `runner` (`APP=messages`)      | Messages                   |
+| `ghcr.io/preskater/asynchrone-space-clients`       | `runner` (`APP=clients`)       | Clients (CRM)              |
+| `ghcr.io/preskater/asynchrone-space-employees`     | `runner` (`APP=employees`)     | Employees (HR)             |
+| `ghcr.io/preskater/asynchrone-space-control-tower` | `runner` (`APP=control-tower`) | Internal control tower     |
+| `ghcr.io/preskater/asynchrone-space-landing`       | `runner` (`APP=landing`)       | Public landing site        |
+| `ghcr.io/preskater/asynchrone-space-migrate`       | `migrate` (`APP=copilot`)      | One-shot Prisma migrations |
 
 Deploy them with the Helm umbrella chart in `charts/asynchrone-space`. It
 instantiates the single generic chart `charts/asynchrone-space-app` once per
@@ -381,7 +403,8 @@ covers the plan model, configuration and the test-mode procedure.
 Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for
 setup instructions and our workflow, and note our
 [Code of Conduct](./CODE_OF_CONDUCT.md). To report a security issue, see
-[SECURITY.md](./SECURITY.md).
+[SECURITY.md](./SECURITY.md). Customer support (tickets, SLAs, status page,
+escalation) is described in [docs/operations/support.md](./docs/operations/support.md).
 
 ## License
 

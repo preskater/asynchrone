@@ -22,6 +22,7 @@ const RULES: Rule[] = [
   { key: "OPENAI_API_URL", url: true },
   { key: "MCP_RESOURCE_URL", url: true },
   { key: "NEXT_PUBLIC_APP_URL", url: true },
+  { key: "STATUS_PAGE_URL", url: true },
 ]
 
 const problems: string[] = []

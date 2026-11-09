@@ -2,7 +2,6 @@ import { expect, type Page } from "@playwright/test"
 
 import { prisma } from "@workspace/db-identity"
 import { prisma as projectsPrisma } from "@workspace/db-projects"
-import { prisma as clientsPrisma } from "@workspace/db-clients"
 
 import { E2E_BASE_URL } from "./env"
 
@@ -56,65 +55,9 @@ export async function signUp(page: Page): Promise<string> {
   return slug
 }
 
-/**
- * Create a project directly for an organization and return its id.
- *
- * Project screens now live in `apps/projects` (#160), so the Copilot e2e suite
- * cannot create them through the UI. The portal tests only need a project row
- * to link to a client; seeding it through the shared projects database keeps
- * the portal spec independent of the projects app's dev server.
- */
-export async function createProject(
-  organizationSlug: string,
-  name: string
-): Promise<string> {
-  const organization = await prisma.organization.findUnique({
-    where: { slug: organizationSlug },
-    select: { id: true },
-  })
-  if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
-
-  const owner = await prisma.member.findFirst({
-    where: { organizationId: organization.id, role: "owner" },
-    select: { userId: true },
-  })
-
-  const project = await projectsPrisma.project.create({
-    data: {
-      organizationId: organization.id,
-      name,
-      ...(owner ? { members: { create: [{ userId: owner.userId }] } } : {}),
-    },
-    select: { id: true },
-  })
-  return project.id
-}
-
-
-/**
- * Create a client company directly for an organization and return its id.
- *
- * The CRM screens moved to `apps/clients` (#163), so the Copilot e2e suite
- * cannot create them through the UI. The portal tests only need a client row
- * to link a project and an invitation to; seeding it through the shared
- * database keeps the portal spec independent of the clients app's dev server.
- */
-export async function createClient(
-  organizationSlug: string,
-  name: string
-): Promise<string> {
-  const organization = await prisma.organization.findUnique({
-    where: { slug: organizationSlug },
-    select: { id: true },
-  })
-  if (!organization) throw new Error(`Unknown organization: ${organizationSlug}`)
-
-  const client = await clientsPrisma.client.create({
-    data: { organizationId: organization.id, name, status: "active" },
-    select: { id: true },
-  })
-  return client.id
-}
+// The portal tests only need rows to link: seeding them keeps the spec
+// independent of the projects and clients dev servers.
+export { createClient, createProject } from "@workspace/seed/fixtures"
 
 /** Link a project to a client company (the portal visibility rule). */
 export async function linkProjectToClient(

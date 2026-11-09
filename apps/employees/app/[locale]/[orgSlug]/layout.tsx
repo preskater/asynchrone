@@ -59,6 +59,7 @@ export default async function OrgLayout({
             <EmployeeActionsProvider actions={EMPLOYEE_ACTIONS}>
               <WorkspaceShell
                 skipLabel={t("skipToContent")}
+                copilotUrl={copilotUrl}
                 sidebar={
                   <EmployeeSidebar orgSlug={orgSlug} copilotUrl={copilotUrl} />
                 }

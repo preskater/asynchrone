@@ -95,6 +95,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@workspace/eslint-config": "*",
+    "@workspace/seed": "*",
     "@workspace/typescript-config": "*",
     "eslint": "^10.13.0",
     "tsx": "^4.23.15",
