@@ -77,6 +77,7 @@
     "./service": "./src/service.ts",
     "./store": "./src/ui/store.tsx",
     "./task-comments": "./src/task-comments.ts",
+    "./task-import": "./src/task-import.ts",
     "./task-key": "./src/task-key.ts",
     "./thread": "./src/thread.ts",
     "./types": "./src/types.ts",

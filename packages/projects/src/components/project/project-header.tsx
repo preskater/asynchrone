@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   Building2Icon,
   EllipsisIcon,
+  FileUpIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -12,6 +13,7 @@ import { useLocale, useTranslations } from "next-intl"
 
 import { MemberAvatar } from "../task/member-avatar"
 import { TaskFormDialog } from "../task/task-dialog"
+import { ImportTasksDialog } from "./import-tasks-dialog"
 import { ProjectFormDialog } from "./project-dialog"
 import {
   AlertDialog,
@@ -66,6 +68,7 @@ export function ProjectHeader({
   const { getMember, deleteProject } = useProjectStore()
   const orgSlug = useOrgSlug()
   const [editOpen, setEditOpen] = React.useState(false)
+  const [importOpen, setImportOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const members = project.memberIds
     .map((id) => getMember(id))
@@ -153,6 +156,10 @@ export function ProjectHeader({
                   <PencilIcon />
                   {t("editProject")}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                  <FileUpIcon />
+                  {t("import.action")}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -171,6 +178,12 @@ export function ProjectHeader({
         project={project}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <ImportTasksDialog
+        projectId={project.id}
+        open={importOpen}
+        onOpenChange={setImportOpen}
       />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
