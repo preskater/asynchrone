@@ -29,13 +29,13 @@ function normalize(ip: string): string {
 function matches(address: string, entry: string): boolean {
   if (entry === "*") return true
   if (entry.includes("/")) {
-    const [network, bitsRaw] = entry.split("/")
-    const bits = Number(bitsRaw)
-    if (!network || !Number.isInteger(bits) || bits < 0 || bits > 32) {
-      return false
-    }
+    // Strict on purpose: `Number("")` is 0, so "10.0.0.0/" would mean /0.
+    const cidr = /^([^/]+)\/(\d{1,2})$/.exec(entry)
+    if (!cidr) return false
+    const bits = Number(cidr[2])
+    if (bits > 32) return false
     const value = ipv4ToInt(address)
-    const base = ipv4ToInt(network)
+    const base = ipv4ToInt(cidr[1] as string)
     if (value === null || base === null) return false
     const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0
     return (value & mask) === (base & mask)
@@ -48,8 +48,9 @@ function ipv4ToInt(value: string): number | null {
   if (parts.length !== 4) return null
   let result = 0
   for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null
     const octet = Number(part)
-    if (!Number.isInteger(octet) || octet < 0 || octet > 255) return null
+    if (octet > 255) return null
     result = (result << 8) + octet
   }
   return result >>> 0

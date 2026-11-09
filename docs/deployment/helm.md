@@ -398,9 +398,10 @@ npm run grant:platform-role --workspace=control-tower -- --email you@example.com
 
 The operator then enrolls an authenticator at `/setup-2fa`. Set
 `control-tower.config.PLATFORM_ALLOWED_IPS` to a comma-separated list of IPv4
-addresses/CIDRs (or `*`). The app reads `X-Forwarded-For` and `X-Real-IP`, so
-the ingress must preserve the client address. For defense in depth, also add an
-edge allowlist:
+addresses/CIDRs (or `*`). The app reads the headers in `TRUSTED_IP_HEADERS`:
+`X-Real-IP`, then the right-most `X-Forwarded-For` hop, so the ingress must
+overwrite them with the client address. For defense in depth, also add an edge
+allowlist:
 
 ```yaml
 control-tower:
@@ -556,7 +557,9 @@ against the runtime budget module.
 - **Pods start but the control tower returns 404** — the account has no platform
   role; grant it and enroll TOTP.
 - **Client IPs are the ingress address** — configure the controller to preserve
-  `X-Forwarded-For` (nginx: `use-forwarded-headers: "true"`).
+  `X-Forwarded-For` (nginx: `use-forwarded-headers: "true"`). Also set
+  `proxy-real-ip-cidr` to the load balancer's range: its default trusts every
+  source, so a client could forge its address and pass `PLATFORM_ALLOWED_IPS`.
 - **CronJob fails with `secret not found`** — `CRON_SECRET` is missing from the
   owner app's Secret (projects for repository-sync, files for uploads-sweep,
   Copilot for the four identity jobs). The chart mounts it as a required key.
