@@ -22,6 +22,11 @@ import type { ProjectServicePorts } from "./ports"
 
 import { ProjectRepository } from "./repository"
 import { createTaskComment } from "./task-comments"
+import {
+  resolveImportRow,
+  taskFingerprint,
+  type TaskImportResult,
+} from "./task-import"
 import { allocateTaskIdentifier, taskPrefix } from "./task-key"
 import type {
   AddCommentInput,
@@ -29,6 +34,7 @@ import type {
   AddMemberInput,
   CreateProjectInput,
   CreateTaskInput,
+  ImportTasksInput,
   CreateTaskTemplateInput,
   MoveTaskInput,
   UpdateMemberRoleInput,
@@ -732,6 +738,93 @@ export class ProjectService {
     return task
   }
 
+  /**
+   * Bulk creation from a file. Unlike `createTask` it never opens repository
+   * issues and sends no assignment notification: an import must not flood a
+   * repository or an inbox. A dry run reports the same result without writing.
+   */
+  async importTasks(
+    ctx: RequestContext,
+    input: ImportTasksInput
+  ): Promise<TaskImportResult> {
+    this.canWrite(ctx)
+    const project = await this.get(ctx, input.projectId)
+    const [existing, labels, members] = await Promise.all([
+      this.repo.listTasks(ctx.organizationId, input.projectId),
+      this.repo.listLabels(ctx.organizationId),
+      this.listMembersView(ctx),
+    ])
+    const lookups = {
+      memberIdByEmail: new Map(
+        members.map((member) => [member.email.toLowerCase(), member.id])
+      ),
+      labelIdByName: new Map(
+        labels.map((label) => [label.name.toLowerCase(), label.id])
+      ),
+    }
+    const seen = new Set(
+      existing.map((task) => taskFingerprint(task.title, task.dueDate))
+    )
+    const prefix = taskPrefix(
+      project.name,
+      existing.map((task) => task.identifier)
+    )
+
+    const result: TaskImportResult = {
+      created: 0,
+      skipped: 0,
+      errors: [],
+      warnings: [],
+      dryRun: input.dryRun,
+    }
+    for (const row of input.rows) {
+      const { task, error, warnings } = resolveImportRow(row, lookups)
+      if (error) result.errors.push(error)
+      result.warnings.push(...warnings)
+      if (!task) continue
+
+      const fingerprint = taskFingerprint(task.title, task.dueDate)
+      if (seen.has(fingerprint)) {
+        result.skipped += 1
+        continue
+      }
+      seen.add(fingerprint)
+      result.created += 1
+      if (input.dryRun) continue
+
+      const created = await this.repo.createTask({
+        ...task,
+        organizationId: ctx.organizationId,
+        projectId: input.projectId,
+        identifier: await allocateTaskIdentifier(
+          this.db,
+          ctx.organizationId,
+          prefix
+        ),
+        order: existing.length + result.created - 1,
+        createIssue: false,
+      })
+      const mapped = this.mapTask(created)
+      await this.ports.audit(ctx, {
+        action: AUDIT_ACTIONS.taskCreated,
+        entityType: "task",
+        entityId: mapped.id,
+        entityLabel: mapped.identifier,
+        after: { projectId: mapped.projectId, ...taskSnapshot(mapped) },
+      })
+    }
+
+    if (!input.dryRun && result.created > 0) {
+      await this.repo.addActivity({
+        projectId: input.projectId,
+        actorId: ctx.userId,
+        action: "imported",
+        target: String(result.created),
+      })
+    }
+    return result
+  }
+
   async updateTask(
     ctx: RequestContext,
     id: string,
@@ -963,10 +1056,7 @@ export class ProjectService {
       take: limit + 1,
     })
     const page = toPage(rows, limit, (row) =>
-      encodeCursor([
-        (row.joinedAt ?? new Date(0)).toISOString(),
-        row.userId,
-      ])
+      encodeCursor([(row.joinedAt ?? new Date(0)).toISOString(), row.userId])
     )
     return {
       items: page.items.map((row) => this.mapMember(row)),
@@ -1007,10 +1097,7 @@ export class ProjectService {
     input: UpdateMemberRoleInput
   ): Promise<Member> {
     this.canManage(ctx)
-    const member = await this.ports.directory.find(
-      ctx.organizationId,
-      memberId
-    )
+    const member = await this.ports.directory.find(ctx.organizationId, memberId)
     if (!member) throw new NotFoundError("Member")
 
     const isTargetOwner = member.role === "owner"
@@ -1056,10 +1143,7 @@ export class ProjectService {
     memberId: string
   ): Promise<{ id: string }> {
     this.canManage(ctx)
-    const member = await this.ports.directory.find(
-      ctx.organizationId,
-      memberId
-    )
+    const member = await this.ports.directory.find(ctx.organizationId, memberId)
     if (!member) throw new NotFoundError("Member")
 
     if (member.userId === ctx.userId) {
