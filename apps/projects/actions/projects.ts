@@ -12,6 +12,7 @@ import {
   addLabelSchema,
   addMemberSchema,
   createProjectSchema,
+  importTasksSchema,
   createTaskSchema,
   createTaskTemplateSchema,
   moveTaskSchema,
@@ -94,6 +95,16 @@ export const createTaskAction = withAction(async (input: unknown) => {
   const task = await projectService.createTask(ctx, parsed)
   await revalidateOrgPath(ctx.organizationId)
   return task
+})
+
+export const importTasksAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(importTasksSchema, input)
+  const result = await projectService.importTasks(ctx, parsed)
+  if (result.created > 0 && !result.dryRun) {
+    await revalidateOrgPath(ctx.organizationId)
+  }
+  return result
 })
 
 export const updateTaskAction = withAction(

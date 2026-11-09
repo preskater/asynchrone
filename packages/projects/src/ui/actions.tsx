@@ -17,6 +17,7 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   CreateTaskTemplateInput,
+  ImportTasksInput,
   MoveTaskInput,
   UpdateMemberRoleInput,
   UpdateProjectClientSettingsInput,
@@ -24,6 +25,7 @@ import type {
   UpdateTaskInput,
   UpdateTaskTemplateInput,
 } from "../schemas"
+import type { TaskImportResult } from "../task-import"
 import type { ProjectMessageData } from "../thread"
 import type {
   Activity,
@@ -58,6 +60,7 @@ export interface ProjectActions {
     input: UpdateProjectClientSettingsInput
   ): Promise<ActionResult<Project>>
   createTask(input: CreateTaskInput): Promise<ActionResult<Task>>
+  importTasks(input: ImportTasksInput): Promise<ActionResult<TaskImportResult>>
   updateTask(id: string, input: UpdateTaskInput): Promise<ActionResult<Task>>
   moveTask(id: string, input: MoveTaskInput): Promise<ActionResult<Task>>
   deleteTask(id: string): Promise<ActionResult<{ id: string }>>
