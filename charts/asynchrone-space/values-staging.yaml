@@ -136,6 +136,9 @@ copilot:
     CLIENTS_APP_URL: https://clients.copilot.staging.asynchrone.space
     EMPLOYEES_APP_URL: https://employees.copilot.staging.asynchrone.space
     CONTROL_TOWER_URL: https://control-tower.staging.asynchrone.space
+    # The help menu and /api/status link to the staging landing, not production.
+    LANDING_APP_URL: https://staging.asynchrone.space
+    STATUS_PAGE_URL: ""
     DATABASE_POOL_MAX: "8"
     DEPLOY_ENV: staging
     MCP_RESOURCE_URL: https://copilot.staging.asynchrone.space/mcp
