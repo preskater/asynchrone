@@ -1,7 +1,7 @@
 {
-  "title": "Send feedback",
+  "title": "Contact support or send feedback",
   "description": "Tell us what works, what doesn't, and what you'd like to see next. Your report goes directly to the Asynchrone Space team.",
-  "descriptionFor": "Tell us what works, what doesn't, and what you'd like to see next in {organization}. Your report goes directly to the Asynchrone Space team.",
+  "descriptionFor": "Report a problem, ask a question or share an idea about {organization}. Every report becomes a ticket the Asynchrone Space support team answers.",
   "navLabel": "Send feedback",
   "formTitle": "Feedback form",
   "formDescription": "The questions adapt to what you are reporting.",
@@ -30,10 +30,9 @@
   "screenshotTooLarge": "The image must be 5 MB or smaller.",
   "submit": "Send feedback",
   "submitting": "Sending…",
-  "successTitle": "Thanks for your feedback!",
-  "successDescription": "Your report has been sent to the Asynchrone Space team.",
-  "successNotDelivered": "Your report was recorded in the server logs, but email delivery is not configured in this environment.",
-  "privacyNote": "Your report is sent by email to the Asynchrone Space team and is not shown to your organization.",
+  "successTitle": "Ticket #{number} created",
+  "successDescription": "The Asynchrone Space support team has your report and will reply to {email}.",
+  "privacyNote": "Your report becomes a support ticket for the Asynchrone Space team, with the page, build and recent errors attached. It is not shown to your organization.",
   "fields": {
     "bug": {
       "titlePlaceholder": "Short title of the bug",

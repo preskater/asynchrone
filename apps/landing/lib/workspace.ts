@@ -68,6 +68,7 @@ export const MARKETING_SEGMENTS = new Set([
   "features",
   "legal",
   "pricing",
+  "support",
 ])
 
 /**

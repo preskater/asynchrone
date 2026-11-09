@@ -78,6 +78,7 @@ export interface FeedbackContext {
   timezone: string
   viewport: string
   userAgent: string
+  recentErrors: string[]
 }
 
 export interface FeedbackAttachment {
@@ -107,10 +108,18 @@ export interface SubmitFeedbackInput {
   attachment?: FeedbackAttachment
 }
 
+/** Server-side diagnostics the browser cannot be trusted to send. */
+export interface FeedbackDiagnostics {
+  /** Correlation id of the browser flow (`asynchrone_rid`), for log lookup. */
+  requestId: string | null
+}
+
 export interface FeedbackSubmissionResult {
+  /** Support ticket reference shown to the user ("#42"). */
+  ticketNumber: number
   /**
-   * False when transactional email is not configured (local development or a
-   * preview). The report is still logged server-side; the UI tells the user.
+   * False when the support inbox email was not sent (no mail provider, or a
+   * delivery failure). The ticket is stored either way.
    */
   delivered: boolean
 }

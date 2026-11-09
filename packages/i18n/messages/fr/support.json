@@ -1,0 +1,63 @@
+{
+  "menuLabel": "Aide",
+  "helpCenter": "Centre d'aide",
+  "faq": "FAQ et guides",
+  "contactSupport": "Contacter le support",
+  "status": "État du service",
+  "policy": "Politique de support",
+  "footerLabel": "Support",
+  "helpTitle": "Aide et support",
+  "helpDescription": "Trouvez une réponse, consultez l'état de la plateforme ou contactez une personne de l'équipe Asynchrone Space.",
+  "faqDescription": "Les réponses aux questions les plus fréquentes sur les offres, les données et les fonctionnalités.",
+  "contactDescription": "Ouvrez un ticket. La page d'où vous venez, la version de l'application et les erreurs récentes sont jointes pour que nous puissions vous aider plus vite.",
+  "statusDescription": "La disponibilité de chaque application en temps réel et l'historique des incidents. Abonnez-vous pour être prévenu des pannes.",
+  "policyDescription": "Canaux, horaires du support et délais de première réponse pour votre offre.",
+  "open": "Ouvrir",
+  "channels": {
+    "inApp": "Ticket dans l'application",
+    "email": "E-mail",
+    "community": "Communauté",
+    "namedContact": "Contact support dédié"
+  },
+  "plans": {
+    "free": "Starter",
+    "team": "Team",
+    "enterprise": "Enterprise"
+  },
+  "severities": {
+    "sev1": {
+      "name": "Sév. 1 — Critique",
+      "description": "Le service est indisponible, des données sont perdues ou menacées, ou il y a un incident de sécurité. Aucun contournement."
+    },
+    "sev2": {
+      "name": "Sév. 2 — Élevée",
+      "description": "Une fonctionnalité majeure est cassée ou très dégradée pour de nombreux utilisateurs, et le contournement est pénible."
+    },
+    "sev3": {
+      "name": "Sév. 3 — Normale",
+      "description": "Un problème partiel avec contournement, une question ou une demande d'accompagnement."
+    }
+  },
+  "bestEffort": "Au mieux",
+  "targetHours": "{hours, plural, one {# heure ouvrée} other {# heures ouvrées}}",
+  "targetDays": "{days, plural, one {# jour ouvré} other {# jours ouvrés}}",
+  "hoursSummary": "Horaires du support : du lundi au vendredi, de 9 h à 18 h (heure de Paris), hors jours fériés français. Pas de couverture 24 h/24.",
+  "page": {
+    "metadataTitle": "Politique de support",
+    "metadataDescription": "Comment joindre le support d'Asynchrone Space, nos horaires, les niveaux de sévérité et les délais de première réponse par offre.",
+    "eyebrow": "Support",
+    "title": "Comment nous vous accompagnons",
+    "description": "Chaque offre peut joindre une personne. Voici comment, quand et en combien de temps.",
+    "contactTitle": "Nous joindre",
+    "contactDescription": "Depuis n'importe quelle application, ouvrez Aide → Contacter le support : le ticket contient la page, la version et les erreurs récentes, ce qui évite les allers-retours. Vous pouvez aussi écrire à {email}.",
+    "channelsTitle": "Canaux par offre",
+    "planColumn": "Offre",
+    "channelsColumn": "Canaux",
+    "targetsTitle": "Délais de première réponse",
+    "targetsDescription": "Les délais portent sur une première réponse humaine pendant les horaires du support, pas sur la résolution. La sévérité est déduite de l'impact que vous indiquez et peut être ajustée lors du tri.",
+    "severityTitle": "Niveaux de sévérité",
+    "statusTitle": "État du service et incidents",
+    "statusDescription": "Les pannes et maintenances sont annoncées sur la page d'état, avec l'historique des incidents. Abonnez-vous pour recevoir les mises à jour par e-mail.",
+    "statusCta": "Ouvrir la page d'état"
+  }
+}

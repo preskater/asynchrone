@@ -24,6 +24,8 @@ export const feedbackContextSchema = z.object({
   timezone: z.string().trim().max(80).default(""),
   viewport: z.string().trim().max(40).default(""),
   userAgent: z.string().trim().max(500).default(""),
+  /** Last client-side errors seen by the help menu, newest last. */
+  recentErrors: z.array(z.string().trim().max(300)).max(5).default([]),
 })
 
 /**
@@ -49,6 +51,7 @@ export const submitFeedbackSchema = z.object({
     timezone: "",
     viewport: "",
     userAgent: "",
+    recentErrors: [],
   }),
   attachment: feedbackAttachmentSchema.optional(),
 })

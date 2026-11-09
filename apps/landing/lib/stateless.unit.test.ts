@@ -48,6 +48,8 @@ describe("landing is stateless", () => {
       "@mdx-js/react",
       "@hookform/resolvers",
       "@sentry/nextjs",
+      // Only the dependency-free `plans` and `support` policy tables (#101).
+      "@workspace/core",
       "@workspace/i18n",
       "@workspace/next-config",
       "@workspace/observability",

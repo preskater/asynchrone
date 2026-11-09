@@ -15,7 +15,11 @@ import {
   type AdminOverview,
   type AdminPlanInput,
   type AdminSessionRevokeResult,
+  type AdminSupportTicket,
+  type AdminSupportTicketPage,
+  type AdminSupportTicketUpdate,
   type AdminTrialInput,
+  type SupportTicketStatus,
   type AdminUser,
   type AdminUserDetail,
   type AdminUserPage,
@@ -66,6 +70,15 @@ export interface AdminRepository {
     clientId: string,
     input: AdminOAuthClientDisabledInput
   ): Promise<AdminOAuthClient | null>
+  listSupportTickets(input: {
+    status?: SupportTicketStatus
+    limit?: number
+  }): Promise<AdminSupportTicketPage>
+  getSupportTicket(id: string): Promise<AdminSupportTicket | null>
+  updateSupportTicket(
+    id: string,
+    input: AdminSupportTicketUpdate
+  ): Promise<AdminSupportTicket | null>
 }
 
 type OrgRow = {
@@ -184,6 +197,79 @@ const ORG_SELECT = {
   subscription: { select: { plan: true, status: true, manualOverride: true } },
   _count: { select: { members: true } },
 } as const
+
+const SUPPORT_TICKET_LIMIT = 100
+
+const SUPPORT_TICKET_SELECT = {
+  id: true,
+  number: true,
+  status: true,
+  organizationId: true,
+  userId: true,
+  category: true,
+  impact: true,
+  title: true,
+  description: true,
+  contactEmail: true,
+  allowContact: true,
+  details: true,
+  context: true,
+  assigneeEmail: true,
+  acknowledgedAt: true,
+  resolvedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  organization: {
+    select: {
+      name: true,
+      slug: true,
+      metadata: true,
+      subscription: { select: { plan: true } },
+    },
+  },
+  user: { select: { name: true } },
+} as const
+
+type SupportTicketRow = Awaited<
+  ReturnType<
+    typeof prisma.supportTicket.findFirstOrThrow<{
+      select: typeof SUPPORT_TICKET_SELECT
+    }>
+  >
+>
+
+function jsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+function supportTicket(row: SupportTicketRow): AdminSupportTicket {
+  return {
+    id: row.id,
+    number: row.number,
+    status: row.status as SupportTicketStatus,
+    organizationId: row.organizationId,
+    organizationName: row.organization.name,
+    organizationSlug: row.organization.slug,
+    plan: planForOrganization(row.organization),
+    userId: row.userId,
+    userName: row.user.name,
+    category: row.category,
+    impact: row.impact,
+    title: row.title,
+    description: row.description,
+    contactEmail: row.contactEmail,
+    allowContact: row.allowContact,
+    details: jsonObject(row.details),
+    context: jsonObject(row.context),
+    assigneeEmail: row.assigneeEmail,
+    acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
 
 const USER_SELECT = {
   id: true,
@@ -778,5 +864,58 @@ export const adminRepository: AdminRepository = {
       select: OAUTH_CLIENT_SELECT,
     })
     return oauthClient(updated)
+  },
+
+  async listSupportTickets({ status, limit }) {
+    const take =
+      limit && limit > 0
+        ? Math.min(Math.floor(limit), SUPPORT_TICKET_LIMIT)
+        : SUPPORT_TICKET_LIMIT
+    const rows = await prisma.supportTicket.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: "desc" },
+      take,
+      select: SUPPORT_TICKET_SELECT,
+    })
+    return { items: rows.map(supportTicket) }
+  },
+
+  async getSupportTicket(id) {
+    const row = await prisma.supportTicket.findUnique({
+      where: { id },
+      select: SUPPORT_TICKET_SELECT,
+    })
+    return row ? supportTicket(row) : null
+  },
+
+  async updateSupportTicket(id, input) {
+    const existing = await prisma.supportTicket.findUnique({
+      where: { id },
+      select: { acknowledgedAt: true },
+    })
+    if (!existing) return null
+    const now = new Date()
+    const row = await prisma.supportTicket.update({
+      where: { id },
+      data: {
+        ...(input.assigneeEmail !== undefined
+          ? { assigneeEmail: input.assigneeEmail }
+          : {}),
+        ...(input.status
+          ? {
+              status: input.status,
+              // Keep the first acknowledgement: it is what the response
+              // target is measured against.
+              acknowledgedAt:
+                input.status === "open"
+                  ? null
+                  : (existing.acknowledgedAt ?? now),
+              resolvedAt: input.status === "resolved" ? now : null,
+            }
+          : {}),
+      },
+      select: SUPPORT_TICKET_SELECT,
+    })
+    return supportTicket(row)
   },
 }

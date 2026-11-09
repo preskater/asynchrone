@@ -1,7 +1,7 @@
 {
-  "title": "Envoyer un retour",
+  "title": "Contacter le support ou envoyer un retour",
   "description": "Dites-nous ce qui fonctionne, ce qui ne fonctionne pas et ce que vous aimeriez voir ensuite. Votre retour est envoyé directement à l'équipe Asynchrone Space.",
-  "descriptionFor": "Dites-nous ce qui fonctionne, ce qui ne fonctionne pas et ce que vous aimeriez voir ensuite dans {organization}. Votre retour est envoyé directement à l'équipe Asynchrone Space.",
+  "descriptionFor": "Signalez un problème, posez une question ou partagez une idée concernant {organization}. Chaque demande devient un ticket traité par l'équipe support d'Asynchrone Space.",
   "navLabel": "Envoyer un retour",
   "formTitle": "Formulaire de retour",
   "formDescription": "Les questions s'adaptent à ce que vous signalez.",
@@ -30,10 +30,9 @@
   "screenshotTooLarge": "L'image doit faire 5 Mo ou moins.",
   "submit": "Envoyer le retour",
   "submitting": "Envoi…",
-  "successTitle": "Merci pour votre retour !",
-  "successDescription": "Votre retour a été envoyé à l'équipe Asynchrone Space.",
-  "successNotDelivered": "Votre retour a été enregistré dans les journaux du serveur, mais l'envoi d'e-mails n'est pas configuré dans cet environnement.",
-  "privacyNote": "Votre retour est envoyé par e-mail à l'équipe Asynchrone Space et n'est pas visible par votre organisation.",
+  "successTitle": "Ticket n°{number} créé",
+  "successDescription": "L'équipe support d'Asynchrone Space a reçu votre demande et répondra à {email}.",
+  "privacyNote": "Votre demande devient un ticket pour l'équipe support d'Asynchrone Space, avec la page, la version et les erreurs récentes en pièce jointe. Elle n'est pas visible par votre organisation.",
   "fields": {
     "bug": {
       "titlePlaceholder": "Titre court de l'anomalie",

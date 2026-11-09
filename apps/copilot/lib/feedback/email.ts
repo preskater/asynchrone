@@ -78,11 +78,14 @@ export function feedbackRecipients(): string[] {
   return fallback ? [fallback] : []
 }
 
-export function feedbackSubject(input: SubmitFeedbackInput) {
+export function feedbackSubject(
+  input: SubmitFeedbackInput,
+  ticketNumber: number
+) {
   // Single-line subject: collapse any whitespace from a crafted payload.
   const title = input.title.replace(/\s+/g, " ").trim()
   const truncated = title.length > 110 ? `${title.slice(0, 109)}…` : title
-  return `[Feedback · ${input.category}] ${truncated}`
+  return `[#${ticketNumber} · ${input.category} · ${input.impact}] ${truncated}`
 }
 
 export function renderFeedbackEmail({
@@ -90,13 +93,18 @@ export function renderFeedbackEmail({
   reporter,
   organization,
   submittedAt,
+  ticketNumber,
+  diagnostics,
 }: {
   input: SubmitFeedbackInput
   reporter: { name: string; email: string; role: string }
   organization: { name: string; slug: string; id: string }
   submittedAt: Date
+  ticketNumber: number
+  diagnostics: { buildSha: string; requestId: string | null }
 }): string {
   const details = [
+    row("Ticket", `#${ticketNumber}`),
     row("Category", input.category),
     row("Impact", input.impact),
     row("Contact", `${reporter.name} <${input.contactEmail}>`),
@@ -110,6 +118,9 @@ export function renderFeedbackEmail({
     row("Timezone", input.context.timezone || "—"),
     row("Viewport", input.context.viewport || "—"),
     row("User agent", input.context.userAgent || "—"),
+    row("Build", diagnostics.buildSha),
+    row("Request id", diagnostics.requestId ?? "—"),
+    row("Recent errors", input.context.recentErrors.join(" | ") || "—"),
     row("Submitted at", submittedAt.toISOString()),
   ].join("")
 
@@ -127,7 +138,7 @@ export function renderFeedbackEmail({
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background-color:#ffffff;border-radius:8px;padding:32px">
             <tr>
               <td>
-                <h1 style="margin:0 0 8px;font-size:20px;line-height:28px">New feedback from ${escapeHtml(organization.name)}</h1>
+                <h1 style="margin:0 0 8px;font-size:20px;line-height:28px">Support ticket #${ticketNumber} from ${escapeHtml(organization.name)}</h1>
                 <p style="margin:0 0 8px;font-size:14px;line-height:22px;color:#52525b">${escapeHtml(input.title)}</p>
                 ${narrative}
                 <h2 style="margin:24px 0 8px;font-size:13px;line-height:20px;color:#71717a;text-transform:uppercase;letter-spacing:0.04em">Context</h2>
