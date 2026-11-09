@@ -16,6 +16,7 @@
     "split:prisma": "node scripts/split-prisma-schema.mjs",
     "verify:prisma-schemas": "node scripts/verify-prisma-schemas.mjs",
     "db:create": "node scripts/create-databases.mjs",
+    "seed": "npm run seed --workspace=@workspace/seed --",
     "migrate:deploy": "npm run migrate:deploy --workspace=@workspace/migrate",
     "migrate:status": "npm run migrate:status --workspace=@workspace/migrate",
     "verify:migrations": "node scripts/verify-migrations.mjs",

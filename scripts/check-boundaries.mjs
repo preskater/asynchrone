@@ -168,12 +168,14 @@ const PACKAGE_OWNER_ALIASES = {
 
 function checkDbOwnership(importer, packageName, file, specifier) {
   if (!packageName.startsWith("@workspace/db-")) return
-  // Test harnesses seed the fixtures they need on purpose: an e2e suite or a
-  // verification script is not the app runtime and owns no request.
+  // Test harnesses seed the fixtures they need on purpose: an e2e suite, a
+  // verification script or the demo seed is not the app runtime and owns no
+  // request.
   const relativeFile = relative(root, file)
   if (
     /(^|\/)e2e\//.test(relativeFile) ||
-    /(^|\/)scripts\/(contracts|verify)/.test(relativeFile)
+    /(^|\/)scripts\/(contracts|verify)/.test(relativeFile) ||
+    relativeFile.startsWith("packages/seed/")
   ) {
     return
   }
