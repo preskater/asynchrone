@@ -20,13 +20,13 @@
     "@workspace/db-messages": "*",
     "@workspace/db-projects": "*",
     "@workspace/storage": "*",
-    "better-auth": "^1.7.13"
+    "better-auth": "^1.7.18"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "tsx": "^4.23.15",
     "typescript": "^7",
     "vitest": "^5.0.5"
