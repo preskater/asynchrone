@@ -1,12 +1,12 @@
 "use client"
 
-import * as React from "react"
 import { useTranslations } from "next-intl"
 
 import { HelpMenu } from "@workspace/app-shell/support"
 import { ThemeToggle } from "@workspace/ui/components/theme-toggle"
 import { Separator } from "@workspace/ui/components/separator"
 import { SidebarTrigger } from "@workspace/ui/components/sidebar"
+import { useTitleFocus } from "@workspace/app-shell/title-focus"
 
 import { usePathname } from "@workspace/i18n/navigation"
 
@@ -36,7 +36,7 @@ export function SiteHeader({
   const t = useTranslations("Common")
   const sidebar = useTranslations("Sidebar")
   const pathname = usePathname()
-  const titleRef = React.useRef<HTMLHeadingElement>(null)
+  const titleRef = useTitleFocus()
 
   const section = pathname.split("/").filter(Boolean)[1] ?? "clients"
   const titleKey = titleKeys[section as keyof typeof titleKeys]

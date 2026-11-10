@@ -152,6 +152,7 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
         <Field>
           <FieldLabel htmlFor="detail-due">{t("dueDate")}</FieldLabel>
           <DatePicker
+            id="detail-due"
             value={task.dueDate}
             onChange={(value) =>
               updateTask(task.id, { dueDate: value }, SILENT)
@@ -161,6 +162,7 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
         <Field>
           <FieldLabel htmlFor="detail-end">{t("endDate")}</FieldLabel>
           <DatePicker
+            id="detail-end"
             value={task.endDate}
             onChange={(value) =>
               updateTask(task.id, { endDate: value }, SILENT)

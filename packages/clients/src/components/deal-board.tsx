@@ -58,7 +58,7 @@ export function DealBoard({
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div tabIndex={0} className="flex gap-3 overflow-x-auto pb-2">
       {stages.map((stage) => {
         const columnDeals = deals
           .filter((deal) => deal.stageId === stage.id)

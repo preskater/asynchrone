@@ -16,17 +16,23 @@ import { cn } from "@workspace/ui/lib/utils"
 import { formatDate } from "../../types"
 
 export function DatePicker({
+  id,
   value,
   onChange,
   placeholder,
   className,
   disabled,
+  invalid,
+  "aria-describedby": describedBy,
 }: {
+  id?: string
   value?: string
   onChange: (value?: string) => void
   placeholder?: string
   className?: string
   disabled?: boolean
+  invalid?: boolean
+  "aria-describedby"?: string
 }) {
   const t = useTranslations("Projects")
   const locale = useLocale()
@@ -39,7 +45,10 @@ export function DatePicker({
         disabled={disabled}
         render={
           <Button
+            id={id}
             variant="outline"
+            aria-invalid={invalid}
+            aria-describedby={describedBy}
             className={cn(
               "w-full justify-start font-normal",
               !value && "text-muted-foreground",

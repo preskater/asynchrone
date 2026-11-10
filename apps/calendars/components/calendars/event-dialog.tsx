@@ -231,10 +231,15 @@ export function EventDialog({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t("titlePlaceholder")}
                 aria-invalid={titleInvalid}
+                aria-describedby={
+                  titleInvalid ? "event-title-error" : undefined
+                }
                 autoFocus
               />
               {titleInvalid ? (
-                <FieldError>{t("titleRequired")}</FieldError>
+                <FieldError id="event-title-error">
+                  {t("titleRequired")}
+                </FieldError>
               ) : null}
             </Field>
 
@@ -252,6 +257,9 @@ export function EventDialog({
                     id="event-calendar"
                     className="w-full"
                     aria-invalid={calendarInvalid}
+                    aria-describedby={
+                      calendarInvalid ? "event-calendar-error" : undefined
+                    }
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -266,14 +274,26 @@ export function EventDialog({
                   </SelectContent>
                 </Select>
                 {calendarInvalid ? (
-                  <FieldError>{t("calendarRequired")}</FieldError>
+                  <FieldError id="event-calendar-error">
+                    {t("calendarRequired")}
+                  </FieldError>
                 ) : null}
               </Field>
               <Field data-invalid={dateInvalid}>
                 <FieldLabel htmlFor="event-date">{t("date")}</FieldLabel>
-                <DatePicker value={date} onChange={setDate} />
+                <DatePicker
+                  id="event-date"
+                  value={date}
+                  onChange={setDate}
+                  invalid={dateInvalid}
+                  aria-describedby={
+                    dateInvalid ? "event-date-error" : undefined
+                  }
+                />
                 {dateInvalid ? (
-                  <FieldError>{t("dateRequired")}</FieldError>
+                  <FieldError id="event-date-error">
+                    {t("dateRequired")}
+                  </FieldError>
                 ) : null}
               </Field>
             </div>

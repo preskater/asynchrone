@@ -41,6 +41,7 @@
     "./resolve-workspace": "./src/resolve-workspace.ts",
     "./shell": "./src/shell.tsx",
     "./support": "./src/support.tsx",
+    "./title-focus": "./src/title-focus.ts",
     "./trial-banner": "./src/trial-banner.tsx"
   }
 }

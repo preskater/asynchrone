@@ -92,6 +92,7 @@ export function TwoFactorForm() {
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "two-factor-code-error" : undefined}
               />
             </Field>
             <Field orientation="horizontal">
@@ -104,7 +105,12 @@ export function TwoFactorForm() {
                 {t("trustDevice")}
               </FieldLabel>
             </Field>
-            {error ? <FieldError errors={[{ message: error }]} /> : null}
+            {error ? (
+              <FieldError
+                id="two-factor-code-error"
+                errors={[{ message: error }]}
+              />
+            ) : null}
             <Field>
               <Button type="submit" disabled={pending || !code.trim()}>
                 {pending ? t("verifying") : t("submit")}

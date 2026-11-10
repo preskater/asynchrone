@@ -116,10 +116,15 @@ export function ProjectFormDialog({
                 onChange={(event) => setName(event.target.value)}
                 placeholder={t("namePlaceholder")}
                 aria-invalid={nameInvalid}
+                aria-describedby={
+                  nameInvalid ? "project-name-error" : undefined
+                }
                 autoFocus
               />
               {nameInvalid ? (
-                <FieldError>{t("nameRequired")}</FieldError>
+                <FieldError id="project-name-error">
+                  {t("nameRequired")}
+                </FieldError>
               ) : null}
             </Field>
             <Field>

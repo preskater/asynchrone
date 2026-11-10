@@ -358,10 +358,16 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                     id="feedback-title"
                     maxLength={160}
                     aria-invalid={fieldState.invalid}
+                    aria-describedby={
+                      fieldState.invalid ? "feedback-title-error" : undefined
+                    }
                     placeholder={categoryTextOrNull("titlePlaceholder")}
                   />
                   {fieldState.invalid ? (
-                    <FieldError errors={[fieldState.error]} />
+                    <FieldError
+                      id="feedback-title-error"
+                      errors={[fieldState.error]}
+                    />
                   ) : null}
                 </Field>
               )}
@@ -381,10 +387,18 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                     rows={5}
                     maxLength={5000}
                     aria-invalid={fieldState.invalid}
+                    aria-describedby={
+                      fieldState.invalid
+                        ? "feedback-description-error"
+                        : undefined
+                    }
                     placeholder={categoryTextOrNull("descriptionPlaceholder")}
                   />
                   {fieldState.invalid ? (
-                    <FieldError errors={[fieldState.error]} />
+                    <FieldError
+                      id="feedback-description-error"
+                      errors={[fieldState.error]}
+                    />
                   ) : null}
                 </Field>
               )}
@@ -451,13 +465,19 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                             : 2000
                         }
                         aria-invalid={fieldState.invalid}
+                        aria-describedby={
+                          fieldState.invalid ? `${id}-error` : undefined
+                        }
                         placeholder={placeholder}
                       />
                       {hint ? (
                         <FieldDescription>{hint}</FieldDescription>
                       ) : null}
                       {fieldState.invalid ? (
-                        <FieldError errors={[fieldState.error]} />
+                        <FieldError
+                          id={`${id}-error`}
+                          errors={[fieldState.error]}
+                        />
                       ) : null}
                     </Field>
                   )
@@ -479,11 +499,17 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                       id="feedback-page"
                       maxLength={500}
                       aria-invalid={fieldState.invalid}
+                      aria-describedby={
+                        fieldState.invalid ? "feedback-page-error" : undefined
+                      }
                       placeholder={t("pagePlaceholder")}
                     />
                     <FieldDescription>{t("pageHint")}</FieldDescription>
                     {fieldState.invalid ? (
-                      <FieldError errors={[fieldState.error]} />
+                      <FieldError
+                        id="feedback-page-error"
+                        errors={[fieldState.error]}
+                      />
                     ) : null}
                   </Field>
                 )}
@@ -502,10 +528,18 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                       type="email"
                       autoComplete="email"
                       aria-invalid={fieldState.invalid}
+                      aria-describedby={
+                        fieldState.invalid
+                          ? "feedback-contact-email-error"
+                          : undefined
+                      }
                       placeholder={t("contactEmailPlaceholder")}
                     />
                     {fieldState.invalid ? (
-                      <FieldError errors={[fieldState.error]} />
+                      <FieldError
+                        id="feedback-contact-email-error"
+                        errors={[fieldState.error]}
+                      />
                     ) : (
                       <FieldDescription>
                         {t("contactEmailHint")}
@@ -570,13 +604,18 @@ export function FeedbackForm({ initialEmail }: { initialEmail: string }) {
                   type="file"
                   accept={FEEDBACK_ATTACHMENT_TYPES.join(",")}
                   aria-invalid={Boolean(attachmentError)}
+                  aria-describedby={
+                    attachmentError ? "feedback-screenshot-error" : undefined
+                  }
                   onChange={selectAttachment}
                   className="cursor-pointer file:cursor-pointer"
                 />
               )}
               <FieldDescription>{t("screenshotHint")}</FieldDescription>
               {attachmentError ? (
-                <FieldError>{attachmentError}</FieldError>
+                <FieldError id="feedback-screenshot-error">
+                  {attachmentError}
+                </FieldError>
               ) : null}
             </Field>
           </FieldGroup>

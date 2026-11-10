@@ -15,6 +15,7 @@ import { ThemeToggle } from "@workspace/ui/components/theme-toggle"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { SidebarTrigger } from "@workspace/ui/components/sidebar"
+import { useTitleFocus } from "@workspace/app-shell/title-focus"
 
 import { usePathname } from "@workspace/i18n/navigation"
 import type { NotificationsData } from "@/lib/notifications/types"
@@ -66,15 +67,7 @@ export function SiteHeader({
   const t = useTranslations("Sidebar")
   const common = useTranslations("Common")
   const [paletteOpen, setPaletteOpen] = React.useState(false)
-  const titleRef = React.useRef<HTMLHeadingElement>(null)
-  const previousPathname = React.useRef(pathname)
-
-  // Client-side navigation keeps focus on the clicked link; move it to the new page title.
-  React.useEffect(() => {
-    if (previousPathname.current === pathname) return
-    previousPathname.current = pathname
-    titleRef.current?.focus()
-  }, [pathname])
+  const titleRef = useTitleFocus()
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

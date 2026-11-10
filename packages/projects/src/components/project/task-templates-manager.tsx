@@ -255,10 +255,15 @@ function TemplateDialog({
                 onChange={(event) => setName(event.target.value)}
                 placeholder={t("templateNamePlaceholder")}
                 aria-invalid={nameInvalid}
+                aria-describedby={
+                  nameInvalid ? `tpl-${projectId}-name-error` : undefined
+                }
                 autoFocus
               />
               {nameInvalid ? (
-                <FieldError>{t("nameRequired")}</FieldError>
+                <FieldError id={`tpl-${projectId}-name-error`}>
+                  {t("nameRequired")}
+                </FieldError>
               ) : null}
             </Field>
             <Field>
@@ -574,9 +579,14 @@ function TemplateFieldEditor({
             onChange={(event) => onChange({ label: event.target.value })}
             placeholder={t("fieldLabelPlaceholder")}
             aria-invalid={labelInvalid}
+            aria-describedby={
+              labelInvalid ? `tf-${field.id}-label-error` : undefined
+            }
           />
           {labelInvalid ? (
-            <FieldError>{t("fieldLabelRequired")}</FieldError>
+            <FieldError id={`tf-${field.id}-label-error`}>
+              {t("fieldLabelRequired")}
+            </FieldError>
           ) : null}
         </Field>
         <Field>
@@ -616,10 +626,15 @@ function TemplateFieldEditor({
             onChange={(event) => onChange({ optionsText: event.target.value })}
             placeholder={t("fieldOptionsPlaceholder")}
             aria-invalid={optionsInvalid}
+            aria-describedby={
+              optionsInvalid ? `tf-${field.id}-options-error` : undefined
+            }
           />
           <FieldDescription>{t("fieldOptionsHint")}</FieldDescription>
           {optionsInvalid ? (
-            <FieldError>{t("fieldOptionsRequired")}</FieldError>
+            <FieldError id={`tf-${field.id}-options-error`}>
+              {t("fieldOptionsRequired")}
+            </FieldError>
           ) : null}
         </Field>
       ) : null}

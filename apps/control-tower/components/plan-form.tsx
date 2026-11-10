@@ -140,7 +140,7 @@ export function PlanForm({
             <select
               value={nextPlan}
               onChange={(event) => setNextPlan(event.target.value as Plan)}
-              className="h-8 rounded-lg border border-input bg-background px-2 text-sm text-foreground capitalize"
+              className="h-8 rounded-lg border border-input-border bg-background px-2 text-sm text-foreground capitalize"
             >
               {PLANS.map((option) => (
                 <option key={option} value={option}>

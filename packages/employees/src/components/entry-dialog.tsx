@@ -218,7 +218,7 @@ export function EntryDialog({
                     "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors",
                     status === item.value
                       ? "border-foreground/20 bg-foreground text-background"
-                      : "border-input hover:bg-muted"
+                      : "border-input-border hover:bg-muted"
                   )}
                 >
                   <span
