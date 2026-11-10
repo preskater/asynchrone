@@ -1,0 +1,63 @@
+{
+  "menuLabel": "Help",
+  "helpCenter": "Help center",
+  "faq": "FAQ and guides",
+  "contactSupport": "Contact support",
+  "status": "System status",
+  "policy": "Support policy",
+  "footerLabel": "Support",
+  "helpTitle": "Help and support",
+  "helpDescription": "Find an answer, check the platform status, or reach a human on the Asynchrone Space team.",
+  "faqDescription": "Answers to the most common questions about plans, data and features.",
+  "contactDescription": "Open a support ticket. The page you came from, the app version and recent errors are attached so we can help faster.",
+  "statusDescription": "Live availability of every app and the history of past incidents. Subscribe there to be told about outages.",
+  "policyDescription": "Channels, support hours and first-response targets for your plan.",
+  "open": "Open",
+  "channels": {
+    "inApp": "In-app ticket",
+    "email": "Email",
+    "community": "Community",
+    "namedContact": "Named support contact"
+  },
+  "plans": {
+    "free": "Starter",
+    "team": "Team",
+    "enterprise": "Enterprise"
+  },
+  "severities": {
+    "sev1": {
+      "name": "Sev 1 — Critical",
+      "description": "The service is unavailable, data is lost or at risk, or there is a security incident. No workaround."
+    },
+    "sev2": {
+      "name": "Sev 2 — High",
+      "description": "A major feature is broken or badly degraded for many users, and the workaround is painful."
+    },
+    "sev3": {
+      "name": "Sev 3 — Normal",
+      "description": "A partial problem with a workaround, a question, or a how-to request."
+    }
+  },
+  "bestEffort": "Best effort",
+  "targetHours": "{hours, plural, one {# business hour} other {# business hours}}",
+  "targetDays": "{days, plural, one {# business day} other {# business days}}",
+  "hoursSummary": "Support hours: Monday to Friday, 9:00–18:00 Paris time, excluding French public holidays. There is no 24/7 coverage.",
+  "page": {
+    "metadataTitle": "Support policy",
+    "metadataDescription": "How to reach the Asynchrone Space support team, our hours, severity levels and first-response targets per plan.",
+    "eyebrow": "Support",
+    "title": "How we support you",
+    "description": "Every plan can reach a human. Here is how, when, and how fast.",
+    "contactTitle": "How to reach us",
+    "contactDescription": "From any app, open Help → Contact support: the ticket carries the page, version and recent errors, so we skip the back-and-forth. You can also email {email}.",
+    "channelsTitle": "Channels per plan",
+    "planColumn": "Plan",
+    "channelsColumn": "Channels",
+    "targetsTitle": "First-response targets",
+    "targetsDescription": "Targets are for a first human response during support hours, not for a fix. We set the severity from the impact you report and may adjust it during triage.",
+    "severityTitle": "Severity levels",
+    "statusTitle": "Status and incidents",
+    "statusDescription": "Outages and maintenance are announced on the status page, with the incident history. Subscribe there to get updates by email.",
+    "statusCta": "Open the status page"
+  }
+}

@@ -1,0 +1,29 @@
+# ingress-nginx values for the staging cluster.
+#
+# Mirrors the production controller (DaemonSet, OVH Octavia small) and pins the
+# staging floating IP created with:
+#   ovhcloud cloud ip floating create --region GRA11 --description "staging ingress"
+controller:
+  kind: DaemonSet
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 151.80.202.99
+    annotations:
+      loadbalancer.openstack.org/network-id: 51708903-c977-4262-9edd-c8d23706aabb
+      loadbalancer.openstack.org/subnet-id: 619e6357-540a-4eb5-93e1-28fd94e31848
+      loadbalancer.openstack.org/keep-floatingip: "true"
+      loadbalancer.openstack.org/load-balancer-address: 151.80.202.99
+      loadbalancer.ovhcloud.com/class: octavia
+      loadbalancer.ovhcloud.com/flavor: small
+  config:
+    use-forwarded-headers: "true"
+    proxy-body-size: "8m"
+    allow-snippet-annotations: "true"
+    annotations-risk-level: "Critical"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

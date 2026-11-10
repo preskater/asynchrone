@@ -18,6 +18,9 @@ import {
   AdminOverviewSchema,
   AdminPlanInputSchema,
   AdminSessionRevokeResultSchema,
+  AdminSupportTicketPageSchema,
+  AdminSupportTicketSchema,
+  AdminSupportTicketUpdateSchema,
   AdminTrialInputSchema,
   AdminUserDetailSchema,
   AdminUserPageSchema,
@@ -35,7 +38,11 @@ import {
   type AdminOverview,
   type AdminPlanInput,
   type AdminSessionRevokeResult,
+  type AdminSupportTicket,
+  type AdminSupportTicketPage,
+  type AdminSupportTicketUpdate,
   type AdminTrialInput,
+  type SupportTicketStatus,
   type AdminUser,
   type AdminUserDetail,
   type AdminUserPage,
@@ -300,5 +307,41 @@ export class IdentityAdminClient {
       },
       AdminOAuthClientSchema
     ) as Promise<AdminOAuthClient>
+  }
+
+  /** Latest support tickets, newest first, optionally filtered by status. */
+  listSupportTickets(
+    input: { status?: SupportTicketStatus; limit?: number } = {}
+  ): Promise<AdminSupportTicketPage> {
+    const search = new URLSearchParams()
+    if (input.status) search.set("status", input.status)
+    if (input.limit) search.set("limit", String(input.limit))
+    return this.request(
+      `${INTERNAL_ROUTES.adminSupportTickets}?${search}`,
+      {},
+      AdminSupportTicketPageSchema
+    ) as Promise<AdminSupportTicketPage>
+  }
+
+  getSupportTicket(ticketId: string): Promise<AdminSupportTicket> {
+    return this.request(
+      INTERNAL_ROUTES.adminSupportTicket(ticketId),
+      {},
+      AdminSupportTicketSchema
+    ) as Promise<AdminSupportTicket>
+  }
+
+  updateSupportTicket(
+    ticketId: string,
+    input: AdminSupportTicketUpdate
+  ): Promise<AdminSupportTicket> {
+    return this.request(
+      INTERNAL_ROUTES.adminSupportTicket(ticketId),
+      {
+        method: "POST",
+        body: JSON.stringify(AdminSupportTicketUpdateSchema.parse(input)),
+      },
+      AdminSupportTicketSchema
+    ) as Promise<AdminSupportTicket>
   }
 }

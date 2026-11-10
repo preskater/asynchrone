@@ -3,8 +3,11 @@ import {
   AdminHandoffInputSchema,
   AdminOAuthClientDisabledInputSchema,
   AdminPlanInputSchema,
+  AdminSupportTicketUpdateSchema,
   AdminTrialInputSchema,
   INTERNAL_API_VERSION,
+  SUPPORT_TICKET_STATUSES,
+  type SupportTicketStatus,
 } from "@workspace/contracts"
 
 import type { AdminRepository } from "./repository"
@@ -234,6 +237,37 @@ export async function handleAdminRequest({
       return client
         ? envelope(client)
         : error(404, "not_found", "OAuth client not found")
+    }
+
+    if (resource === "support-tickets" && !id && method === "GET") {
+      const status = new URL(request.url).searchParams.get("status")
+      return envelope(
+        await repository.listSupportTickets({
+          status: SUPPORT_TICKET_STATUSES.includes(
+            status as SupportTicketStatus
+          )
+            ? (status as SupportTicketStatus)
+            : undefined,
+          limit: limit(request),
+        })
+      )
+    }
+
+    if (resource === "support-tickets" && id && !action) {
+      const ticket =
+        method === "POST"
+          ? await repository.updateSupportTicket(
+              id,
+              await body(request, AdminSupportTicketUpdateSchema)
+            )
+          : method === "GET"
+            ? await repository.getSupportTicket(id)
+            : undefined
+      if (ticket !== undefined) {
+        return ticket
+          ? envelope(ticket)
+          : error(404, "not_found", "Support ticket not found")
+      }
     }
 
     return error(404, "not_found", "Admin endpoint not found")

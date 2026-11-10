@@ -84,6 +84,7 @@ export default async function OrgLayout({
                 <WorkspaceNavProvider>
                   <WorkspaceShell
                     skipLabel={t("skipToContent")}
+                    copilotUrl={copilotUrl}
                     sidebar={
                       <AppSidebar
                         orgSlug={orgSlug}

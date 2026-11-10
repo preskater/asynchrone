@@ -1,6 +1,8 @@
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 
+import { parseTrustedIpHeaders } from "@workspace/core/trusted-ip"
+
 import { auth } from "@/lib/auth"
 
 import { isIpAllowed } from "./ip"
@@ -53,9 +55,13 @@ async function readSession(): Promise<SessionSnapshot | null> {
 }
 
 function requestIp(headerList: Headers): string | null {
-  const forwarded = headerList.get("x-forwarded-for")
-  if (forwarded) return forwarded.split(",")[0]?.trim() ?? null
-  return headerList.get("x-real-ip")
+  for (const name of parseTrustedIpHeaders(process.env.TRUSTED_IP_HEADERS)) {
+    // The proxy appends to a hop list, so only the last entry is not
+    // client-supplied: anything to its left can be forged.
+    const ip = headerList.get(name)?.split(",").at(-1)?.trim()
+    if (ip) return ip
+  }
+  return null
 }
 
 async function assertAllowedIp(surface: "page" | "action") {

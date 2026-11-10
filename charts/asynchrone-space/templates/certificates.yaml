@@ -10,7 +10,7 @@ metadata:
 spec:
   secretName: {{ .secretName }}
   issuerRef:
-    {{- toYaml .issuerRef | nindent 4 }}
+    {{- toYaml $.Values.certificates.issuerRef | nindent 4 }}
   dnsNames:
     {{- range .dnsNames }}
     - {{ . | quote }}

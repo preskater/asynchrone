@@ -277,3 +277,96 @@ describe("ProjectService task authorization", () => {
     )
   })
 })
+
+describe("ProjectService.importTasks", () => {
+  function importRepo(existing: unknown[] = []) {
+    const repo = fakeRepository()
+    return Object.assign(repo, {
+      listTasks: vi.fn(async () => existing),
+      listLabels: vi.fn(async () => []),
+      listMembers: vi.fn(async () => []),
+      addActivity: vi.fn(async () => undefined),
+    })
+  }
+
+  const rows = [
+    { row: 1, title: "Ship it", status: "Done" },
+    { row: 2, title: "" },
+    { row: 3, title: "ship IT" },
+  ]
+  const input = { projectId: project.id, dryRun: false, rows }
+
+  it("refuses a viewer and a client before reading anything", async () => {
+    const repo = importRepo()
+    const { projectService } = service(repo)
+    for (const role of ["viewer", "client"] as const) {
+      await expect(
+        projectService.importTasks(context(role), input)
+      ).rejects.toMatchObject({ code: "role_cannot_modify_projects" })
+    }
+    expect(repo.findById).not.toHaveBeenCalled()
+  })
+
+  it("refuses a project of another organization", async () => {
+    const repo = importRepo()
+    repo.findById.mockResolvedValue(null as never)
+    const { projectService } = service(repo)
+    await expect(
+      projectService.importTasks(context("member"), input)
+    ).rejects.toBeInstanceOf(NotFoundError)
+    expect(repo.createTask).not.toHaveBeenCalled()
+  })
+
+  it("writes nothing on a dry run but reports the same result", async () => {
+    const repo = importRepo()
+    const { projectService, ports: p } = service(repo)
+    await expect(
+      projectService.importTasks(context("member"), { ...input, dryRun: true })
+    ).resolves.toEqual({
+      created: 1,
+      skipped: 1,
+      errors: [{ row: 2, code: "missing_title" }],
+      warnings: [],
+      dryRun: true,
+    })
+    expect(repo.createTask).not.toHaveBeenCalled()
+    expect(repo.addActivity).not.toHaveBeenCalled()
+    expect(p.audit).not.toHaveBeenCalled()
+  })
+
+  it("creates tasks without an issue or a notification, audited", async () => {
+    const repo = importRepo()
+    const { projectService, ports: p } = service(repo)
+    await expect(
+      projectService.importTasks(context("member"), input)
+    ).resolves.toMatchObject({ created: 1, skipped: 1, dryRun: false })
+
+    expect(repo.createTask).toHaveBeenCalledOnce()
+    expect(repo.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identifier: "W-1",
+        status: "done",
+        createIssue: false,
+        organizationId: ORG,
+      })
+    )
+    expect(p.repository.createTaskInRepository).not.toHaveBeenCalled()
+    expect(p.notify).not.toHaveBeenCalled()
+    expect(p.audit).toHaveBeenCalledOnce()
+    expect(repo.addActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "imported", target: "1" })
+    )
+  })
+
+  it("skips rows already in the project", async () => {
+    const repo = importRepo([
+      { title: "Ship it", dueDate: null, identifier: "WEB-7" },
+    ])
+    const { projectService } = service(repo)
+    await expect(
+      projectService.importTasks(context("member"), input)
+    ).resolves.toMatchObject({ created: 0, skipped: 2 })
+    expect(repo.createTask).not.toHaveBeenCalled()
+    expect(repo.addActivity).not.toHaveBeenCalled()
+  })
+})

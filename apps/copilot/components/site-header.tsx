@@ -10,6 +10,7 @@ import { CommandMenu } from "@/components/command-menu"
 import { NavUser } from "@/components/nav-user"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { OrgSwitcher } from "@/components/organization/org-switcher"
+import { HelpMenu } from "@workspace/app-shell/support"
 import { ThemeToggle } from "@workspace/ui/components/theme-toggle"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
@@ -118,6 +119,7 @@ export function SiteHeader({
             initial={notifications}
           />
           <OrgSwitcher activeOrganizationId={activeOrganizationId} compact />
+          <HelpMenu />
           <ThemeToggle ariaLabel={common("toggleTheme")} />
           <NavUser user={user} orgSlug={orgSlug} compact />
         </div>

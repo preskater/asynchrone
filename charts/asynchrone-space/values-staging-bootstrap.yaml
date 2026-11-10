@@ -1,0 +1,21 @@
+# Bootstrap overlay for the first staging install.
+#
+# Domain apps are disabled until the first admin/org exists and the OAuth
+# clients have been provisioned. Sign-up is opened only for that bootstrap
+# window; the base staging values set SIGNUP_INVITE_ONLY=true.
+projects:
+  enabled: false
+calendars:
+  enabled: false
+files:
+  enabled: false
+messages:
+  enabled: false
+clients:
+  enabled: false
+employees:
+  enabled: false
+
+copilot:
+  config:
+    SIGNUP_INVITE_ONLY: "false"

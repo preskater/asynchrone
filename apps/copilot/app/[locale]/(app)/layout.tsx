@@ -89,6 +89,8 @@ export default async function AppLayout({
           <RecentsProvider organizationId={organization.id}>
             <WorkspaceShell
               skipLabel={t("skipToContent")}
+              // Help, tickets and status are this app\'s own routes.
+              copilotUrl=""
               sidebar={
                 <AppSidebar
                   variant="inset"

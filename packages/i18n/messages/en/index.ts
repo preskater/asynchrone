@@ -36,6 +36,7 @@ import portal from "./portal.json"
 import pricing from "./pricing.json"
 import projects from "./projects.json"
 import sidebar from "./sidebar.json"
+import support from "./support.json"
 import toasts from "./toasts.json"
 import trial from "./trial.json"
 import userMenu from "./userMenu.json"
@@ -79,6 +80,7 @@ export default {
   Pricing: pricing,
   Projects: projects,
   Sidebar: sidebar,
+  Support: support,
   Toasts: toasts,
   Trial: trial,
   UserMenu: userMenu,
