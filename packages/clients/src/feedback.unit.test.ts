@@ -13,17 +13,17 @@ const owner: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "owner",
+  roles: ["owner"],
 }
 const viewer: RequestContext = {
   ...owner,
   userId: "user_viewer",
-  role: "viewer",
+  roles: ["viewer"],
 }
 const member: RequestContext = {
   ...owner,
   userId: "user_member",
-  role: "member",
+  roles: ["member"],
 }
 
 const now = new Date("2026-11-12T10:00:00Z")
