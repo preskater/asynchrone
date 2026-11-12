@@ -13,12 +13,13 @@ export function exportOrganization(organizationId: string) {
     pipelineStage: () =>
       prisma.pipelineStage.findMany({ where: { pipeline: where } }),
     deal: () => prisma.deal.findMany({ where }),
-    dealContact: () =>
-      prisma.dealContact.findMany({ where: { deal: where } }),
+    dealContact: () => prisma.dealContact.findMany({ where: { deal: where } }),
     clientActivity: () => prisma.clientActivity.findMany({ where }),
     clientFieldDefinition: () =>
       prisma.clientFieldDefinition.findMany({ where }),
     clientDocument: () => prisma.clientDocument.findMany({ where }),
+    clientRelease: () => prisma.clientRelease.findMany({ where }),
+    clientFeedback: () => prisma.clientFeedback.findMany({ where }),
     auditLog: () => prisma.auditLog.findMany({ where }),
   })
 }

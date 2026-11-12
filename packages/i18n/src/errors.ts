@@ -40,6 +40,8 @@ const CODE_KEYS: Record<string, string> = {
   stage_last_required: "stageLastRequired",
   file_already_linked: "fileAlreadyLinked",
   file_in_trash: "fileInTrash",
+  release_version_taken: "releaseVersionTaken",
+  project_not_linked_to_client: "projectNotLinkedToClient",
   project_already_linked: "projectAlreadyLinked",
   project_not_linked: "projectNotLinked",
   portal_invite_exists: "portalInviteExists",

@@ -52,8 +52,10 @@ Option 3.
   `@workspace/core/feedback` so Copilot and the clients app share one
   taxonomy without an app-to-app import.
 - Access follows the CRM rules in `@workspace/clients` (`viewer` reads, `member`
-  and above write). Status changes append a `ClientActivity` note so they show
-  on the company timeline.
+  and above write, `admin` and above delete a release or a report). Every
+  mutation writes one audit row on the company (`client.release.*`,
+  `client.feedback.*`), so status changes are timestamped and show, translated,
+  on the company timeline without a user-editable `ClientActivity` note.
 - "Convert to task" calls the projects delegated internal API with an
   idempotency key and stores the returned task id; the projects app never reads
   the clients database.

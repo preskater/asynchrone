@@ -352,3 +352,93 @@ export interface ClientExportResultData {
   filename: string
   content: string
 }
+
+// --- Releases and test feedback (ADR 0040) -------------------------------------
+
+export const CLIENT_RELEASE_STATUSES = [
+  "planned",
+  "in_test",
+  "approved",
+  "rejected",
+] as const
+export type ClientReleaseStatus = (typeof CLIENT_RELEASE_STATUSES)[number]
+
+export const CLIENT_FEEDBACK_STATUSES = [
+  "new",
+  "triaged",
+  "accepted",
+  "rejected",
+  "fixed",
+  "deferred",
+] as const
+export type ClientFeedbackStatus = (typeof CLIENT_FEEDBACK_STATUSES)[number]
+
+/** Statuses that still need work; the others close the report. */
+export const CLIENT_FEEDBACK_OPEN_STATUSES = [
+  "new",
+  "triaged",
+  "accepted",
+] as const satisfies readonly ClientFeedbackStatus[]
+
+export const CLIENT_FEEDBACK_ENVIRONMENTS = [
+  "development",
+  "staging",
+  "production",
+  "other",
+] as const
+export type ClientFeedbackEnvironment =
+  (typeof CLIENT_FEEDBACK_ENVIRONMENTS)[number]
+
+export interface ClientReleaseData {
+  id: string
+  clientId: string
+  projectId?: string
+  version: string
+  label?: string
+  /** `YYYY-MM-DD` release day. */
+  releasedAt?: string
+  status: ClientReleaseStatus
+  notes?: string
+  portalVisible: boolean
+  /** First and last `testedAt` of its feedback (ISO), when there is any. */
+  testedFrom?: string
+  testedTo?: string
+  feedbackCount: number
+  openCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ClientFeedbackData {
+  id: string
+  clientId: string
+  releaseId: string
+  projectId?: string
+  /** Release version when the report was recorded. */
+  version: string
+  contactId?: string
+  contactName?: string
+  authorId: string
+  authorName: string
+  assigneeId?: string
+  assigneeName?: string
+  /** ISO date and time of the test. */
+  testedAt: string
+  environment: ClientFeedbackEnvironment
+  category: string
+  impact: string
+  status: ClientFeedbackStatus
+  statusChangedAt: string
+  title: string
+  body: string
+  linkedTaskId?: string
+  documentId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** One release with the feedback that matches the current filters. */
+export interface ClientReleaseGroupData {
+  release: ClientReleaseData
+  feedback: ClientFeedbackData[]
+}

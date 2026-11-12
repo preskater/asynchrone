@@ -13,12 +13,16 @@ export async function deleteOrganization(
     const contactCompany = await tx.contactCompany.deleteMany({
       where: { contact: where },
     })
-    const dealContact = await tx.dealContact.deleteMany({ where: { deal: where } })
+    const dealContact = await tx.dealContact.deleteMany({
+      where: { deal: where },
+    })
     const stages = await tx.pipelineStage.deleteMany({
       where: { pipeline: where },
     })
     const deals = await tx.deal.deleteMany({ where })
     const pipelines = await tx.pipeline.deleteMany({ where })
+    const feedback = await tx.clientFeedback.deleteMany({ where })
+    const releases = await tx.clientRelease.deleteMany({ where })
     const contacts = await tx.contact.deleteMany({ where })
     const clients = await tx.client.deleteMany({ where })
     const activities = await tx.clientActivity.deleteMany({ where })
@@ -31,6 +35,8 @@ export async function deleteOrganization(
       pipelineStage: stages.count,
       deal: deals.count,
       pipeline: pipelines.count,
+      clientFeedback: feedback.count,
+      clientRelease: releases.count,
       contact: contacts.count,
       client: clients.count,
       clientActivity: activities.count,
@@ -63,11 +69,26 @@ export async function deleteUser(
       where: { addedBy: userId },
       data: { addedBy: DELETED },
     })
+    const feedbackAuthor = await tx.clientFeedback.updateMany({
+      where: { authorId: userId },
+      data: { authorId: DELETED },
+    })
+    const feedbackAssignee = await tx.clientFeedback.updateMany({
+      where: { assigneeId: userId },
+      data: { assigneeId: null },
+    })
+    const releases = await tx.clientRelease.updateMany({
+      where: { createdBy: userId },
+      data: { createdBy: DELETED },
+    })
     return {
       clientOwner: clients.count,
       dealOwner: deals.count,
       clientActivity: activities.count,
       clientDocument: documents.count,
+      clientFeedbackAuthor: feedbackAuthor.count,
+      clientFeedbackAssignee: feedbackAssignee.count,
+      clientRelease: releases.count,
     }
   })
   return {

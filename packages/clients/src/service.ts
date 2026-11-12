@@ -7,6 +7,10 @@ import type {
   ContactInput,
   DealInput,
   ExportInput,
+  FeedbackAssigneeInput,
+  FeedbackFilter,
+  FeedbackInput,
+  FeedbackStatusInput,
   FieldDefinitionInput,
   ImportClientsInput,
   ImportContactsInput,
@@ -15,6 +19,7 @@ import type {
   MoveDealInput,
   MoveStageInput,
   PipelineInput,
+  ReleaseInput,
   StageInput,
   UnlinkProjectInput,
   UpdateDocumentVisibilityInput,
@@ -30,6 +35,7 @@ import type {
   ClientDocumentData,
   ClientExportResultData,
   ClientFieldDefinitionData,
+  ClientFeedbackData,
   ClientFieldEntity,
   ClientFileOptionData,
   ClientImportResultData,
@@ -37,6 +43,8 @@ import type {
   ClientPipelineData,
   ClientProjectLinkOptionData,
   ClientProjectOptionData,
+  ClientReleaseData,
+  ClientReleaseGroupData,
 } from "./types"
 
 import type { ClientServicePorts } from "./ports"
@@ -51,6 +59,7 @@ import { ClientDocumentsService } from "./services/documents"
 import { ClientLinksService } from "./services/links"
 import { ClientActivitiesService } from "./services/activities"
 import { ClientImportExportService } from "./services/import-export"
+import { ClientFeedbackService } from "./services/feedback"
 
 /**
  * Clients facade. Each method delegates to the sub-domain service in
@@ -68,6 +77,7 @@ export class ClientsService {
   private readonly links: ClientLinksService
   private readonly activities: ClientActivitiesService
   private readonly importExport: ClientImportExportService
+  private readonly feedback: ClientFeedbackService
 
   constructor(repo: ClientsRepository, ports: ClientServicePorts) {
     this.overview = new ClientOverviewService(repo)
@@ -80,6 +90,7 @@ export class ClientsService {
     this.links = new ClientLinksService(repo)
     this.activities = new ClientActivitiesService(repo)
     this.importExport = new ClientImportExportService(repo)
+    this.feedback = new ClientFeedbackService(repo)
   }
 
   async getOverview(ctx: RequestContext): Promise<ClientOverviewData> {
@@ -346,5 +357,54 @@ export class ClientsService {
     input: ImportContactsInput
   ): Promise<ClientImportResultData> {
     return this.importExport.importContacts(ctx, input)
+  }
+
+  async listReleaseGroups(
+    ctx: RequestContext,
+    filter: FeedbackFilter = {}
+  ): Promise<ClientReleaseGroupData[]> {
+    return this.feedback.listReleaseGroups(ctx, filter)
+  }
+
+  async saveRelease(
+    ctx: RequestContext,
+    input: ReleaseInput
+  ): Promise<ClientReleaseData> {
+    return this.feedback.saveRelease(ctx, input)
+  }
+
+  async deleteRelease(
+    ctx: RequestContext,
+    id: string
+  ): Promise<{ id: string }> {
+    return this.feedback.deleteRelease(ctx, id)
+  }
+
+  async saveFeedback(
+    ctx: RequestContext,
+    input: FeedbackInput
+  ): Promise<ClientFeedbackData> {
+    return this.feedback.saveFeedback(ctx, input)
+  }
+
+  async setFeedbackStatus(
+    ctx: RequestContext,
+    input: FeedbackStatusInput
+  ): Promise<ClientFeedbackData> {
+    return this.feedback.setFeedbackStatus(ctx, input)
+  }
+
+  async assignFeedback(
+    ctx: RequestContext,
+    input: FeedbackAssigneeInput
+  ): Promise<ClientFeedbackData> {
+    return this.feedback.assignFeedback(ctx, input)
+  }
+
+  async deleteFeedback(
+    ctx: RequestContext,
+    id: string
+  ): Promise<{ id: string }> {
+    return this.feedback.deleteFeedback(ctx, id)
   }
 }

@@ -9,6 +9,10 @@ import {
   dealInputSchema,
   deleteFieldDefinitionSchema,
   exportSchema,
+  feedbackAssigneeSchema,
+  feedbackFilterSchema,
+  feedbackInputSchema,
+  feedbackStatusSchema,
   fieldDefinitionSchema,
   importClientsSchema,
   importContactsSchema,
@@ -17,6 +21,7 @@ import {
   moveDealSchema,
   moveStageSchema,
   pipelineInputSchema,
+  releaseInputSchema,
   reopenDealSchema,
   setDefaultPipelineSchema,
   stageInputSchema,
@@ -334,4 +339,65 @@ export const unlinkProjectAction = withAction(async (input: unknown) => {
 export const fetchClientProjectOptionsAction = withAction(async () => {
   const ctx = await getRequestContext()
   return clientsService.fetchProjectOptions(ctx)
+})
+
+// --- Releases and test feedback (ADR 0040) -------------------------------------
+
+async function revalidateFeedback(organizationId: string) {
+  await Promise.all([
+    revalidateOrgPath(organizationId, "/clients"),
+    revalidateOrgPath(organizationId, "/feedback"),
+  ])
+}
+
+export const listReleaseGroupsAction = withAction(async (input?: unknown) => {
+  const ctx = await getRequestContext()
+  const filter = await parseLocalized(feedbackFilterSchema, input ?? {})
+  return clientsService.listReleaseGroups(ctx, filter)
+})
+
+export const saveReleaseAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(releaseInputSchema, input)
+  const release = await clientsService.saveRelease(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return release
+})
+
+export const deleteReleaseAction = withAction(async (releaseId: string) => {
+  const ctx = await getRequestContext()
+  const result = await clientsService.deleteRelease(ctx, releaseId)
+  await revalidateFeedback(ctx.organizationId)
+  return result
+})
+
+export const saveFeedbackAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackInputSchema, input)
+  const feedback = await clientsService.saveFeedback(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const setFeedbackStatusAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackStatusSchema, input)
+  const feedback = await clientsService.setFeedbackStatus(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const assignFeedbackAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackAssigneeSchema, input)
+  const feedback = await clientsService.assignFeedback(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const deleteFeedbackAction = withAction(async (feedbackId: string) => {
+  const ctx = await getRequestContext()
+  const result = await clientsService.deleteFeedback(ctx, feedbackId)
+  await revalidateFeedback(ctx.organizationId)
+  return result
 })

@@ -50,6 +50,8 @@ export type ServiceErrorCode =
   | "file_in_trash"
   | "project_already_linked"
   | "project_not_linked"
+  | "release_version_taken"
+  | "project_not_linked_to_client"
   | "portal_invite_exists"
   | "portal_read_only"
   | "file_too_large"

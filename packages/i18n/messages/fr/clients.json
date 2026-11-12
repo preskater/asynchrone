@@ -279,6 +279,17 @@
         "project": {
           "linked": "Projet « {projectName} » lié",
           "unlinked": "Projet « {projectName} » délié"
+        },
+        "release": {
+          "created": "Version {version} créée",
+          "updated": "Version {version} mise à jour",
+          "deleted": "Version {version} supprimée"
+        },
+        "feedback": {
+          "created": "Retour « {title} » enregistré sur la {version}",
+          "updated": "Retour « {title} » mis à jour",
+          "status_changed": "Retour « {title} » ({version}) passé à l’état {status, select, new {nouveau} triaged {trié} accepted {accepté} rejected {rejeté} fixed {corrigé} deferred {reporté} other {{status}}}",
+          "deleted": "Retour « {title} » supprimé"
         }
       },
       "contact": {
