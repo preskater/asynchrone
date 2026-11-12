@@ -76,6 +76,27 @@ export interface ClientProjects {
     id: string,
     clientId: string | null
   ): Promise<ClientProjectRow>
+  /** Creates a task; retries with the same key return the first task. */
+  createTask(
+    ctx: RequestContext,
+    input: ClientTaskInput,
+    idempotencyKey: string
+  ): Promise<ClientTaskRow>
+}
+
+/** A task the clients app asks the projects app to create. */
+export interface ClientTaskInput {
+  projectId: string
+  title: string
+  description: string
+  priority: "low" | "medium" | "high" | "urgent"
+  assigneeId: string | null
+}
+
+export interface ClientTaskRow {
+  id: string
+  identifier: string
+  projectId: string
 }
 
 /** One file, as document links need it. */

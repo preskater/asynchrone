@@ -11,6 +11,7 @@ import {
   type TaskFilters,
 } from "./project-filters"
 import { ProjectDiscussion } from "./project-discussion"
+import { ProjectFeedback } from "./project-feedback"
 import { ProjectHeader } from "./project-header"
 import { ProjectOverview } from "./project-overview"
 import { ProjectSettings } from "./project-settings"
@@ -25,6 +26,7 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 
+import { useProjectActions } from "../../ui/actions"
 import { useProjectStore } from "../../ui/store"
 import { useOrgSlug } from "@workspace/organization/use-org-slug"
 import { useRecents } from "@workspace/app-shell/recents"
@@ -40,6 +42,9 @@ export function ProjectView({ project }: { project: Project }) {
   const [activeTaskId, setActiveTaskId] = React.useState<string | undefined>()
   const [detailsOpen, setDetailsOpen] = React.useState(false)
   const [tab, setTab] = React.useState("overview")
+  const { listProjectFeedback } = useProjectActions()
+  // Only projects linked to a company have client test feedback.
+  const hasFeedback = Boolean(project.clientId && listProjectFeedback)
 
   const currentUserId = store.members[0]?.id ?? "u_aria"
   const projectTasks = store.tasksForProject(project.id)
@@ -78,11 +83,17 @@ export function ProjectView({ project }: { project: Project }) {
             <TabsTrigger value="list">{t("list")}</TabsTrigger>
             <TabsTrigger value="calendar">{t("calendar")}</TabsTrigger>
             <TabsTrigger value="discussion">{t("discussion")}</TabsTrigger>
+            {hasFeedback ? (
+              <TabsTrigger value="feedback">{t("feedback")}</TabsTrigger>
+            ) : null}
             <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
           </TabsList>
         </div>
 
-        {tab !== "overview" && tab !== "settings" && tab !== "discussion" ? (
+        {tab !== "overview" &&
+        tab !== "settings" &&
+        tab !== "discussion" &&
+        tab !== "feedback" ? (
           <ProjectFilters filters={filters} onChange={setFilters} />
         ) : null}
 
@@ -109,6 +120,12 @@ export function ProjectView({ project }: { project: Project }) {
         <TabsContent value="discussion">
           <ProjectDiscussion projectId={project.id} />
         </TabsContent>
+
+        {hasFeedback ? (
+          <TabsContent value="feedback">
+            <ProjectFeedback projectId={project.id} onOpenTask={openTask} />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="settings">
           <ProjectSettings project={project} />

@@ -298,6 +298,8 @@ export interface ClientOverviewData {
   stats: ClientOverviewStats
   /** Latest activity across all records (desk feed). */
   recentActivities: ClientActivityData[]
+  /** Releases currently in test, newest first (ADR 0040). */
+  testRounds: ClientTestRoundData[]
 }
 
 export interface ClientDetailData {
@@ -351,4 +353,173 @@ export interface ClientImportResultData {
 export interface ClientExportResultData {
   filename: string
   content: string
+}
+
+// --- Releases and test feedback (ADR 0040) -------------------------------------
+
+export const CLIENT_RELEASE_STATUSES = [
+  "planned",
+  "in_test",
+  "approved",
+  "rejected",
+] as const
+export type ClientReleaseStatus = (typeof CLIENT_RELEASE_STATUSES)[number]
+
+export const CLIENT_FEEDBACK_STATUSES = [
+  "new",
+  "triaged",
+  "accepted",
+  "rejected",
+  "fixed",
+  "deferred",
+] as const
+export type ClientFeedbackStatus = (typeof CLIENT_FEEDBACK_STATUSES)[number]
+
+/** Statuses that still need work; the others close the report. */
+export const CLIENT_FEEDBACK_OPEN_STATUSES = [
+  "new",
+  "triaged",
+  "accepted",
+] as const satisfies readonly ClientFeedbackStatus[]
+
+export const CLIENT_FEEDBACK_ENVIRONMENTS = [
+  "development",
+  "staging",
+  "production",
+  "other",
+] as const
+export type ClientFeedbackEnvironment =
+  (typeof CLIENT_FEEDBACK_ENVIRONMENTS)[number]
+
+export interface ClientReleaseData {
+  id: string
+  clientId: string
+  /** Set on list reads, for the cross-client page. */
+  clientName?: string
+  projectId?: string
+  version: string
+  label?: string
+  /** `YYYY-MM-DD` release day. */
+  releasedAt?: string
+  status: ClientReleaseStatus
+  notes?: string
+  portalVisible: boolean
+  /** First and last `testedAt` of its feedback (ISO), when there is any. */
+  testedFrom?: string
+  testedTo?: string
+  feedbackCount: number
+  openCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ClientFeedbackData {
+  id: string
+  clientId: string
+  releaseId: string
+  projectId?: string
+  /** Release version when the report was recorded. */
+  version: string
+  contactId?: string
+  contactName?: string
+  authorId: string
+  authorName: string
+  assigneeId?: string
+  assigneeName?: string
+  /** ISO date and time of the test. */
+  testedAt: string
+  environment: ClientFeedbackEnvironment
+  category: string
+  impact: string
+  status: ClientFeedbackStatus
+  statusChangedAt: string
+  title: string
+  body: string
+  linkedTaskId?: string
+  documentId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** One release with the feedback that matches the current filters. */
+export interface ClientReleaseGroupData {
+  release: ClientReleaseData
+  feedback: ClientFeedbackData[]
+}
+
+export interface ClientFeedbackPageData {
+  access: ClientAccessData
+  members: ClientMemberOptionData[]
+  groups: ClientReleaseGroupData[]
+}
+
+/** Counts of a set of feedback entries, for a release report. */
+export interface ClientFeedbackSummaryData {
+  total: number
+  open: number
+  byStatus: Record<string, number>
+  byCategory: Record<string, number>
+  byImpact: Record<string, number>
+}
+
+/** The per-release report ("compte rendu"), printed or shared. */
+export interface ClientReleaseReportData {
+  release: ClientReleaseData
+  clientName: string
+  generatedAt: string
+  summary: ClientFeedbackSummaryData
+  /** Oldest test first, as the client ran them. */
+  feedback: ClientFeedbackData[]
+}
+
+/** A release in test, for the CRM overview. */
+export interface ClientTestRoundData {
+  releaseId: string
+  clientId: string
+  clientName: string
+  version: string
+  openCount: number
+  feedbackCount: number
+}
+
+/**
+ * What a release report shows. The internal report and the portal copy both
+ * fit it; the portal copy leaves out notes, assignees and authors.
+ */
+export interface ReleaseReportView {
+  release: {
+    id: string
+    clientId: string
+    version: string
+    label?: string
+    releasedAt?: string
+    status: string
+    testedFrom?: string
+    testedTo?: string
+  }
+  clientName: string
+  generatedAt: string
+  summary: ClientFeedbackSummaryData
+  feedback: {
+    id: string
+    title: string
+    body: string
+    status: string
+    category: string
+    impact: string
+    environment: string
+    testedAt: string
+    contactName?: string
+  }[]
+}
+
+/** A release report shared with the client portal. */
+export interface PortalReleaseSummaryData {
+  id: string
+  version: string
+  label?: string
+  releasedAt?: string
+  status: string
+  openCount: number
+  feedbackCount: number
 }

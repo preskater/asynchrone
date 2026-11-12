@@ -165,6 +165,18 @@
       },
       "document": {
         "linked": "Document partagé avec le client"
+      },
+      "release": {
+        "created": "Version client créée",
+        "updated": "Version client mise à jour",
+        "deleted": "Version client supprimée"
+      },
+      "feedback": {
+        "created": "Retour client enregistré",
+        "updated": "Retour client mis à jour",
+        "status_changed": "Statut d’un retour client modifié",
+        "deleted": "Retour client supprimé",
+        "converted": "Retour client converti en tâche"
       }
     },
     "contact": {

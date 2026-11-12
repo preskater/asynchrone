@@ -63,4 +63,5 @@ collection.
 | [0037](0037-deploy-the-fleet-from-one-generic-helm-chart.md)               | accepted | Deploy the app fleet from one generic Helm chart                             |
 | [0038](0038-budget-connections-and-observe-each-app.md)                    | accepted | Budget database connections and observe every app independently              |
 | [0039](0039-file-support-tickets-in-the-identity-database.md)              | accepted | File support tickets in the identity database, worked from the control tower |
+| [0040](0040-record-client-test-feedback-per-release.md)                    | accepted | Record client test feedback per release in the clients database           |
 | [0040](0040-cumulative-organization-roles-and-capabilities.md)             | accepted | Cumulative organization roles and capability-based authorization             |

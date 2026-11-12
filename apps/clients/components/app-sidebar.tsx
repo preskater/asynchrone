@@ -10,6 +10,7 @@ import {
   HandshakeIcon,
   KanbanIcon,
   MessageSquareIcon,
+  MessageSquareWarningIcon,
   SparklesIcon,
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
@@ -64,6 +65,11 @@ export function ClientSidebar({
       icon: <KanbanIcon />,
       title: t("deals"),
       path: `/${orgSlug}/deals`,
+    },
+    {
+      icon: <MessageSquareWarningIcon />,
+      title: t("clientFeedback"),
+      path: `/${orgSlug}/test-feedback`,
     },
   ]
 

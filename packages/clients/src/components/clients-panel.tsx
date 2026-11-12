@@ -54,7 +54,11 @@ import {
 import { useClientActions } from "./actions"
 import { Link, useRouter } from "@workspace/i18n/navigation"
 import { unwrapActionResult } from "@workspace/core/action"
-import type { ClientData, ClientOverviewData } from "../types"
+import type {
+  ClientData,
+  ClientOverviewData,
+  ClientTestRoundData,
+} from "../types"
 import { CLIENT_STATUSES } from "../types"
 import { useErrorTranslator } from "@workspace/i18n/errors"
 import { useEnumLabel } from "@workspace/i18n/labels"
@@ -215,6 +219,10 @@ export function ClientsPanel({
           value={money(stats.openValue)}
         />
       </div>
+
+      {data.testRounds.length > 0 ? (
+        <TestRoundsCard orgSlug={orgSlug} rounds={data.testRounds} />
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
@@ -488,6 +496,53 @@ function StatCard({ label, value }: { label: string; value: string }) {
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-semibold">{value}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** The current test round: releases in test and what is still open on them. */
+function TestRoundsCard({
+  orgSlug,
+  rounds,
+}: {
+  orgSlug: string
+  rounds: ClientTestRoundData[]
+}) {
+  const t = useTranslations("Clients")
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {t("feedback.rounds.title")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
+          {rounds.map((round) => (
+            <li
+              key={round.releaseId}
+              className="flex items-baseline justify-between gap-3"
+            >
+              <Link
+                href={`/${orgSlug}/clients/${round.clientId}/feedback`}
+                prefetch={false}
+                className="min-w-0 truncate text-sm hover:underline"
+              >
+                <span className="font-medium">{round.clientName}</span>{" "}
+                <span className="text-muted-foreground tabular-nums">
+                  {round.version}
+                </span>
+              </Link>
+              <span className="shrink-0 text-sm tabular-nums">
+                {t("feedback.meta.counts", {
+                  open: round.openCount,
+                  count: round.feedbackCount,
+                })}
+              </span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )

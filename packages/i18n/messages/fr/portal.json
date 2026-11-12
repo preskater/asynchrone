@@ -37,5 +37,11 @@
   "commentsEmpty": "Aucun commentaire pour le moment.",
   "commentPlaceholder": "Écrivez un commentaire…",
   "sendComment": "Envoyer",
-  "endDate": "Fin {date}"
+  "endDate": "Fin {date}",
+  "navReports": "Comptes rendus",
+  "reportsPageTitle": "Comptes rendus de test",
+  "reportsPageDescription": "Les comptes rendus des versions que vous avez testées, partagés par l’équipe.",
+  "reportsEmpty": "Aucun compte rendu ne vous a encore été partagé.",
+  "reportsCounts": "{open, plural, one {# ouvert} other {# ouverts}} sur {count}",
+  "reportsBack": "Tous les comptes rendus"
 }

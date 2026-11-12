@@ -137,6 +137,10 @@ export const DOMAIN_OPERATIONS = [
   "portal-get-client",
   "list-client-directory",
   "save-client-basics",
+  // clients — test feedback per release (#132)
+  "list-project-feedback",
+  "portal-list-release-reports",
+  "portal-get-release-report",
   // employees
   "get-employees-overview",
   "fetch-attendance",
@@ -345,6 +349,87 @@ export const PortalMeetingsSchema = z.object({
   requests: z.array(z.unknown()),
 })
 export type PortalMeetings = z.infer<typeof PortalMeetingsSchema>
+
+/** Client test feedback on the releases of one project (#132, ADR 0040). */
+export const ProjectFeedbackReleaseSchema = z.object({
+  id: z.string().min(1),
+  clientId: z.string().min(1),
+  clientName: z.string(),
+  version: z.string(),
+  label: z.string().optional(),
+  releasedAt: z.string().optional(),
+  status: z.string(),
+  openCount: z.number().int().nonnegative(),
+  feedbackCount: z.number().int().nonnegative(),
+  /** The company's feedback page in the clients app. */
+  url: z.string().url(),
+  feedback: z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string(),
+      status: z.string(),
+      category: z.string(),
+      impact: z.string(),
+      testedAt: z.string(),
+      contactName: z.string().optional(),
+      linkedTaskId: z.string().optional(),
+    })
+  ),
+})
+export type ProjectFeedbackRelease = z.infer<
+  typeof ProjectFeedbackReleaseSchema
+>
+
+/** A release report shared with the portal (ADR 0040). */
+export const PortalReleaseSummarySchema = z.object({
+  id: z.string().min(1),
+  version: z.string(),
+  label: z.string().optional(),
+  releasedAt: z.string().optional(),
+  status: z.string(),
+  openCount: z.number().int().nonnegative(),
+  feedbackCount: z.number().int().nonnegative(),
+})
+export type PortalReleaseSummary = z.infer<typeof PortalReleaseSummarySchema>
+
+const CountsSchema = z.record(z.string(), z.number().int().nonnegative())
+
+/** The portal copy of a release report: no notes, assignees or authors. */
+export const PortalReleaseReportSchema = z.object({
+  release: z.object({
+    id: z.string().min(1),
+    clientId: z.string().min(1),
+    version: z.string(),
+    label: z.string().optional(),
+    releasedAt: z.string().optional(),
+    status: z.string(),
+    testedFrom: z.string().optional(),
+    testedTo: z.string().optional(),
+  }),
+  clientName: z.string(),
+  generatedAt: z.string(),
+  summary: z.object({
+    total: z.number().int().nonnegative(),
+    open: z.number().int().nonnegative(),
+    byStatus: CountsSchema,
+    byCategory: CountsSchema,
+    byImpact: CountsSchema,
+  }),
+  feedback: z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string(),
+      body: z.string(),
+      status: z.string(),
+      category: z.string(),
+      impact: z.string(),
+      environment: z.string(),
+      testedAt: z.string(),
+      contactName: z.string().optional(),
+    })
+  ),
+})
+export type PortalReleaseReport = z.infer<typeof PortalReleaseReportSchema>
 
 /** Idempotent mutation result used by the generic client on retries. */
 export const DomainMutationResultSchema = z.object({

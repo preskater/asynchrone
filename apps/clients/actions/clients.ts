@@ -1,6 +1,8 @@
 "use server"
 
+import { appOrigin } from "@workspace/contracts/server"
 import { withAction } from "@workspace/core/action"
+import { routing } from "@workspace/i18n/routing"
 import {
   activityInputSchema,
   clientInputSchema,
@@ -9,6 +11,11 @@ import {
   dealInputSchema,
   deleteFieldDefinitionSchema,
   exportSchema,
+  feedbackAssigneeSchema,
+  feedbackConvertSchema,
+  feedbackFilterSchema,
+  feedbackInputSchema,
+  feedbackStatusSchema,
   fieldDefinitionSchema,
   importClientsSchema,
   importContactsSchema,
@@ -17,6 +24,8 @@ import {
   moveDealSchema,
   moveStageSchema,
   pipelineInputSchema,
+  releaseExportSchema,
+  releaseInputSchema,
   reopenDealSchema,
   setDefaultPipelineSchema,
   stageInputSchema,
@@ -30,6 +39,7 @@ import {
   revalidateOrgPath,
 } from "@/lib/request-context"
 import { clientsService } from "@/lib/clients"
+import { identity } from "@/lib/identity"
 
 /** Activity can surface on the list pages of every record type. */
 async function revalidateClient(organizationId: string) {
@@ -335,3 +345,87 @@ export const fetchClientProjectOptionsAction = withAction(async () => {
   const ctx = await getRequestContext()
   return clientsService.fetchProjectOptions(ctx)
 })
+
+// --- Releases and test feedback (ADR 0040) -------------------------------------
+
+async function revalidateFeedback(organizationId: string) {
+  await Promise.all([
+    revalidateOrgPath(organizationId, "/clients"),
+    revalidateOrgPath(organizationId, "/test-feedback"),
+  ])
+}
+
+export const listReleaseGroupsAction = withAction(async (input?: unknown) => {
+  const ctx = await getRequestContext()
+  const filter = await parseLocalized(feedbackFilterSchema, input ?? {})
+  return clientsService.listReleaseGroups(ctx, filter)
+})
+
+export const saveReleaseAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(releaseInputSchema, input)
+  const release = await clientsService.saveRelease(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return release
+})
+
+export const deleteReleaseAction = withAction(async (releaseId: string) => {
+  const ctx = await getRequestContext()
+  const result = await clientsService.deleteRelease(ctx, releaseId)
+  await revalidateFeedback(ctx.organizationId)
+  return result
+})
+
+export const saveFeedbackAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackInputSchema, input)
+  const feedback = await clientsService.saveFeedback(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const setFeedbackStatusAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackStatusSchema, input)
+  const feedback = await clientsService.setFeedbackStatus(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const assignFeedbackAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(feedbackAssigneeSchema, input)
+  const feedback = await clientsService.assignFeedback(ctx, parsed)
+  await revalidateFeedback(ctx.organizationId)
+  return feedback
+})
+
+export const deleteFeedbackAction = withAction(async (feedbackId: string) => {
+  const ctx = await getRequestContext()
+  const result = await clientsService.deleteFeedback(ctx, feedbackId)
+  await revalidateFeedback(ctx.organizationId)
+  return result
+})
+
+export const exportReleaseCsvAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(releaseExportSchema, input)
+  return clientsService.exportReleaseCsv(ctx, parsed)
+})
+
+export const convertFeedbackToTaskAction = withAction(
+  async (input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(feedbackConvertSchema, input)
+    const organization = await identity.getOrganization(ctx.organizationId)
+    // Server actions cannot read the route locale; the default one is a valid link.
+    const workspaceUrl = `${appOrigin("clients")}/${routing.defaultLocale}/${organization.slug}`
+    const feedback = await clientsService.convertFeedbackToTask(
+      ctx,
+      parsed,
+      workspaceUrl
+    )
+    await revalidateFeedback(ctx.organizationId)
+    return feedback
+  }
+)

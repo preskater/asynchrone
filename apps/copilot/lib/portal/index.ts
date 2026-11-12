@@ -182,6 +182,15 @@ const runtime = createPortalRuntime({
       requireDomainClient("clients").listPortalDocuments(
         delegatedPortalContext(portalContext(organizationId, clientId))
       ),
+    listReleaseReports: (organizationId, clientId) =>
+      requireDomainClient("clients").listPortalReleaseReports(
+        delegatedPortalContext(portalContext(organizationId, clientId))
+      ),
+    getReleaseReport: (organizationId, clientId, releaseId) =>
+      requireDomainClient("clients").getPortalReleaseReport(
+        delegatedPortalContext(portalContext(organizationId, clientId)),
+        releaseId
+      ),
     findDocumentLink: (organizationId, clientId, fileId) =>
       requireDomainClient("clients").getPortalDocument(
         delegatedPortalContext(portalContext(organizationId, clientId)),

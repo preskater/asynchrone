@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { FEEDBACK_CATEGORIES, FEEDBACK_IMPACTS } from "@workspace/core/feedback"
 import {
   CLIENT_ACTIVITY_TYPES,
   CLIENT_STATUSES,
@@ -7,6 +8,9 @@ import {
   CLIENT_DOCUMENT_VISIBILITIES,
   CLIENT_FIELD_ENTITIES,
   CLIENT_FIELD_TYPES,
+  CLIENT_FEEDBACK_ENVIRONMENTS,
+  CLIENT_FEEDBACK_STATUSES,
+  CLIENT_RELEASE_STATUSES,
   DEAL_STATUSES,
   PIPELINE_STAGE_TYPES,
 } from "./types"
@@ -227,6 +231,65 @@ export const importContactsSchema = z.object({
   rows: z.array(importContactRowSchema).min(1).max(500),
 })
 
+// --- Releases and test feedback (ADR 0040) -------------------------------------
+
+export const releaseInputSchema = z.object({
+  id: z.string().min(1).optional(),
+  clientId: z.string().min(1),
+  projectId: z.string().min(1).nullable().optional(),
+  version: z.string().trim().min(1).max(40),
+  label: optionalText(120),
+  releasedAt: dateKeySchema.nullable().optional(),
+  status: z.enum(CLIENT_RELEASE_STATUSES).default("planned"),
+  notes: optionalText(4000),
+  portalVisible: z.boolean().default(false),
+})
+
+export const feedbackInputSchema = z.object({
+  id: z.string().min(1).optional(),
+  releaseId: z.string().min(1),
+  contactId: z.string().min(1).nullable().optional(),
+  assigneeId: z.string().min(1).nullable().optional(),
+  /** ISO timestamp with a zone, so the server never guesses the tester's zone. */
+  testedAt: z.iso.datetime({ offset: true }),
+  environment: z.enum(CLIENT_FEEDBACK_ENVIRONMENTS).default("staging"),
+  category: z.enum(FEEDBACK_CATEGORIES),
+  impact: z.enum(FEEDBACK_IMPACTS),
+  title: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(8000),
+  documentId: z.string().min(1).nullable().optional(),
+})
+
+export const feedbackStatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(CLIENT_FEEDBACK_STATUSES),
+})
+
+export const feedbackConvertSchema = z.object({
+  id: z.string().min(1),
+})
+
+export const feedbackAssigneeSchema = z.object({
+  id: z.string().min(1),
+  assigneeId: z.string().min(1).nullable(),
+})
+
+export const releaseExportSchema = z.object({
+  releaseId: z.string().min(1),
+  /** The viewer's IANA zone, so test times read as they were entered. */
+  timeZone: z.string().trim().min(1).max(64).optional(),
+})
+
+export const feedbackFilterSchema = z.object({
+  clientId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
+  releaseId: z.string().min(1).optional(),
+  contactId: z.string().min(1).optional(),
+  status: z.enum(CLIENT_FEEDBACK_STATUSES).optional(),
+  category: z.enum(FEEDBACK_CATEGORIES).optional(),
+  impact: z.enum(FEEDBACK_IMPACTS).optional(),
+})
+
 export type ClientInput = z.infer<typeof clientInputSchema>
 export type ContactInput = z.infer<typeof contactInputSchema>
 export type DealInput = z.infer<typeof dealInputSchema>
@@ -247,3 +310,10 @@ export type UpdateDocumentVisibilityInput = z.infer<
 >
 export type LinkProjectInput = z.infer<typeof linkProjectSchema>
 export type UnlinkProjectInput = z.infer<typeof unlinkProjectSchema>
+export type ReleaseInput = z.infer<typeof releaseInputSchema>
+export type FeedbackInput = z.infer<typeof feedbackInputSchema>
+export type FeedbackStatusInput = z.infer<typeof feedbackStatusSchema>
+export type FeedbackAssigneeInput = z.infer<typeof feedbackAssigneeSchema>
+export type FeedbackFilter = z.infer<typeof feedbackFilterSchema>
+export type ReleaseExportInput = z.infer<typeof releaseExportSchema>
+export type FeedbackConvertInput = z.infer<typeof feedbackConvertSchema>

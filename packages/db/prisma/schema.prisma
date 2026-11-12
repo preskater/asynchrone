@@ -170,6 +170,8 @@ model Organization {
   clientActivities    ClientActivity[]
   clientFieldDefinitions ClientFieldDefinition[]
   clientDocuments     ClientDocument[]
+  clientReleases      ClientRelease[]
+  clientFeedback      ClientFeedback[]
   notifications       Notification[]
   portalInvites       PortalInvite[]
   projectMessages     ProjectMessage[]
@@ -1089,6 +1091,8 @@ model Client {
   portalMembers   Member[]         @relation("PortalMembers")
   portalInvites   PortalInvite[]
   meetingRequests MeetingRequest[]
+  releases        ClientRelease[]
+  feedback        ClientFeedback[]
 
   @@unique([organizationId, name])
   @@index([organizationId, status])
@@ -1115,6 +1119,7 @@ model Contact {
   companies  ContactCompany[]
   deals      DealContact[]
   activities ClientActivity[]
+  feedback   ClientFeedback[]
 
   @@index([organizationId])
   @@index([organizationId, email])
@@ -1285,6 +1290,76 @@ model ClientDocument {
   @@unique([fileId, entity, entityId])
   @@index([organizationId, entity, entityId])
   @@map("clientDocument")
+}
+
+/// A delivery version of a client company, tested by the client (ADR 0040).
+/// `status` is planned | in_test | approved | rejected.
+model ClientRelease {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /// Project in the projects database (no foreign key across databases).
+  projectId      String?
+  version        String
+  label          String?
+  releasedAt     DateTime?
+  status         String       @default("planned")
+  notes          String?
+  /// Whether portal users of this company may read the release report.
+  portalVisible  Boolean      @default(false)
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  feedback ClientFeedback[]
+
+  @@unique([clientId, version])
+  @@index([organizationId, releasedAt])
+  @@map("clientRelease")
+}
+
+/// One test report a client made on a release (ADR 0040). `status` is
+/// new | triaged | accepted | rejected | fixed | deferred.
+model ClientFeedback {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  releaseId       String
+  release         ClientRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  /// Project in the projects database (no foreign key across databases).
+  projectId       String?
+  /// The client contact who reported it.
+  contactId       String?
+  contact         Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  /// The member who recorded it.
+  authorId        String
+  assigneeId      String?
+  testedAt        DateTime
+  environment     String        @default("staging")
+  category        String
+  impact          String
+  status          String        @default("new")
+  statusChangedAt DateTime      @default(now())
+  title           String
+  body            String
+  /// Task in the projects database created by "Convert to task".
+  linkedTaskId    String?
+  /// File in the files database (screenshot or recording).
+  documentId      String?
+  /// Release version at the time of the report.
+  version         String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([organizationId, status])
+  @@index([releaseId, testedAt])
+  @@index([clientId])
+  @@index([contactId])
+  @@map("clientFeedback")
 }
 
 /// In-app notification for one user. `data` carries the interpolation values

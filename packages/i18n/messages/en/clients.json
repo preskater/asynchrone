@@ -3,7 +3,8 @@
     "navigation": "Clients",
     "clients": "Clients",
     "contacts": "Contacts",
-    "deals": "Deals"
+    "deals": "Deals",
+    "feedback": "Feedback"
   },
   "common": {
     "search": "Search…",
@@ -279,6 +280,18 @@
         "project": {
           "linked": "Project “{projectName}” linked",
           "unlinked": "Project “{projectName}” unlinked"
+        },
+        "release": {
+          "created": "Version {version} created",
+          "updated": "Version {version} updated",
+          "deleted": "Version {version} deleted"
+        },
+        "feedback": {
+          "created": "Feedback “{title}” recorded on {version}",
+          "updated": "Feedback “{title}” updated",
+          "status_changed": "Feedback “{title}” ({version}) marked {status, select, new {new} triaged {triaged} accepted {accepted} rejected {rejected} fixed {fixed} deferred {deferred} other {{status}}}",
+          "deleted": "Feedback “{title}” deleted",
+          "converted": "Feedback “{title}” ({version}) converted to task {taskIdentifier}"
         }
       },
       "contact": {
@@ -332,5 +345,100 @@
     "duplicatesHint": "Existing records are skipped; archived companies are restored.",
     "clientsHint": "Columns: name; status; industry; website; phone; address; contact email; description; source",
     "contactsHint": "Columns: first name; last name; email; phone; job title; company (must already exist)"
+  },
+  "feedback": {
+    "title": "Test feedback",
+    "description": "What {name} reported while testing each delivered version.",
+    "crossTitle": "Test feedback",
+    "crossDescription": "Every client's test reports, grouped by version, for the weekly triage.",
+    "newRelease": "New version",
+    "editRelease": "Edit version",
+    "deleteRelease": "Delete version",
+    "deleteReleaseTitle": "Delete version {version}?",
+    "deleteReleaseDescription": "Every feedback entry recorded on this version is deleted too. This cannot be undone.",
+    "newFeedback": "Add feedback",
+    "editFeedback": "Edit feedback",
+    "deleteFeedback": "Delete feedback",
+    "deleteFeedbackTitle": "Delete “{title}”?",
+    "deleteFeedbackDescription": "The entry is removed from the version and its report. This cannot be undone.",
+    "fields": {
+      "version": "Version",
+      "label": "Name",
+      "releasedAt": "Release date",
+      "status": "Status",
+      "project": "Project",
+      "notes": "Notes",
+      "portalVisible": "Share the report with the client portal",
+      "portalVisibleHint": "Portal users of this company can read the report of this version.",
+      "release": "Version",
+      "title": "Title",
+      "body": "What the client reported",
+      "testedAt": "Tested on",
+      "environment": "Environment",
+      "category": "Category",
+      "impact": "Impact",
+      "tester": "Tester",
+      "assignee": "Assignee"
+    },
+    "filters": {
+      "sort": "Sort",
+      "newest": "Newest test first",
+      "oldest": "Oldest test first"
+    },
+    "meta": {
+      "released": "Released {date}",
+      "notReleased": "Not released yet",
+      "tested": "Tested {from} – {to}",
+      "notTested": "Not tested yet",
+      "counts": "{open} open of {count}",
+      "recordedBy": "recorded by {name}",
+      "reportedOn": "reported on {version}",
+      "shared": "Shared with the portal",
+      "testedOnce": "Tested {date}"
+    },
+    "empty": {
+      "noReleases": "No version yet. Add the version the client is testing to start recording feedback.",
+      "noReleasesAnywhere": "No client version yet. Open a company to add the version it is testing.",
+      "noFeedback": "No feedback on this version yet.",
+      "noMatch": "No feedback matches these filters."
+    },
+    "toasts": {
+      "releaseSaved": "Version saved.",
+      "feedbackSaved": "Feedback saved.",
+      "statusChanged": "Status updated.",
+      "assigned": "Assignee updated.",
+      "deleted": "Deleted.",
+      "converted": "Task created in the project."
+    },
+    "report": {
+      "open": "Report",
+      "title": "Test report",
+      "back": "Back to test feedback",
+      "exportCsv": "Export CSV",
+      "print": "Print or save as PDF",
+      "releasedAt": "Release date",
+      "period": "Test period",
+      "generatedAt": "Generated",
+      "summary": "Summary",
+      "total": "Entries",
+      "stillOpen": "Still open",
+      "noneOpen": "Nothing is left open on this version.",
+      "all": "All feedback",
+      "empty": "No feedback was recorded on this version.",
+      "openCount": "Still open"
+    },
+    "rounds": {
+      "title": "Test rounds in progress"
+    },
+    "trend": {
+      "title": "Open and fixed per version",
+      "description": "Fewer open reports from one version to the next means quality is improving.",
+      "open": "Still open",
+      "fixed": "Fixed"
+    },
+    "task": {
+      "create": "Create a task",
+      "open": "Open the task"
+    }
   }
 }

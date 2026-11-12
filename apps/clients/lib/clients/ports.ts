@@ -1,10 +1,7 @@
 import { z } from "zod"
 
 import type { RequestContext } from "@workspace/core/context"
-import type {
-  ClientFiles,
-  ClientProjects,
-} from "@workspace/clients/ports"
+import type { ClientFiles, ClientProjects } from "@workspace/clients/ports"
 
 import { callDomain, delegatedContext } from "@/lib/internal/domain-client"
 
@@ -126,6 +123,20 @@ export const clientProjects: ClientProjects = {
       { projectId: id, clientId },
       projectSchema,
       { idempotencyKey: `project-client:${id}:${clientId ?? "none"}` }
+    )
+  },
+  createTask(ctx, input, idempotencyKey) {
+    return callDomain(
+      "projects",
+      "create-task",
+      delegatedContext(ctx),
+      input,
+      z.object({
+        id: z.string(),
+        identifier: z.string(),
+        projectId: z.string(),
+      }),
+      { idempotencyKey }
     )
   },
 }

@@ -6,6 +6,7 @@ import type {
   ClientAuditEntry,
   ClientFileRow,
   ClientRepositoryPorts,
+  ClientTaskInput,
 } from "./ports"
 
 /** Columns selecting the company fields shared by every client query. */
@@ -282,15 +283,19 @@ export class ClientsRepository {
     return this.ports.projects.listOptions(ctx)
   }
 
+  createProjectTask(
+    ctx: RequestContext,
+    input: ClientTaskInput,
+    idempotencyKey: string
+  ) {
+    return this.ports.projects.createTask(ctx, input, idempotencyKey)
+  }
+
   findProject(ctx: RequestContext, id: string) {
     return this.ports.projects.find(ctx, id)
   }
 
-  setProjectClient(
-    ctx: RequestContext,
-    id: string,
-    clientId: string | null
-  ) {
+  setProjectClient(ctx: RequestContext, id: string, clientId: string | null) {
     return this.ports.projects.setClient(ctx, id, clientId)
   }
 
@@ -1011,6 +1016,205 @@ export class ClientsRepository {
 
   listFileOptions(ctx: RequestContext) {
     return this.ports.files.listOptions(ctx)
+  }
+
+  // --- Releases and test feedback (ADR 0040) ----------------------------------------
+
+  // ponytail: no pagination; a company rarely has more than a few dozen
+  // releases. Add a cursor when the cross-client page needs one.
+  listReleases(
+    organizationId: string,
+    where: { clientId?: string; projectId?: string; id?: string }
+  ) {
+    return this.db.clientRelease.findMany({
+      where: { organizationId, ...where },
+      include: { client: { select: { name: true } } },
+      orderBy: [
+        { releasedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+      take: 200,
+    })
+  }
+
+  /** Releases in test, newest first, for the CRM overview. */
+  listReleasesInTest(organizationId: string, take: number) {
+    return this.db.clientRelease.findMany({
+      where: { organizationId, status: "in_test" },
+      include: { client: { select: { name: true } } },
+      orderBy: [
+        { releasedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+      take,
+    })
+  }
+
+  /** Feedback count, open count and test date range per release. */
+  async releaseStats(
+    organizationId: string,
+    releaseIds: string[],
+    openStatuses: readonly string[]
+  ) {
+    if (releaseIds.length === 0) return []
+    const where = { organizationId, releaseId: { in: releaseIds } }
+    const [all, open] = await Promise.all([
+      this.db.clientFeedback.groupBy({
+        by: ["releaseId"],
+        where,
+        _count: { _all: true },
+        _min: { testedAt: true },
+        _max: { testedAt: true },
+      }),
+      this.db.clientFeedback.groupBy({
+        by: ["releaseId"],
+        where: { ...where, status: { in: [...openStatuses] } },
+        _count: { _all: true },
+      }),
+    ])
+    const openById = new Map(
+      open.map((row) => [row.releaseId, row._count._all])
+    )
+    return all.map((row) => ({
+      releaseId: row.releaseId,
+      count: row._count._all,
+      open: openById.get(row.releaseId) ?? 0,
+      testedFrom: row._min.testedAt,
+      testedTo: row._max.testedAt,
+    }))
+  }
+
+  findRelease(organizationId: string, id: string) {
+    return this.db.clientRelease.findFirst({ where: { id, organizationId } })
+  }
+
+  findReleaseByVersion(
+    organizationId: string,
+    clientId: string,
+    version: string
+  ) {
+    return this.db.clientRelease.findFirst({
+      where: { organizationId, clientId, version },
+      select: { id: true },
+    })
+  }
+
+  createRelease(data: {
+    organizationId: string
+    clientId: string
+    projectId: string | null
+    version: string
+    label: string | null
+    releasedAt: Date | null
+    status: string
+    notes: string | null
+    portalVisible: boolean
+    createdBy: string
+  }) {
+    return this.db.clientRelease.create({ data })
+  }
+
+  /** Keeps the feedback project snapshot aligned with its release. */
+  async updateRelease(
+    id: string,
+    data: {
+      projectId: string | null
+      version: string
+      label: string | null
+      releasedAt: Date | null
+      status: string
+      notes: string | null
+      portalVisible: boolean
+    }
+  ) {
+    const [release] = await this.db.$transaction([
+      this.db.clientRelease.update({ where: { id }, data }),
+      this.db.clientFeedback.updateMany({
+        where: { releaseId: id },
+        data: { projectId: data.projectId },
+      }),
+    ])
+    return release
+  }
+
+  deleteRelease(id: string) {
+    return this.db.clientRelease.delete({ where: { id } })
+  }
+
+  listFeedback(
+    organizationId: string,
+    releaseIds: string[],
+    filter: {
+      contactId?: string
+      status?: string
+      category?: string
+      impact?: string
+    }
+  ) {
+    if (releaseIds.length === 0) return Promise.resolve([])
+    return this.db.clientFeedback.findMany({
+      where: { organizationId, releaseId: { in: releaseIds }, ...filter },
+      orderBy: [{ testedAt: "desc" }, { id: "desc" }],
+    })
+  }
+
+  findFeedback(organizationId: string, id: string) {
+    return this.db.clientFeedback.findFirst({ where: { id, organizationId } })
+  }
+
+  createFeedback(data: {
+    organizationId: string
+    clientId: string
+    releaseId: string
+    projectId: string | null
+    contactId: string | null
+    authorId: string
+    assigneeId: string | null
+    testedAt: Date
+    environment: string
+    category: string
+    impact: string
+    title: string
+    body: string
+    documentId: string | null
+    version: string
+  }) {
+    return this.db.clientFeedback.create({ data })
+  }
+
+  updateFeedback(
+    id: string,
+    data: {
+      releaseId?: string
+      projectId?: string | null
+      version?: string
+      contactId?: string | null
+      assigneeId?: string | null
+      testedAt?: Date
+      environment?: string
+      category?: string
+      impact?: string
+      title?: string
+      body?: string
+      documentId?: string | null
+      linkedTaskId?: string | null
+      status?: string
+      statusChangedAt?: Date
+    }
+  ) {
+    return this.db.clientFeedback.update({ where: { id }, data })
+  }
+
+  deleteFeedback(id: string) {
+    return this.db.clientFeedback.delete({ where: { id } })
+  }
+
+  contactNames(organizationId: string, ids: string[]) {
+    if (ids.length === 0) return Promise.resolve([])
+    return this.db.contact.findMany({
+      where: { organizationId, id: { in: ids } },
+      select: { id: true, firstName: true, lastName: true },
+    })
   }
 
   // --- Audit ----------------------------------------------------------------------

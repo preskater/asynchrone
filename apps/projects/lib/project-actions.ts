@@ -34,6 +34,7 @@ import {
   listProjectMessagesAction,
   postProjectMessageAction,
 } from "@/actions/project-messages"
+import { listProjectFeedbackAction } from "@/actions/project-feedback"
 
 /**
  * The app's server actions, bound to the port `@workspace/projects` expects.
@@ -70,4 +71,5 @@ export const PROJECT_ACTIONS: ProjectActions = {
   disconnectRepository: disconnectRepositoryAction,
   syncRepository: syncRepositoryAction,
   listUserRepositoryTokens: listUserRepositoryTokensAction,
+  listProjectFeedback: listProjectFeedbackAction,
 }

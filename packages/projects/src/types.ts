@@ -211,3 +211,31 @@ export function formatDate(value?: string, locale = "en") {
     day: "numeric",
   })
 }
+
+/**
+ * Client test feedback on one release of the project, read from the clients
+ * app (`list-project-feedback`, ADR 0040). Read-only here.
+ */
+export interface ProjectFeedbackReleaseData {
+  id: string
+  clientId: string
+  clientName: string
+  version: string
+  label?: string
+  releasedAt?: string
+  status: string
+  openCount: number
+  feedbackCount: number
+  /** The company's feedback page in the clients app. */
+  url: string
+  feedback: {
+    id: string
+    title: string
+    status: string
+    category: string
+    impact: string
+    testedAt: string
+    contactName?: string
+    linkedTaskId?: string
+  }[]
+}

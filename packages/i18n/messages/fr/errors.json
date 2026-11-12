@@ -116,5 +116,9 @@
   "accountPlatformOperator": "Les comptes d'opérateur de la plateforme ne peuvent pas être supprimés ici. Demandez d'abord à un autre administrateur de retirer votre rôle plateforme.",
   "accountSoleOwner": "Vous êtes le seul propriétaire de {organizations}. Transférez la propriété ou supprimez l'organisation d'abord.",
   "accountImpersonated": "Impossible de supprimer ce compte depuis une session ouverte par la tour de contrôle.",
-  "accountDeletionPartial": "Certaines applications n’ont pas encore pu supprimer le compte. Réessayez."
+  "accountDeletionPartial": "Certaines applications n’ont pas encore pu supprimer le compte. Réessayez.",
+  "releaseVersionTaken": "Cette version existe déjà pour ce client.",
+  "projectNotLinkedToClient": "Liez d’abord le projet à ce client.",
+  "feedbackAlreadyConverted": "Ce retour a déjà une tâche.",
+  "feedbackProjectRequired": "Liez d’abord la version à un projet."
 }

@@ -1,12 +1,17 @@
 "use client"
 
-import { Building2Icon, HandshakeIcon, UsersIcon } from "lucide-react"
+import {
+  Building2Icon,
+  HandshakeIcon,
+  MessageSquareWarningIcon,
+  UsersIcon,
+} from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Link, usePathname } from "@workspace/i18n/navigation"
 import { cn } from "@workspace/ui/lib/utils"
 
-/** Module navigation shared by every client page (Clients / Contacts / Deals). */
+/** Module navigation shared by every client page (Clients / Contacts / Deals / Feedback). */
 export function ClientsTabs({ orgSlug }: { orgSlug: string }) {
   const t = useTranslations("Clients")
   const pathname = usePathname()
@@ -26,6 +31,11 @@ export function ClientsTabs({ orgSlug }: { orgSlug: string }) {
       href: `/${orgSlug}/deals`,
       label: t("tabs.deals"),
       icon: <HandshakeIcon className="size-4" />,
+    },
+    {
+      href: `/${orgSlug}/test-feedback`,
+      label: t("tabs.feedback"),
+      icon: <MessageSquareWarningIcon className="size-4" />,
     },
   ]
 

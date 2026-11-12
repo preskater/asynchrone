@@ -133,3 +133,48 @@ export interface PortalDocumentFile {
   size: number
   stream: import("node:stream").Readable
 }
+
+/** A release report shared with the client's company (ADR 0040). */
+export interface PortalReleaseSummaryData {
+  id: string
+  version: string
+  label?: string
+  releasedAt?: string
+  status: string
+  openCount: number
+  feedbackCount: number
+}
+
+/** The portal copy of a release report: no notes, assignees or authors. */
+export interface PortalReleaseReportData {
+  release: {
+    id: string
+    clientId: string
+    version: string
+    label?: string
+    releasedAt?: string
+    status: string
+    testedFrom?: string
+    testedTo?: string
+  }
+  clientName: string
+  generatedAt: string
+  summary: {
+    total: number
+    open: number
+    byStatus: Record<string, number>
+    byCategory: Record<string, number>
+    byImpact: Record<string, number>
+  }
+  feedback: {
+    id: string
+    title: string
+    body: string
+    status: string
+    category: string
+    impact: string
+    environment: string
+    testedAt: string
+    contactName?: string
+  }[]
+}

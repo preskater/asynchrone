@@ -17,6 +17,7 @@ const titleKeys = {
   clients: "clients",
   contacts: "contacts",
   deals: "deals",
+  "test-feedback": "clientFeedback",
 } as const
 
 /** The clients host header: section title, organization switch and account. */

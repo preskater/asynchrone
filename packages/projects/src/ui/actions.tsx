@@ -35,6 +35,7 @@ import type {
   ProjectData,
   Task,
   TaskTemplate,
+  ProjectFeedbackReleaseData,
 } from "../types"
 
 /**
@@ -98,6 +99,10 @@ export interface ProjectActions {
     projectId: string
   ): Promise<ActionResult<RepositorySyncSummary>>
   listUserRepositoryTokens(): Promise<ActionResult<UserRepositoryTokenStatus>>
+  /** Client test feedback on the project's releases; omitted when unavailable. */
+  listProjectFeedback?(
+    projectId: string
+  ): Promise<ActionResult<ProjectFeedbackReleaseData[]>>
 }
 
 const ProjectActionsContext = React.createContext<ProjectActions | null>(null)

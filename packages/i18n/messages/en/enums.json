@@ -256,5 +256,25 @@
     "meetingRequest": "Meeting request",
     "meetingSlot": "Meeting time",
     "resource": "Resource"
+  },
+  "clientReleaseStatus": {
+    "planned": "Planned",
+    "in_test": "In test",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "clientFeedbackStatus": {
+    "new": "New",
+    "triaged": "Triaged",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "fixed": "Fixed",
+    "deferred": "Deferred"
+  },
+  "clientFeedbackEnvironment": {
+    "development": "Development",
+    "staging": "Staging",
+    "production": "Production",
+    "other": "Other"
   }
 }

@@ -256,5 +256,25 @@
     "meetingRequest": "Demande de rendez-vous",
     "meetingSlot": "Créneau de rendez-vous",
     "resource": "Ressource"
+  },
+  "clientReleaseStatus": {
+    "planned": "Planifiée",
+    "in_test": "En test",
+    "approved": "Validée",
+    "rejected": "Refusée"
+  },
+  "clientFeedbackStatus": {
+    "new": "Nouveau",
+    "triaged": "Trié",
+    "accepted": "Accepté",
+    "rejected": "Rejeté",
+    "fixed": "Corrigé",
+    "deferred": "Reporté"
+  },
+  "clientFeedbackEnvironment": {
+    "development": "Développement",
+    "staging": "Préproduction",
+    "production": "Production",
+    "other": "Autre"
   }
 }

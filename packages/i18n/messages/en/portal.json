@@ -37,5 +37,11 @@
   "commentsEmpty": "No comments yet.",
   "commentPlaceholder": "Write a comment…",
   "sendComment": "Send",
-  "endDate": "Ends {date}"
+  "endDate": "Ends {date}",
+  "navReports": "Test reports",
+  "reportsPageTitle": "Test reports",
+  "reportsPageDescription": "The reports of the versions you tested, as shared by the team.",
+  "reportsEmpty": "No test report has been shared with you yet.",
+  "reportsCounts": "{open} open of {count}",
+  "reportsBack": "All test reports"
 }
