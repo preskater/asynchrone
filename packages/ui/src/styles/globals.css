@@ -6,6 +6,8 @@
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
+/* Domain packages ship their own screens (clients, projects, files, …). */
+@source "../../../*/src/**/*.{ts,tsx}";
 
 @theme inline {
   --font-heading: var(--font-sans);
