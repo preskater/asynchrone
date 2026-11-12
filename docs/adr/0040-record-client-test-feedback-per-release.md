@@ -56,6 +56,9 @@ Option 3.
   mutation writes one audit row on the company (`client.release.*`,
   `client.feedback.*`), so status changes are timestamped and show, translated,
   on the company timeline without a user-editable `ClientActivity` note.
+- The cross-client triage page is `/{orgSlug}/test-feedback`, not the
+  `/{orgSlug}/feedback` the issue suggests: that path is Copilot's in-app
+  feedback form, and the landing and clients proxies hand it over to Copilot.
 - "Convert to task" calls the projects delegated internal API with an
   idempotency key and stores the returned task id; the projects app never reads
   the clients database.

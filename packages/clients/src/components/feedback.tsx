@@ -343,12 +343,14 @@ function ReleaseCard({
   const [deleting, setDeleting] = React.useState(false)
   const { deleteReleaseAction } = useClientActions()
 
-  const tested = release.testedFrom
-    ? t("feedback.meta.tested", {
-        from: dateTime(release.testedFrom),
-        to: dateTime(release.testedTo),
-      })
-    : t("feedback.meta.notTested")
+  const tested = !release.testedFrom
+    ? t("feedback.meta.notTested")
+    : release.testedFrom === release.testedTo
+      ? t("feedback.meta.testedOnce", { date: dateTime(release.testedFrom) })
+      : t("feedback.meta.tested", {
+          from: dateTime(release.testedFrom),
+          to: dateTime(release.testedTo),
+        })
 
   return (
     <Card>

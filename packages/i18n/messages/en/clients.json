@@ -392,7 +392,8 @@
       "counts": "{open} open of {count}",
       "recordedBy": "recorded by {name}",
       "reportedOn": "reported on {version}",
-      "shared": "Shared with the portal"
+      "shared": "Shared with the portal",
+      "testedOnce": "Tested {date}"
     },
     "empty": {
       "noReleases": "No version yet. Add the version the client is testing to start recording feedback.",

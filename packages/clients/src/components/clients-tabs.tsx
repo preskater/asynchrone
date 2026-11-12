@@ -33,7 +33,7 @@ export function ClientsTabs({ orgSlug }: { orgSlug: string }) {
       icon: <HandshakeIcon className="size-4" />,
     },
     {
-      href: `/${orgSlug}/feedback`,
+      href: `/${orgSlug}/test-feedback`,
       label: t("tabs.feedback"),
       icon: <MessageSquareWarningIcon className="size-4" />,
     },

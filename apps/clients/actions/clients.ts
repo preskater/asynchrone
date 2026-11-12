@@ -346,7 +346,7 @@ export const fetchClientProjectOptionsAction = withAction(async () => {
 async function revalidateFeedback(organizationId: string) {
   await Promise.all([
     revalidateOrgPath(organizationId, "/clients"),
-    revalidateOrgPath(organizationId, "/feedback"),
+    revalidateOrgPath(organizationId, "/test-feedback"),
   ])
 }
 

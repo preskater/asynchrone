@@ -389,10 +389,11 @@
       "notReleased": "Pas encore livrée",
       "tested": "Testée du {from} au {to}",
       "notTested": "Pas encore testée",
-      "counts": "{open} ouverts sur {count}",
+      "counts": "{open, plural, one {# ouvert} other {# ouverts}} sur {count}",
       "recordedBy": "saisi par {name}",
       "reportedOn": "remonté sur la {version}",
-      "shared": "Partagée sur le portail"
+      "shared": "Partagée sur le portail",
+      "testedOnce": "Testée le {date}"
     },
     "empty": {
       "noReleases": "Aucune version pour l’instant. Ajoutez la version que le client teste pour commencer à saisir ses retours.",

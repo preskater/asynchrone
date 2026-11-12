@@ -69,7 +69,7 @@ export function ClientSidebar({
     {
       icon: <MessageSquareWarningIcon />,
       title: t("clientFeedback"),
-      path: `/${orgSlug}/feedback`,
+      path: `/${orgSlug}/test-feedback`,
     },
   ]
 
