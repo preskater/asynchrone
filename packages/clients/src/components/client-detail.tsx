@@ -7,6 +7,7 @@ import {
   ArchiveRestoreIcon,
   ExternalLinkIcon,
   GlobeIcon,
+  MessageSquareWarningIcon,
   MailIcon,
   PencilIcon,
   PhoneIcon,
@@ -126,6 +127,20 @@ export function ClientDetail({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  nativeButton={false}
+                  render={
+                    <Link
+                      href={`/${orgSlug}/clients/${client.id}/feedback`}
+                      prefetch={false}
+                    />
+                  }
+                >
+                  <MessageSquareWarningIcon data-icon="inline-start" />
+                  {t("feedback.title")}
+                </Button>
                 {data.access.canEdit ? (
                   <>
                     <ClientDialog

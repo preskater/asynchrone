@@ -3,7 +3,8 @@
     "navigation": "Clients",
     "clients": "Clients",
     "contacts": "Contacts",
-    "deals": "Affaires"
+    "deals": "Affaires",
+    "feedback": "Retours"
   },
   "common": {
     "search": "Rechercher…",
@@ -343,5 +344,68 @@
     "duplicatesHint": "Les enregistrements existants sont ignorés ; les sociétés archivées sont restaurées.",
     "clientsHint": "Colonnes : nom ; statut ; secteur ; site web ; téléphone ; adresse ; e-mail ; description ; source",
     "contactsHint": "Colonnes : prénom ; nom ; e-mail ; téléphone ; fonction ; société (doit déjà exister)"
+  },
+  "feedback": {
+    "title": "Retours de test",
+    "description": "Ce que {name} a remonté en testant chaque version livrée.",
+    "crossTitle": "Retours de test",
+    "crossDescription": "Les retours de test de tous les clients, groupés par version, pour le tri hebdomadaire.",
+    "newRelease": "Nouvelle version",
+    "editRelease": "Modifier la version",
+    "deleteRelease": "Supprimer la version",
+    "deleteReleaseTitle": "Supprimer la version {version} ?",
+    "deleteReleaseDescription": "Tous les retours enregistrés sur cette version seront aussi supprimés. Cette action est irréversible.",
+    "newFeedback": "Ajouter un retour",
+    "editFeedback": "Modifier le retour",
+    "deleteFeedback": "Supprimer le retour",
+    "deleteFeedbackTitle": "Supprimer « {title} » ?",
+    "deleteFeedbackDescription": "Le retour est retiré de la version et de son compte rendu. Cette action est irréversible.",
+    "fields": {
+      "version": "Version",
+      "label": "Nom",
+      "releasedAt": "Date de livraison",
+      "status": "Statut",
+      "project": "Projet",
+      "notes": "Notes",
+      "portalVisible": "Partager le compte rendu sur le portail client",
+      "portalVisibleHint": "Les utilisateurs du portail de cette société pourront lire le compte rendu de cette version.",
+      "release": "Version",
+      "title": "Titre",
+      "body": "Ce que le client a remonté",
+      "testedAt": "Testé le",
+      "environment": "Environnement",
+      "category": "Catégorie",
+      "impact": "Impact",
+      "tester": "Testeur",
+      "assignee": "Responsable"
+    },
+    "filters": {
+      "sort": "Tri",
+      "newest": "Test le plus récent",
+      "oldest": "Test le plus ancien"
+    },
+    "meta": {
+      "released": "Livrée le {date}",
+      "notReleased": "Pas encore livrée",
+      "tested": "Testée du {from} au {to}",
+      "notTested": "Pas encore testée",
+      "counts": "{open} ouverts sur {count}",
+      "recordedBy": "saisi par {name}",
+      "reportedOn": "remonté sur la {version}",
+      "shared": "Partagée sur le portail"
+    },
+    "empty": {
+      "noReleases": "Aucune version pour l’instant. Ajoutez la version que le client teste pour commencer à saisir ses retours.",
+      "noReleasesAnywhere": "Aucune version client pour l’instant. Ouvrez une société pour ajouter la version qu’elle teste.",
+      "noFeedback": "Aucun retour sur cette version pour l’instant.",
+      "noMatch": "Aucun retour ne correspond à ces filtres."
+    },
+    "toasts": {
+      "releaseSaved": "Version enregistrée.",
+      "feedbackSaved": "Retour enregistré.",
+      "statusChanged": "Statut mis à jour.",
+      "assigned": "Responsable mis à jour.",
+      "deleted": "Supprimé."
+    }
   }
 }

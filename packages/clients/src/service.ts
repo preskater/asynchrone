@@ -36,6 +36,7 @@ import type {
   ClientExportResultData,
   ClientFieldDefinitionData,
   ClientFeedbackData,
+  ClientFeedbackPageData,
   ClientFieldEntity,
   ClientFileOptionData,
   ClientImportResultData,
@@ -364,6 +365,13 @@ export class ClientsService {
     filter: FeedbackFilter = {}
   ): Promise<ClientReleaseGroupData[]> {
     return this.feedback.listReleaseGroups(ctx, filter)
+  }
+
+  async getFeedbackPage(
+    ctx: RequestContext,
+    filter: FeedbackFilter = {}
+  ): Promise<ClientFeedbackPageData> {
+    return this.feedback.getFeedbackPage(ctx, filter)
   }
 
   async saveRelease(

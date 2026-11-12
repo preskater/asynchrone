@@ -52,6 +52,12 @@ export function enumLabels(t: Translator) {
     feedbackImpact: (value: string) => t(`feedbackImpact.${value}` as never),
     feedbackFrequency: (value: string) =>
       t(`feedbackFrequency.${value}` as never),
+    clientReleaseStatus: (value: string) =>
+      t(`clientReleaseStatus.${value}` as never),
+    clientFeedbackStatus: (value: string) =>
+      t(`clientFeedbackStatus.${value}` as never),
+    clientFeedbackEnvironment: (value: string) =>
+      t(`clientFeedbackEnvironment.${value}` as never),
     resource: (value: string) => t(`resource.${value}` as never),
   }
 }

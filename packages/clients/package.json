@@ -55,6 +55,7 @@
     "./components/deal-dialog": "./src/components/deal-dialog.tsx",
     "./components/deals-workspace": "./src/components/deals-workspace.tsx",
     "./components/documents": "./src/components/documents.tsx",
+    "./components/feedback": "./src/components/feedback.tsx",
     "./components/import-dialog": "./src/components/import-dialog.tsx",
     "./components/pipeline-settings-dialog": "./src/components/pipeline-settings-dialog.tsx",
     "./components/portal-access": "./src/components/portal-access.tsx",

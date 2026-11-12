@@ -392,6 +392,8 @@ export type ClientFeedbackEnvironment =
 export interface ClientReleaseData {
   id: string
   clientId: string
+  /** Set on list reads, for the cross-client page. */
+  clientName?: string
   projectId?: string
   version: string
   label?: string
@@ -441,4 +443,10 @@ export interface ClientFeedbackData {
 export interface ClientReleaseGroupData {
   release: ClientReleaseData
   feedback: ClientFeedbackData[]
+}
+
+export interface ClientFeedbackPageData {
+  access: ClientAccessData
+  members: ClientMemberOptionData[]
+  groups: ClientReleaseGroupData[]
 }

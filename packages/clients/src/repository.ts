@@ -1019,6 +1019,7 @@ export class ClientsRepository {
   ) {
     return this.db.clientRelease.findMany({
       where: { organizationId, ...where },
+      include: { client: { select: { name: true } } },
       orderBy: [
         { releasedAt: { sort: "desc", nulls: "last" } },
         { createdAt: "desc" },

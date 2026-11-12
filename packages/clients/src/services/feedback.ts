@@ -15,6 +15,7 @@ import type {
 import {
   CLIENT_FEEDBACK_OPEN_STATUSES,
   type ClientFeedbackData,
+  type ClientFeedbackPageData,
   type ClientFeedbackEnvironment,
   type ClientFeedbackStatus,
   type ClientReleaseData,
@@ -90,6 +91,28 @@ export class ClientFeedbackService extends ClientsServiceCore {
       release: this.mapRelease(row, statsById.get(row.id)),
       feedback: byRelease.get(row.id) ?? [],
     }))
+  }
+
+  /** The cross-client triage page: every release with access and assignees. */
+  async getFeedbackPage(
+    ctx: RequestContext,
+    filter: FeedbackFilter = {}
+  ): Promise<ClientFeedbackPageData> {
+    const access = this.accessFor(ctx)
+    const [groups, members] = await Promise.all([
+      this.listReleaseGroups(ctx, filter),
+      this.repo.listMembers(ctx.organizationId),
+    ])
+    return {
+      access: {
+        canEdit: access.canEdit,
+        canManage: access.canManage,
+        canExport: access.canExport,
+        currentUserId: ctx.userId,
+      },
+      members: this.mapMembers(members),
+      groups,
+    }
   }
 
   async saveRelease(
@@ -361,10 +384,14 @@ export class ClientFeedbackService extends ClientsServiceCore {
     return this.mapFeedback(row, nameById, contactNames)
   }
 
-  private mapRelease(row: ReleaseRow, stats?: ReleaseStats): ClientReleaseData {
+  private mapRelease(
+    row: ReleaseRow & { client?: { name: string } },
+    stats?: ReleaseStats
+  ): ClientReleaseData {
     return {
       id: row.id,
       clientId: row.clientId,
+      clientName: row.client?.name,
       projectId: text(row.projectId),
       version: row.version,
       label: text(row.label),
