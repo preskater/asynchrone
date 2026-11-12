@@ -1,18 +1,13 @@
 /** Shared types and limits for the in-app feedback form. */
 
-/** What the tester is reporting. */
-export const FEEDBACK_CATEGORIES = [
-  "bug",
-  "idea",
-  "design",
-  "performance",
-  "other",
-] as const
-export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number]
+import type { FeedbackCategory, FeedbackImpact } from "@workspace/core/feedback"
 
-/** How much the report affects the tester's work. */
-export const FEEDBACK_IMPACTS = ["low", "medium", "high", "critical"] as const
-export type FeedbackImpact = (typeof FEEDBACK_IMPACTS)[number]
+export {
+  FEEDBACK_CATEGORIES,
+  FEEDBACK_IMPACTS,
+  type FeedbackCategory,
+  type FeedbackImpact,
+} from "@workspace/core/feedback"
 
 /** How often a bug or slowdown happens. */
 export const FEEDBACK_FREQUENCIES = [
