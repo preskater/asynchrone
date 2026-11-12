@@ -89,7 +89,7 @@ export interface Subtask {
 export interface Comment {
   id: string
   authorId: string
-  authorKind: "internal" | "client"
+  authorKind: "internal" | "client" | "guest"
   authorName?: string
   body: string
   createdAt: string

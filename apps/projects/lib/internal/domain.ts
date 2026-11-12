@@ -1,9 +1,10 @@
 import { z } from "zod"
 
-import type {
-  DelegatedContext,
-  DomainCall,
-  DomainOperation,
+import {
+  guestContextAllowed,
+  type DelegatedContext,
+  type DomainCall,
+  type DomainOperation,
 } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
 import { rolesFrom } from "@workspace/core/roles"
@@ -16,6 +17,7 @@ import {
 } from "@workspace/projects/schemas"
 import { setUserRepositoryTokenSchema } from "@workspace/projects/integrations/schemas"
 
+import { dispatchGuest } from "@/lib/internal/guest"
 import { repositoryIntegrationService } from "@/lib/integrations"
 import { projectService } from "@/lib/projects"
 import {
@@ -103,6 +105,13 @@ export async function dispatchDomain(
   operation: DomainOperation,
   call: DomainCall
 ): Promise<unknown> {
+  // The shared handler already pairs guest contexts with guest operations;
+  // re-check here so this dispatcher is safe on its own.
+  if (!guestContextAllowed(operation, call.context)) {
+    throw new ForbiddenError("This operation does not accept this caller.")
+  }
+  if (call.context.guest) return dispatchGuest(operation, call)
+
   const ctx = requestContext(call.context)
 
   switch (operation) {

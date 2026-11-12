@@ -77,6 +77,12 @@
       "update": "Employee project updated",
       "message": {
         "added": "Project message sent"
+      },
+      "guest": {
+        "invited": "External collaborator invited",
+        "accepted": "External collaborator joined",
+        "revoked": "External collaborator removed",
+        "left": "External collaborator left"
       }
     },
     "task": {
@@ -281,6 +287,7 @@
     "leaveBalance": "Leave balance",
     "leaveAdjustment": "Leave adjustment",
     "attendance": "Attendance",
-    "dataExport": "Data export"
+    "dataExport": "Data export",
+    "projectGuest": "External collaborator"
   }
 }

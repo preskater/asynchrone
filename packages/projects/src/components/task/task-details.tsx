@@ -360,7 +360,8 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
         {task.comments.length ? (
           <div className="flex flex-col gap-3">
             {task.comments.map((entry) => {
-              const isClient = entry.authorKind === "client"
+              // Clients and guests are outside the member directory.
+              const isClient = entry.authorKind !== "internal"
               const member = isClient ? undefined : getMember(entry.authorId)
               const author =
                 isClient && entry.authorName
@@ -381,8 +382,17 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
                         {author?.name ?? entry.authorName ?? t("unknown")}
                       </span>
                       {isClient ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {t("clientBadge")}
+                        <Badge
+                          variant={
+                            entry.authorKind === "guest"
+                              ? "outline"
+                              : "secondary"
+                          }
+                          className="text-[10px]"
+                        >
+                          {entry.authorKind === "guest"
+                            ? t("guestBadge")
+                            : t("clientBadge")}
                         </Badge>
                       ) : null}
                       <span className="text-xs text-muted-foreground">

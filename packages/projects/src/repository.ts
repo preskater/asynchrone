@@ -301,7 +301,10 @@ export class ProjectRepository {
     taskId: string,
     authorId: string,
     body: string,
-    options: { authorKind: "internal" | "client"; authorName?: string }
+    options: {
+      authorKind: "internal" | "client" | "guest"
+      authorName?: string
+    }
   ) {
     return this.db.taskComment.create({
       data: {

@@ -133,4 +133,32 @@ describe("createDomainHandler", () => {
     expect(retried.status).toBe(200)
     expect(dispatch).toHaveBeenCalledTimes(2)
   })
+
+  it("keeps guest grants and workspace operations apart", async () => {
+    const dispatch = vi.fn(async () => ({ ok: true }))
+    const handle = createDomainHandler({
+      app: "projects",
+      verifier: verifier(),
+      dispatch,
+    })
+    const guest = {
+      ...call,
+      context: {
+        ...call.context,
+        role: "client",
+        guest: { grantId: "grant_1", projectId: "project_a", capabilities: [] },
+      },
+    }
+    const guestParams = {
+      params: Promise.resolve({ operation: "guest-get-project" }),
+    }
+
+    // A guest grant never reaches a workspace operation...
+    expect((await handle(request(guest), params)).status).toBe(403)
+    // ...and a member context never reaches a guest operation.
+    expect((await handle(request(call), guestParams)).status).toBe(403)
+    expect(dispatch).not.toHaveBeenCalled()
+
+    expect((await handle(request(guest), guestParams)).status).toBe(200)
+  })
 })

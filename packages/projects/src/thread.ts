@@ -2,6 +2,7 @@ import type { MemberDirectoryPort } from "@workspace/organization/directory"
 
 import type { ProjectDb } from "./db"
 import type { ProjectAudit, ProjectNotify } from "./ports"
+import { authorKindOf, type AuthorKind } from "./task-comments"
 
 export interface ProjectThreadDependencies {
   db: ProjectDb
@@ -16,7 +17,7 @@ export interface ProjectMessageData {
   id: string
   body: string
   authorId: string
-  authorKind: "internal" | "client"
+  authorKind: AuthorKind
   authorName: string
   createdAt: string
 }
@@ -26,6 +27,7 @@ type MessageRow = {
   body: string
   authorId: string
   authorKind: string
+  authorName?: string | null
   createdAt: Date
 }
 
@@ -37,8 +39,8 @@ function mapMessage(
     id: row.id,
     body: row.body,
     authorId: row.authorId,
-    authorKind: row.authorKind === "client" ? "client" : "internal",
-    authorName: nameById.get(row.authorId) ?? "",
+    authorKind: authorKindOf(row.authorKind),
+    authorName: row.authorName ?? nameById.get(row.authorId) ?? "",
     createdAt: row.createdAt.toISOString(),
   }
 }
@@ -86,7 +88,9 @@ export async function createProjectMessage(
     organizationId: string
     projectId: string
     authorId: string
-    authorKind: "internal" | "client"
+    authorKind: AuthorKind
+    /** Snapshot for authors outside the member directory (guests). */
+    authorName?: string
     body: string
   }
 ): Promise<ProjectMessageData> {
@@ -96,6 +100,7 @@ export async function createProjectMessage(
       projectId: input.projectId,
       authorId: input.authorId,
       authorKind: input.authorKind,
+      authorName: input.authorName ?? null,
       body: input.body,
     },
   })
@@ -104,7 +109,9 @@ export async function createProjectMessage(
     {
       organizationId: input.organizationId,
       userId: input.authorId,
-      userName: input.authorKind === "client" ? "Client" : "Team",
+      userName:
+        input.authorName ??
+        (input.authorKind === "internal" ? "Team" : "Client"),
       userEmail: "",
     },
     {
@@ -118,13 +125,13 @@ export async function createProjectMessage(
   const nameById = await namesByIds(directory, input.organizationId, [
     row.authorId,
   ])
-  if (input.authorKind === "client") {
+  if (input.authorKind !== "internal") {
     await notifyTeamOfClientMessage(
       { db, notify, directory },
       input.organizationId,
       input.projectId,
       row,
-      nameById.get(row.authorId) ?? ""
+      input.authorName ?? nameById.get(row.authorId) ?? ""
     )
   }
 

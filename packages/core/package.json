@@ -39,6 +39,7 @@
     "./validation": "./src/validation.ts",
     "./plans": "./src/plans.ts",
     "./roles": "./src/roles.ts",
+    "./guests": "./src/guests.ts",
     "./trial": "./src/trial.ts",
     "./support": "./src/support.ts"
   }

@@ -179,7 +179,7 @@ model TaskComment {
   taskId     String
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   authorId   String
-  /// internal | client — frozen at write time so the two sides render differently.
+  /// internal | client | guest — frozen at write time so the two sides render differently.
   authorKind String   @default("internal")
   authorName String?
   body       String
@@ -208,7 +208,10 @@ model ProjectMessage {
   projectId      String
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   authorId       String
+  /// internal | client | guest
   authorKind     String       @default("internal")
+  /// Snapshot for authors outside the member directory (external guests).
+  authorName     String?
   body           String
   createdAt      DateTime     @default(now())
 
