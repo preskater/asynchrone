@@ -61,6 +61,7 @@ export const DOMAIN_OPERATIONS = [
   "list-tasks",
   "list-calendar-tasks",
   "list-project-options",
+  "list-project-shell",
   "count-projects-by-client",
   "count-client-projects",
   "list-client-projects",

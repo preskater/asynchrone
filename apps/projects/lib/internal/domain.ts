@@ -131,6 +131,11 @@ export async function dispatchDomain(
         endDate: project.endDate ?? null,
       }))
     }
+    case "list-project-shell": {
+      // Projects and labels without tasks, for the public API (ADR 0042).
+      const { projects, labels } = await projectService.listShell(ctx)
+      return { projects, labels }
+    }
     case "list-user-repository-tokens":
       return repositoryIntegrationService.listUserTokens(ctx)
     case "set-user-repository-token":
