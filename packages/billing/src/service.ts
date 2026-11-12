@@ -7,7 +7,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "@workspace/core/errors"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import {
   isPaidPlan,
@@ -35,7 +35,6 @@ import {
   type SubscriptionStatus,
 } from "./types"
 
-const MANAGER_RANK = 3
 const WEBHOOK_PROVIDER = "stripe"
 const INVOICE_PAGE_SIZE = 12
 
@@ -78,7 +77,7 @@ export class BillingService {
   }
 
   private requireManager(ctx: RequestContext) {
-    if (roleRank(ctx.role) >= MANAGER_RANK) return
+    if (can(ctx, "billing:manage")) return
     throw new ForbiddenError("Only owners and admins can manage billing.", {
       code: "role_cannot_manage_billing",
     })
@@ -113,7 +112,7 @@ export class BillingService {
 
     // Invoices are finance data: only owners and admins may read them, and
     // only they may trigger the provider reconciliation below.
-    const isManager = roleRank(ctx.role) >= MANAGER_RANK
+    const isManager = can(ctx, "billing:manage")
     const plan = planForOrganization({
       metadata: organization.metadata,
       subscription: record ? { plan: record.plan } : null,

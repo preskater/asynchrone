@@ -2,36 +2,35 @@
 
 import * as React from "react"
 
-import { parseRoles } from "@workspace/organization/utils"
-import { roleRank, type OrgRole } from "@workspace/organization/roles"
+import {
+  can,
+  type Capability,
+  type OrgRole,
+} from "@workspace/organization/roles"
 
 /**
  * Organization permissions for the calendars shell.
  *
- * Copilot read them from Better Auth's active-member helper; a domain app has
- * no Better Auth client, so the workspace layout resolves the role once and
- * passes it down. The meetings screens only need the management threshold.
+ * A domain app has no Better Auth client, so the workspace layout resolves the
+ * member's roles once and passes them down; screens ask for capabilities.
  */
-const RoleContext = React.createContext<OrgRole | null>(null)
+const RolesContext = React.createContext<OrgRole[]>([])
 
 export function PermissionsProvider({
-  role,
+  roles,
   children,
 }: {
-  role: OrgRole
+  roles: OrgRole[]
   children: React.ReactNode
 }) {
-  return <RoleContext.Provider value={role}>{children}</RoleContext.Provider>
+  return <RolesContext.Provider value={roles}>{children}</RolesContext.Provider>
 }
 
 export function useOrgPermissions() {
-  const role = React.useContext(RoleContext)
-  const roles = parseRoles(role ?? undefined)
-
+  const roles = React.useContext(RolesContext)
   return {
-    role,
     roles,
     isOwner: roles.includes("owner"),
-    canUpdateOrganization: roleRank(role ?? "viewer") >= 2,
+    can: (capability: Capability) => can(roles, capability),
   }
 }

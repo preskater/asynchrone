@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   INTERNAL_API_VERSION,
   MemberRoleSchema,
+  MemberRolesSchema,
   SERVICE_SCOPES,
   internalPath,
 } from "./contracts"
@@ -22,6 +23,7 @@ export const DelegatedContextSchema = z.object({
   userEmail: z.string().email(),
   organizationId: z.string().min(1),
   role: MemberRoleSchema,
+  roles: MemberRolesSchema.optional(),
   /** Set when a platform operator impersonates the user. */
   impersonatedBy: z.string().min(1).nullable().optional(),
   /**

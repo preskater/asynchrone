@@ -9,6 +9,7 @@ import type {
 } from "@workspace/contracts"
 import { appOrigin } from "@workspace/contracts/server"
 import type { RequestContext } from "@workspace/core/context"
+import { rolesFrom } from "@workspace/core/roles"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import { routing } from "@workspace/i18n/routing"
 import {
@@ -34,7 +35,7 @@ function requestContext(context: DelegatedContext): RequestContext {
     userName: context.userName,
     userEmail: context.userEmail,
     organizationId: context.organizationId,
-    role: context.role,
+    roles: rolesFrom(context),
   }
 }
 

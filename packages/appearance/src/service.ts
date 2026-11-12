@@ -1,6 +1,6 @@
 import type { RequestContext } from "@workspace/core/context"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
-import { roleRank, ROLE_RANK } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import {
   parseOrganizationAppearance,
@@ -38,7 +38,7 @@ export class AppearanceService {
     ctx: RequestContext,
     appearance: OrganizationAppearance
   ): Promise<OrganizationAppearance> {
-    if (roleRank(ctx.role) < ROLE_RANK.admin) {
+    if (!can(ctx, "appearance:update")) {
       throw new ForbiddenError(
         "Only owners and admins can change the organization appearance."
       )

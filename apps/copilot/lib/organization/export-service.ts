@@ -99,7 +99,7 @@ export async function listExports(organizationId: string) {
 
 /** Queues an export of the active organization. Owners only. */
 export async function requestExport(ctx: RequestContext) {
-  requirePermission(ctx, ["owner"])
+  requirePermission(ctx, "organization:export")
 
   const inFlight = await prisma.dataExport.findFirst({
     where: {

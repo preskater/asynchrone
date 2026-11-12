@@ -4,13 +4,13 @@ import type { RequestContext } from "@workspace/core/context"
 
 import { resolveEmployeeAccess } from "./access"
 
-function context(role: RequestContext["role"]): RequestContext {
+function context(role: RequestContext["roles"][number]): RequestContext {
   return {
     userId: "user_1",
     userName: "Ada",
     userEmail: "ada@example.com",
     organizationId: "org_1",
-    role,
+    roles: [role],
   }
 }
 

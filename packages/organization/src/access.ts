@@ -42,6 +42,17 @@ export const viewer = ac.newRole({
   ac: ["read"],
 })
 
+/// Developer-facing access (repositories, tasks, files) is granted by the
+/// capability map in `@workspace/core/roles`; it holds no organization
+/// administration permission here.
+export const developer = ac.newRole({
+  organization: [],
+  member: [],
+  invitation: [],
+  team: [],
+  ac: ["read"],
+})
+
 /// Read-only client-portal accounts. They hold no organization permissions;
 /// their data scope (one company, its projects and shared documents) is
 /// enforced by the portal routes, not by the access-control statements.
@@ -53,4 +64,4 @@ export const client = ac.newRole({
   ac: [],
 })
 
-export const orgRoles = { owner, admin, member, viewer, client }
+export const orgRoles = { owner, admin, member, developer, viewer, client }

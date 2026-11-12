@@ -10,5 +10,6 @@ export function toMemberView(source: DirectoryEntry): Member {
     email: source.email,
     avatarUrl: source.avatarUrl ?? undefined,
     role: (source.role === "client" ? "member" : source.role) as MemberRole,
+    roles: source.roles.filter((role): role is MemberRole => role !== "client"),
   }
 }

@@ -18,6 +18,7 @@
     "cta": "Voir les offres",
     "ai": "Les assistants IA sont inclus dans les offres Team et Enterprise.",
     "granularPermissions": "Le partage par fichier et l'accès restreint sont inclus dans les offres Team et Enterprise.",
+    "multipleRoles": "Le cumul de plusieurs rôles par membre est inclus dans les offres Team et Enterprise.",
     "seats": "Votre offre inclut jusqu'à {seats} membres, invitations en attente comprises. Passez à une offre supérieure pour en ajouter.",
     "aiQuota": "Passez à une offre supérieure ou ajoutez des membres pour augmenter votre allocation IA mensuelle.",
     "auditLog": "Le journal d'audit avec filtres et export est inclus dans l'offre Enterprise.",

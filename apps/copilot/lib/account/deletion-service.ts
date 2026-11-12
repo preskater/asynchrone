@@ -4,7 +4,7 @@ import {
   ValidationError,
 } from "@workspace/core/errors"
 import { sendAccountDeletedEmail } from "@/lib/email"
-import { parseRoles } from "@workspace/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
 import { prisma } from "@/lib/prisma"
 
 export const DELETED_USER_NAME = "Deleted user"
@@ -63,7 +63,9 @@ export async function assertAccountDeletable(
       code: "account_confirmation_mismatch",
     })
   }
-  if (parseRoles(user.role).some((role) => role.startsWith("platform_"))) {
+  // `user.role` holds platform roles, not organization roles.
+  const platformRoles = (user.role ?? "").split(",").map((role) => role.trim())
+  if (platformRoles.some((role) => role.startsWith("platform_"))) {
     throw new ForbiddenError("Platform operator accounts cannot be deleted.", {
       code: "account_platform_operator",
     })

@@ -13,7 +13,7 @@ const ctxA: RequestContext = {
   userName: "Alice",
   userEmail: "alice@example.com",
   organizationId: "org_a",
-  role: "owner",
+  roles: ["owner"],
 }
 
 const ctxB: RequestContext = {
@@ -230,11 +230,15 @@ describe("MessagingService membership and organization scope", () => {
 
   it("only lets writers send and only lets authors or admins edit", async () => {
     const { service } = buildService()
-    const member: RequestContext = { ...ctxA, userId: "user_b", role: "member" }
+    const member: RequestContext = {
+      ...ctxA,
+      userId: "user_b",
+      roles: ["member"],
+    }
 
     await expect(
       service.sendMessage(
-        { ...member, role: "viewer" },
+        { ...member, roles: ["viewer"] },
         {
           conversationId: "conv_a",
           body: "hi",

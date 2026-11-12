@@ -17,7 +17,7 @@ import {
   DATA_EXPORT_TTL_DAYS,
   ORGANIZATION_DELETION_GRACE_DAYS,
 } from "@workspace/organization/lifecycle"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 import { NotificationService } from "@workspace/notifications"
 import { notificationIdSchema } from "@workspace/notifications/schemas"
 import { createSearchHandler } from "@workspace/search"
@@ -147,7 +147,7 @@ describe("domain package export contract", () => {
         ORGANIZATION_DELETION_GRACE_DAYS,
       ],
       ["organization/lifecycle#DATA_EXPORT_TTL_DAYS", DATA_EXPORT_TTL_DAYS],
-      ["organization/roles#roleRank", roleRank],
+      ["organization/roles#can", can],
       ["notifications#NotificationService", NotificationService],
       ["notifications/schemas#notificationIdSchema", notificationIdSchema],
       ["search#createSearchHandler", createSearchHandler],

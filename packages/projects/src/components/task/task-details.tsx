@@ -369,6 +369,7 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
                       name: entry.authorName,
                       email: "",
                       role: "viewer" as const,
+                      roles: ["viewer" as const],
                     }
                   : member
               return (

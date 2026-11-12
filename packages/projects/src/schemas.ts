@@ -28,7 +28,13 @@ export const taskPrioritySchema = z.enum(["low", "medium", "high", "urgent"])
 
 export const projectStatusSchema = z.enum(["active", "paused", "completed"])
 
-export const memberRoleSchema = z.enum(["owner", "admin", "member", "viewer"])
+export const memberRoleSchema = z.enum([
+  "owner",
+  "admin",
+  "member",
+  "developer",
+  "viewer",
+])
 
 // The date picker sends ISO datetimes; API/assistant callers may send a day.
 const dateInputSchema = z

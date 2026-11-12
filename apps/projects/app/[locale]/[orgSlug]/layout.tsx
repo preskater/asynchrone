@@ -6,7 +6,7 @@ import { RecentsProvider } from "@workspace/app-shell/recents"
 import { WorkspaceShell } from "@workspace/app-shell/shell"
 import { appOrigin } from "@workspace/contracts/server"
 import { EntitlementsProvider } from "@workspace/organization/use-entitlements"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 import { ProjectStoreProvider } from "@workspace/projects/store"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
@@ -62,7 +62,7 @@ export default async function OrgLayout({
               initialData={initialData}
               currentUserId={workspace.user.id}
               actions={PROJECT_ACTIONS}
-              canManageMembers={roleRank(workspace.role) >= 3}
+              canManageMembers={can(workspace, "member:manage")}
             >
               <WorkspaceShell
                 skipLabel={t("skipToContent")}

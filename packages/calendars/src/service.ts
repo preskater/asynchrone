@@ -1,6 +1,6 @@
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import type {
   CalendarEventRow,
@@ -17,7 +17,7 @@ import type {
 import type { CalendarData, CalendarEvent, CalendarSource } from "./types"
 
 function canWrite(ctx: RequestContext) {
-  if (roleRank(ctx.role) >= 2) return
+  if (can(ctx, "calendar:write")) return
   throw new ForbiddenError("Your role cannot modify calendars.", {
     code: "role_cannot_modify_calendars",
   })

@@ -18,6 +18,7 @@
     "cta": "See plans",
     "ai": "AI assistants are included in the Team and Enterprise plans.",
     "granularPermissions": "Per-file sharing and restricted access are included in the Team and Enterprise plans.",
+    "multipleRoles": "Combining several roles per member is included in the Team and Enterprise plans.",
     "seats": "Your plan includes up to {seats} members, pending invitations included. Upgrade to add more.",
     "aiQuota": "Upgrade or add seats to raise your monthly AI allowance.",
     "auditLog": "The customer-facing audit log with filters and export is included in the Enterprise plan.",

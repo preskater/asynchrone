@@ -5,7 +5,11 @@ import {
   NotFoundError,
   ValidationError,
 } from "@workspace/core/errors"
-import { roleRank } from "@workspace/organization/roles"
+import {
+  can,
+  parseRoles,
+  type Capability,
+} from "@workspace/organization/roles"
 
 import { resolveMeetingProvider } from "./providers"
 import type {
@@ -77,13 +81,9 @@ function earliestStart(row: MeetingRow): number {
     : Number.POSITIVE_INFINITY
 }
 
-/**
- * `minRank` is an organization role rank (`viewer` = 1, `member` = 2,
- * `admin` = 3, `owner` = 4). Portal users never reach this service through the
- * workspace context.
- */
-function requireStaff(ctx: RequestContext, minRank: number) {
-  if (roleRank(ctx.role) >= minRank) return
+/** Portal users never reach this service through the workspace context. */
+function requireStaff(ctx: RequestContext, capability: Capability) {
+  if (can(ctx, capability)) return
   throw new ForbiddenError("Your role cannot manage meetings.", {
     code: "role_cannot_manage_meetings",
   })
@@ -107,13 +107,13 @@ export type MeetingAudit = (
 function auditContext(
   ctx: MeetingPortalContext | RequestContext
 ): RequestContext {
-  if ("userEmail" in ctx && "role" in ctx) return ctx
+  if ("userEmail" in ctx && "roles" in ctx) return ctx
   return {
     userId: ctx.userId,
     userName: ctx.userName,
     userEmail: "",
     organizationId: ctx.organizationId,
-    role: "client",
+    roles: ["client"],
   }
 }
 
@@ -136,7 +136,7 @@ export class MeetingService {
   // ---------------------------------------------------------------------------
 
   async getSettings(ctx: RequestContext): Promise<MeetingSettingsData> {
-    requireStaff(ctx, 1)
+    requireStaff(ctx, "workspace:read")
     return this.mapSettings(await this.repo.getSettings(ctx.organizationId))
   }
 
@@ -144,7 +144,7 @@ export class MeetingService {
     ctx: RequestContext,
     input: UpdateMeetingSettingsInput
   ): Promise<MeetingSettingsData> {
-    requireStaff(ctx, 3)
+    requireStaff(ctx, "meeting:manage")
 
     if (input.defaultDurationMinutes > input.maxDurationMinutes) {
       throw new ValidationError(
@@ -405,7 +405,7 @@ export class MeetingService {
   // ---------------------------------------------------------------------------
 
   async listRequests(ctx: RequestContext): Promise<MeetingRequestsData> {
-    requireStaff(ctx, 1)
+    requireStaff(ctx, "workspace:read")
     const [row, requests] = await Promise.all([
       this.repo.getSettings(ctx.organizationId),
       this.repo.listRequests(ctx.organizationId),
@@ -429,7 +429,7 @@ export class MeetingService {
     ctx: RequestContext,
     input: AcceptMeetingRequestInput
   ): Promise<MeetingRequestData> {
-    requireStaff(ctx, 2)
+    requireStaff(ctx, "calendar:write")
     const row = await this.repo.findRequest(ctx.organizationId, input.id)
     if (!row) throw new NotFoundError("meetingRequest")
     if (row.status !== "pending") {
@@ -556,7 +556,7 @@ export class MeetingService {
     ctx: RequestContext,
     input: DeclineMeetingRequestInput
   ): Promise<MeetingRequestData> {
-    requireStaff(ctx, 2)
+    requireStaff(ctx, "calendar:write")
     const row = await this.repo.findRequest(ctx.organizationId, input.id)
     if (!row) throw new NotFoundError("meetingRequest")
     if (row.status !== "pending") {
@@ -597,7 +597,7 @@ export class MeetingService {
     const members = await this.repo.listManagers(ctx.organizationId)
     await Promise.all(
       members
-        .filter((member) => roleRank(member.role) >= 2)
+        .filter((member) => can(parseRoles(member.role), "calendar:write"))
         .map((member) =>
           this.notifier.notify({
             organizationId: ctx.organizationId,

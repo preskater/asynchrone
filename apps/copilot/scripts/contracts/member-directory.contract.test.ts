@@ -24,9 +24,15 @@ describe("member directory contract", () => {
       email: "ada@example.com",
       avatarUrl: undefined,
       role: "admin",
+      roles: ["admin"],
     })
     expect(toMemberDirectoryEntry(source("client")).role).toBe("client")
     expect(toMemberDirectoryEntry(source("unknown")).role).toBe("member")
+    // Cumulative roles survive the directory, primary role first (ADR 0040).
+    expect(toMemberDirectoryEntry(source("developer,member"))).toMatchObject({
+      role: "member",
+      roles: ["member", "developer"],
+    })
   })
 
   it("maps the identity API row used by every domain app", () => {
@@ -46,6 +52,7 @@ describe("member directory contract", () => {
       email: "grace@example.com",
       avatarUrl: undefined,
       role: "viewer",
+      roles: ["viewer"],
       clientId: null,
       joinedAt: new Date("2026-11-01T10:00:00Z"),
     })

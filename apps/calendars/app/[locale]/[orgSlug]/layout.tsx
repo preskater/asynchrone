@@ -63,8 +63,13 @@ export default async function OrgLayout({
     name: member.name,
     email: member.email,
     avatarUrl: member.avatarUrl ?? undefined,
-    role: (member.role === "client" ? "member" : member.role) as
-      "owner" | "admin" | "member" | "viewer",
+    role: (member.role === "client" ? "member" : member.role) as Exclude<
+      typeof member.role,
+      "client"
+    >,
+    roles: member.roles.filter(
+      (role): role is Exclude<typeof role, "client"> => role !== "client"
+    ),
   }))
 
   return (
@@ -75,7 +80,7 @@ export default async function OrgLayout({
           userId={workspace.user.id}
         >
           <RecentsProvider organizationId={workspace.organization.id}>
-            <PermissionsProvider role={workspace.role}>
+            <PermissionsProvider roles={workspace.roles}>
               <CalendarsProvider
                 initialData={initialData}
                 currentUserId={workspace.user.id}

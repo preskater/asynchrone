@@ -3,6 +3,7 @@ import { Readable } from "node:stream"
 import { z } from "zod"
 
 import { SERVICE_SCOPES } from "@workspace/contracts"
+import { parseRoles } from "@workspace/core/roles"
 
 import { fileService } from "@/lib/files"
 import { largeObjectStore } from "@/lib/large-object"
@@ -48,7 +49,11 @@ export async function POST(request: Request): Promise<Response> {
     userName: request.headers.get("x-user-name") ?? "",
     userEmail: request.headers.get("x-user-email") ?? "system@asynchrone.space",
     organizationId: input.organizationId,
-    role: (request.headers.get("x-user-role") ?? "client") as never,
+    roles: parseRoles(
+      request.headers.get("x-user-roles") ??
+        request.headers.get("x-user-role") ??
+        "client"
+    ),
   }
   const file = await fileService.createUploadedFile(ctx, {
     name: input.name,

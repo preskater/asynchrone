@@ -1,3 +1,4 @@
+import { rolesFrom } from "@workspace/core/roles"
 import { MeetingRepository, MeetingService } from "@workspace/meetings"
 
 import { createNotificationService } from "@/lib/notifications"
@@ -15,7 +16,10 @@ export const meetingRepository = new MeetingRepository(prisma, {
     const members = await identity.listMembers(organizationId)
     return members
       .filter((member) => member.clientId == null)
-      .map((member) => ({ userId: member.id, role: member.role }))
+      .map((member) => ({
+        userId: member.id,
+        role: rolesFrom(member).join(","),
+      }))
   },
   async findInternalMembers(organizationId, userIds) {
     const members = await identity.listMembers(organizationId)

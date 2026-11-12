@@ -29,6 +29,7 @@
     "owner": "Propriétaire",
     "admin": "Administrateur",
     "member": "Membre",
+    "developer": "Développeur",
     "viewer": "Lecteur",
     "client": "Client (portail)"
   },
@@ -36,6 +37,7 @@
     "owner": "Accès complet, y compris la suppression de l'organisation.",
     "admin": "Gérer les membres, les invitations et les paramètres de l'organisation.",
     "member": "Utiliser l'espace de travail. Ne peut pas gérer les personnes ni les paramètres.",
+    "developer": "Connecter des dépôts, travailler sur les tâches et les fichiers. Ne peut pas gérer les personnes, la facturation ni les paramètres.",
     "viewer": "Accès en lecture seule à l'espace de travail.",
     "client": "Accès en lecture seule aux projets de leur société dans le portail client."
   },

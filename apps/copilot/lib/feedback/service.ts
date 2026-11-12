@@ -107,7 +107,7 @@ export async function submitFeedback(
       context: {
         ...report.context,
         page: report.page,
-        role: ctx.role,
+        role: ctx.roles.join(","),
         buildSha,
         requestId: diagnostics.requestId,
       },
@@ -128,7 +128,7 @@ export async function submitFeedback(
         reporter: {
           name: ctx.userName,
           email: ctx.userEmail,
-          role: ctx.role,
+          role: ctx.roles.join(","),
         },
         organization,
         submittedAt,

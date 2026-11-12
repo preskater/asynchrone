@@ -6,14 +6,17 @@ export type TaskPriority = "low" | "medium" | "high" | "urgent"
 
 export type ProjectStatus = "active" | "paused" | "completed"
 
-export type MemberRole = "owner" | "admin" | "member" | "viewer"
+export type MemberRole = "owner" | "admin" | "member" | "developer" | "viewer"
 
 export interface Member {
   id: string
   name: string
   email: string
   avatarUrl?: string
+  /** Primary role. */
   role: MemberRole
+  /** Every role the member holds; several can only be edited in Copilot. */
+  roles: MemberRole[]
 }
 
 export interface Label {

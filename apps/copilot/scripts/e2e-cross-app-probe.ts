@@ -61,7 +61,7 @@ const ctx: RequestContext = {
   userName: args.userName,
   userEmail: args.userEmail,
   organizationId: args.organizationId,
-  role: args.role,
+  roles: [args.role],
 }
 
 function unavailableApps(

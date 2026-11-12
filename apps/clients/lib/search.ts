@@ -1,5 +1,6 @@
 import type { SearchQuery, SearchResult } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
+import { parseRoles } from "@workspace/core/roles"
 
 import { clientsService } from "@/lib/clients"
 
@@ -9,7 +10,7 @@ function context(input: SearchQuery): RequestContext {
     userName: input.userName ?? "",
     userEmail: input.userEmail ?? "system@asynchrone.space",
     organizationId: input.organizationId,
-    role: input.role ?? "member",
+    roles: parseRoles(input.role),
   }
 }
 

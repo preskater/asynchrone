@@ -118,10 +118,18 @@ export const MemberRoleSchema = z.enum([
   "owner",
   "admin",
   "member",
+  "developer",
   "viewer",
   "client",
 ])
 export type MemberRole = z.infer<typeof MemberRoleSchema>
+
+/**
+ * The full cumulative role set. Payloads keep `role` (the primary role) for
+ * peers still on the single-role contract; readers prefer `roles`.
+ * ponytail: drop `role` from the wire once every app reads `roles`.
+ */
+export const MemberRolesSchema = z.array(MemberRoleSchema).min(1)
 
 export const UserSchema = z.object({
   id: z.string().min(1),
@@ -133,6 +141,7 @@ export type IdentityUser = z.infer<typeof UserSchema>
 
 export const MemberSchema = UserSchema.extend({
   role: MemberRoleSchema,
+  roles: MemberRolesSchema.optional(),
   /** Set for client-portal accounts; they never enter the internal workspace. */
   clientId: z.string().nullable().optional(),
   /** Membership creation time, used by member pickers that keep insertion order. */
@@ -144,11 +153,13 @@ export const AddWorkspaceMemberSchema = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().trim().email(),
   role: MemberRoleSchema,
+  roles: MemberRolesSchema.optional(),
 })
 export type AddWorkspaceMember = z.infer<typeof AddWorkspaceMemberSchema>
 
 export const UpdateWorkspaceMemberSchema = z.object({
   role: MemberRoleSchema,
+  roles: MemberRolesSchema.optional(),
 })
 export type UpdateWorkspaceMember = z.infer<typeof UpdateWorkspaceMemberSchema>
 
@@ -233,6 +244,7 @@ export type WorkspaceSession = z.infer<typeof WorkspaceSessionSchema>
 
 export const WorkspaceOrganizationSchema = OrganizationSchema.extend({
   role: MemberRoleSchema,
+  roles: MemberRolesSchema.optional(),
   clientId: z.string().nullable(),
 })
 export type WorkspaceOrganization = z.infer<typeof WorkspaceOrganizationSchema>

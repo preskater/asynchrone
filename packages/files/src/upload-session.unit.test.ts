@@ -11,7 +11,7 @@ const ctx: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "owner",
+  roles: ["owner"],
 }
 
 interface SessionRow {

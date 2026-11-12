@@ -14,7 +14,7 @@ const ctx: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "member",
+  roles: ["member"],
 }
 
 function calendarRow(
@@ -165,7 +165,7 @@ describe("CalendarService", () => {
 
     await expect(
       service.createEvent(
-        { ...ctx, role: "viewer" },
+        { ...ctx, roles: ["viewer"] },
         {
           calendarId: "cal_1",
           title: "Review",

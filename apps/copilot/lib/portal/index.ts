@@ -2,6 +2,7 @@ import { Readable } from "node:stream"
 import { headers } from "next/headers"
 import { z } from "zod"
 
+import { primaryRole } from "@workspace/core/roles"
 import { createPortalRuntime } from "@workspace/portal"
 import type {
   PortalContext,
@@ -72,7 +73,8 @@ const runtime = createPortalRuntime({
             "x-user-id": ctx.userId,
             "x-user-name": ctx.userName,
             "x-user-email": ctx.userEmail,
-            "x-user-role": ctx.role,
+            "x-user-role": primaryRole(ctx.roles),
+            "x-user-roles": ctx.roles.join(","),
           },
           scope: "internal:domain:write",
           duplex: "half",

@@ -58,7 +58,7 @@ export async function getTrialStatus(
 }
 
 export async function startTeamTrial(ctx: RequestContext, now = new Date()) {
-  requirePermission(ctx, ["owner", "admin"])
+  requirePermission(ctx, "billing:manage")
 
   const [org, user] = await Promise.all([
     prisma.organization.findUnique({

@@ -79,7 +79,7 @@ Project messages and task comments write `project.message.added` / `task.comment
 | `getAuditRetentionAction` | Effective window and whether it is configurable               |
 | `setAuditRetentionAction` | Enterprise override, owner only                               |
 
-Access is checked twice: `roleRank >= admin` (members and viewers get a 403) and
+Access is checked twice: the `audit:read` capability (owners and admins; members and viewers get a 403) and
 the `auditLog` entitlement. Client-portal accounts never reach the workspace.
 The filter days are **UTC** days, so `from=2026-10-01&to=2026-10-01` covers
 `2026-10-01T00:00:00Z` through `2026-10-01T23:59:59.999Z`.

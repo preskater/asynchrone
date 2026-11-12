@@ -4,13 +4,13 @@ import type { RequestContext } from "@workspace/core/context"
 
 import { resolveClientAccess } from "./access"
 
-function context(role: RequestContext["role"]): RequestContext {
+function context(role: RequestContext["roles"][number]): RequestContext {
   return {
     userId: "user_1",
     userName: "Ada",
     userEmail: "ada@example.com",
     organizationId: "org_1",
-    role,
+    roles: [role],
   }
 }
 
@@ -43,7 +43,6 @@ describe("resolveClientAccess", () => {
 
   it("keeps portal clients read-only", () => {
     expect(resolveClientAccess(context("client"))).toMatchObject({
-      rank: 0,
       canEdit: false,
       canManage: false,
       canExport: false,

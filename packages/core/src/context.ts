@@ -5,7 +5,8 @@ export interface RequestContext {
   userName: string
   userEmail: string
   organizationId: string
-  role: MemberRole
+  /** The member's cumulative roles; authorize with `can(ctx, capability)`. */
+  roles: MemberRole[]
 }
 
 export type RequestContextInput = Partial<RequestContext> & {
