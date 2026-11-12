@@ -99,7 +99,7 @@ export function PortalDiscussion({
         ) : (
           <ul className="flex flex-col gap-3">
             {messages.map((message) => {
-              const own = message.authorKind === "client"
+              const own = message.authorKind !== "internal"
               return (
                 <li key={message.id} className="flex items-start gap-2.5">
                   <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">

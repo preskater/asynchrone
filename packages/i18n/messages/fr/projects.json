@@ -43,6 +43,7 @@
   "discussionPlaceholder": "Écrivez un message au client…",
   "sendMessage": "Envoyer",
   "clientBadge": "Client",
+  "guestBadge": "Externe",
   "settings": "Paramètres",
   "backToProjects": "Retour aux projets",
   "notFoundTitle": "Projet introuvable",

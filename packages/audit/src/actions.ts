@@ -21,6 +21,10 @@ export const AUDIT_ACTIONS = {
   projectTemplateCreated: "project.template.created",
   projectTemplateUpdated: "project.template.updated",
   projectTemplateDeleted: "project.template.deleted",
+  projectGuestInvited: "project.guest.invited",
+  projectGuestAccepted: "project.guest.accepted",
+  projectGuestRevoked: "project.guest.revoked",
+  projectGuestLeft: "project.guest.left",
 
   taskCreated: "task.created",
   taskUpdated: "task.updated",
@@ -165,4 +169,5 @@ export const AUDIT_ENTITY_TYPES = [
   "leaveAdjustment",
   "attendance",
   "dataExport",
+  "projectGuest",
 ] as const

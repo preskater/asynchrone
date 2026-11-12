@@ -221,3 +221,31 @@ export function sendAccountDeletedEmail({ to }: { to: string }) {
     }),
   })
 }
+
+export function sendGuestInvitationEmail({
+  to,
+  inviterName,
+  organizationName,
+  projectName,
+  expiresAt,
+  url,
+}: {
+  to: string
+  inviterName: string
+  organizationName: string
+  projectName: string
+  expiresAt: Date
+  url: string
+}) {
+  const until = expiresAt.toISOString().slice(0, 10)
+  sendEmail({
+    to,
+    subject: `${inviterName} invited you to ${projectName}`,
+    html: layout({
+      heading: `Join ${escapeHtml(projectName)}`,
+      body: `${escapeHtml(inviterName)} invited you to collaborate on the project ${escapeHtml(projectName)} at ${escapeHtml(organizationName)} as an external collaborator. You will only see this project, until ${until}.`,
+      cta: "Accept the invitation",
+      url: publicUrl(url),
+    }),
+  })
+}

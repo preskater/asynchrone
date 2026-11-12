@@ -77,6 +77,12 @@
       "update": "Projet collaborateur modifié",
       "message": {
         "added": "Message de projet envoyé"
+      },
+      "guest": {
+        "invited": "Collaborateur externe invité",
+        "accepted": "Collaborateur externe arrivé",
+        "revoked": "Collaborateur externe retiré",
+        "left": "Collaborateur externe parti"
       }
     },
     "task": {
@@ -281,6 +287,7 @@
     "leaveBalance": "Solde de congés",
     "leaveAdjustment": "Ajustement de congés",
     "attendance": "Pointage",
-    "dataExport": "Export de données"
+    "dataExport": "Export de données",
+    "projectGuest": "Collaborateur externe"
   }
 }

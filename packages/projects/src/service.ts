@@ -21,7 +21,7 @@ import { toMemberView } from "./members"
 import type { ProjectServicePorts } from "./ports"
 
 import { ProjectRepository } from "./repository"
-import { createTaskComment } from "./task-comments"
+import { authorKindOf, createTaskComment } from "./task-comments"
 import {
   resolveImportRow,
   taskFingerprint,
@@ -332,7 +332,7 @@ export class ProjectService {
       comments: [...row.comments].reverse().map((comment): Comment => ({
         id: comment.id,
         authorId: comment.authorId,
-        authorKind: comment.authorKind === "client" ? "client" : "internal",
+        authorKind: authorKindOf(comment.authorKind),
         authorName: comment.authorName ?? undefined,
         body: comment.body,
         createdAt: requiredIso(comment.createdAt),

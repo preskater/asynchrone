@@ -37,6 +37,19 @@ export const DelegatedContextSchema = z.object({
     })
     .nullable()
     .optional(),
+  /**
+   * External collaborators only (ADR 0041). Copilot resolves it from the
+   * guest's grant; the target app filters every row by this project and only
+   * serves `guest-*` operations to it.
+   */
+  guest: z
+    .object({
+      grantId: z.string().min(1),
+      projectId: z.string().min(1),
+      capabilities: z.array(z.string().min(1)),
+    })
+    .nullable()
+    .optional(),
 })
 export type DelegatedContext = z.infer<typeof DelegatedContextSchema>
 
@@ -86,6 +99,14 @@ export const DOMAIN_OPERATIONS = [
   "portal-create-message",
   "portal-list-task-comments",
   "portal-create-task-comment",
+  // projects — external collaborators, scoped to the grant's project
+  "guest-get-project",
+  "guest-get-task",
+  "guest-update-task-status",
+  "guest-list-messages",
+  "guest-create-message",
+  "guest-list-task-comments",
+  "guest-create-task-comment",
   // calendars + meetings
   "list-calendars",
   "ensure-personal-calendar",
@@ -159,6 +180,9 @@ const WRITE_OPERATIONS: ReadonlySet<DomainOperation> = new Set([
   "create-task-comment",
   "portal-create-message",
   "portal-create-task-comment",
+  "guest-update-task-status",
+  "guest-create-message",
+  "guest-create-task-comment",
   "portal-create-meeting",
   "portal-cancel-meeting",
   "create-event",
@@ -197,6 +221,21 @@ const WRITE_OPERATIONS: ReadonlySet<DomainOperation> = new Set([
 
 export function isDomainOperation(value: string): value is DomainOperation {
   return (DOMAIN_OPERATIONS as readonly string[]).includes(value)
+}
+
+/**
+ * Guest operations take only a guest context, and a guest context reaches
+ * only guest operations: a grant never opens a workspace operation.
+ */
+export function isGuestOperation(operation: DomainOperation): boolean {
+  return operation.startsWith("guest-")
+}
+
+export function guestContextAllowed(
+  operation: DomainOperation,
+  context: Pick<DelegatedContext, "guest">
+): boolean {
+  return Boolean(context.guest) === isGuestOperation(operation)
 }
 
 export function domainOperationScope(

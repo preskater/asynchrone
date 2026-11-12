@@ -117,6 +117,10 @@ export function ProjectDiscussion({ projectId }: { projectId: string }) {
                     </span>
                     {fromClient ? (
                       <Badge className="text-[10px]">{t("clientBadge")}</Badge>
+                    ) : message.authorKind === "guest" ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {t("guestBadge")}
+                      </Badge>
                     ) : null}
                     <span>{formatRelative(message.createdAt)}</span>
                   </span>

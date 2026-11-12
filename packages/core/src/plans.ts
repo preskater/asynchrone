@@ -18,6 +18,7 @@ export type Entitlement =
   | "granularPermissions"
   | "apiAccess"
   | "requireTwoFactor"
+  | "externalCollaborators"
 
 export type Entitlements = {
   seats: number
@@ -31,6 +32,8 @@ export type Entitlements = {
   apiAccess: boolean
   /** Owners and admins may make two-factor authentication mandatory. */
   requireTwoFactor: boolean
+  /** External collaborators per project (0 = not included). Guests never take a seat. */
+  externalCollaborators: number
 }
 
 const GB = 1024 * 1024 * 1024
@@ -50,6 +53,7 @@ const ENTITLEMENTS: Record<OrgPlan, Entitlements> = {
     granularPermissions: false,
     apiAccess: true,
     requireTwoFactor: false,
+    externalCollaborators: 0,
   },
   team: {
     // Mirrors the "Up to 100 members" the pricing page sells.
@@ -62,6 +66,7 @@ const ENTITLEMENTS: Record<OrgPlan, Entitlements> = {
     granularPermissions: true,
     apiAccess: true,
     requireTwoFactor: true,
+    externalCollaborators: 5,
   },
   enterprise: {
     seats: Infinity,
@@ -73,6 +78,7 @@ const ENTITLEMENTS: Record<OrgPlan, Entitlements> = {
     granularPermissions: true,
     apiAccess: true,
     requireTwoFactor: true,
+    externalCollaborators: Infinity,
   },
 }
 

@@ -91,6 +91,37 @@ export function delegatedPortalContext(ctx: PortalContext): DelegatedContext {
   }
 }
 
+/**
+ * Delegated context for an external collaborator (ADR 0041). The role grants
+ * nothing; the projects app serves only `guest-*` operations, scoped to the
+ * grant's project.
+ */
+export function delegatedGuestContext(ctx: {
+  grantId: string
+  userId: string
+  userName: string
+  userEmail: string
+  organizationId: string
+  projectId: string
+  capabilities: readonly string[]
+}): DelegatedContext {
+  return {
+    userId: ctx.userId,
+    userName: ctx.userName,
+    userEmail: ctx.userEmail,
+    organizationId: ctx.organizationId,
+    role: "client",
+    roles: ["client"],
+    impersonatedBy: null,
+    portal: null,
+    guest: {
+      grantId: ctx.grantId,
+      projectId: ctx.projectId,
+      capabilities: [...ctx.capabilities],
+    },
+  }
+}
+
 export async function callDomain<T>(
   app: DomainAppKey,
   operation: DomainOperation,

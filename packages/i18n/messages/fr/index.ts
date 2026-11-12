@@ -18,6 +18,7 @@ import feedback from "./feedback.json"
 import files from "./files.json"
 import footer from "./footer.json"
 import forms from "./forms.json"
+import guests from "./guests.json"
 import employees from "./employees.json"
 import impersonation from "./impersonation.json"
 import landing from "./landing.json"
@@ -62,6 +63,7 @@ export default {
   Files: files,
   Footer: footer,
   Forms: forms,
+  Guests: guests,
   Employees: employees,
   Impersonation: impersonation,
   Landing: landing,

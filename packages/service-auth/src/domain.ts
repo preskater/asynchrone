@@ -4,6 +4,7 @@ import {
   InternalErrorSchema,
   SERVICE_SCOPES,
   domainOperationScope,
+  guestContextAllowed,
   isDomainOperation,
   type DomainCall,
   type DomainOperation,
@@ -162,6 +163,15 @@ export function createDomainHandler({
         400,
         "invalid_call",
         "The domain call envelope is invalid",
+        correlationId
+      )
+    }
+    // A guest grant never reaches a workspace operation, in any app.
+    if (!guestContextAllowed(operation, parsed.data.context)) {
+      return error(
+        403,
+        "forbidden",
+        "This operation does not accept this caller",
         correlationId
       )
     }

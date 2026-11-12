@@ -38,6 +38,7 @@ const expected: Record<OrgPlan, Record<Entitlement, number | boolean>> = {
     granularPermissions: false,
     apiAccess: true,
     requireTwoFactor: false,
+    externalCollaborators: 0,
   },
   team: {
     seats: 100,
@@ -49,6 +50,7 @@ const expected: Record<OrgPlan, Record<Entitlement, number | boolean>> = {
     granularPermissions: true,
     apiAccess: true,
     requireTwoFactor: true,
+    externalCollaborators: 5,
   },
   enterprise: {
     seats: Infinity,
@@ -60,6 +62,7 @@ const expected: Record<OrgPlan, Record<Entitlement, number | boolean>> = {
     granularPermissions: true,
     apiAccess: true,
     requireTwoFactor: true,
+    externalCollaborators: Infinity,
   },
 }
 
