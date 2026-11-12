@@ -31,6 +31,7 @@ model User {
   customerTwoFactor CustomerTwoFactor[]
   assistantConversations AssistantConversation[]
   supportTickets SupportTicket[]
+  projectGuests  ProjectGuest[]
 
   oauthClients       OauthClient[]
   oauthRefreshTokens OauthRefreshToken[]
@@ -186,6 +187,7 @@ model Organization {
   aiUsageEvents AiUsageEvent[]
   assistantConversations AssistantConversation[]
   supportTickets SupportTicket[]
+  projectGuests  ProjectGuest[]
 
   @@unique([slug])
   @@map("organization")
@@ -492,7 +494,10 @@ model ProjectMessage {
   projectId      String
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   authorId       String
+  /// internal | client | guest
   authorKind     String       @default("internal")
+  /// Snapshot for authors outside the member directory (external guests).
+  authorName     String?
   body           String
   createdAt      DateTime     @default(now())
 
@@ -1416,6 +1421,39 @@ model SalaryProfile {
 
 // OAuth / MCP (better-auth jwt + mcp plugins)
 // ---------------------------------------------------------------------------
+
+/// An external collaborator's grant on one project of the host organization
+/// (ADR 0041). Not a membership: it never takes a seat and every guest request
+/// is resolved from this row, never from the session's active organization.
+model ProjectGuest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Project in the projects app's database (no cross-database foreign key).
+  projectId      String
+  /// Snapshot so the guest space and the settings list render without a call.
+  projectName    String
+  email          String
+  /// Set on acceptance; the invitation is bound to `email` until then.
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// invited | active | revoked. Expiry is read from `expiresAt`, never stored.
+  status         String       @default("invited")
+  /// Comma-separated `@workspace/core/guests` capabilities.
+  capabilities   String
+  /// SHA-256 of the invitation link token; the token itself is never stored.
+  tokenHash      String       @unique
+  expiresAt      DateTime
+  invitedById    String?
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, projectId])
+  @@index([userId])
+  @@index([email])
+  @@map("projectGuest")
+}
 
 model Jwks {
   id         String    @id
