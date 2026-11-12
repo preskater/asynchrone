@@ -6,7 +6,7 @@ import type { RequestContext } from "@workspace/core/context"
 
 import type { PortalRepository } from "./repository"
 import { MAX_PORTAL_UPLOAD_BYTES, PortalService } from "./service"
-import type { PortalContext } from "./types"
+import type { PortalContext, PortalReleaseReportData } from "./types"
 
 const ctxA: PortalContext = {
   userId: "user_client_a",
@@ -238,6 +238,11 @@ function buildService() {
     })),
     findClient: vi.fn(async () => ({ ownerId: "user_owner", name: "Acme" })),
     findClientInOrganization: vi.fn(async () => ({ id: "client_a" })),
+    listReleaseReports: vi.fn(async () => []),
+    getReleaseReport: vi.fn(
+      async (_org: string, _client: string, _release: string) =>
+        null as PortalReleaseReportData | null
+    ),
   }
 
   const files = {
@@ -657,5 +662,21 @@ describe("PortalService documents", () => {
       })
     ).rejects.toMatchObject({ code: "storage_quota_exceeded" })
     expect(files.createUploadedFile).not.toHaveBeenCalled()
+  })
+})
+
+describe("PortalService release reports", () => {
+  it("asks for the caller's own company and hides anything not shared", async () => {
+    const { service, clientDocuments } = buildService()
+    await expect(
+      service.getReleaseReport(ctxA, "rel_other")
+    ).rejects.toMatchObject({
+      name: "NotFoundError",
+    })
+    expect(clientDocuments.getReleaseReport).toHaveBeenCalledWith(
+      ctxA.organizationId,
+      ctxA.clientId,
+      "rel_other"
+    )
   })
 })

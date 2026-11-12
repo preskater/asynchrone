@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { ArrowLeftIcon } from "lucide-react"
 
 import { FeedbackBoard } from "@workspace/clients/components/feedback"
+import { appOrigin } from "@workspace/contracts/server"
 import { isAppError } from "@workspace/core/errors"
 import { Link } from "@workspace/i18n/navigation"
 
@@ -49,6 +50,7 @@ export default async function ClientFeedbackPage({
         orgSlug={orgSlug}
         groups={groups}
         access={detail.access}
+        projectsUrl={appOrigin("projects")}
         members={detail.members}
         client={{
           id: detail.client.id,

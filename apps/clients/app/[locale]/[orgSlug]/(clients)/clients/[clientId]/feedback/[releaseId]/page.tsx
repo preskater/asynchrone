@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 
 import { resolveClientAccess } from "@workspace/clients/access"
 import { ReleaseReport } from "@workspace/clients/components/release-report"
@@ -25,10 +26,12 @@ export default async function ReleaseReportPage({
   // The release id is enough to find it; the URL must still name its company.
   if (report.release.clientId !== clientId) notFound()
 
+  const t = await getTranslations("Clients")
   return (
     <ReleaseReport
-      orgSlug={orgSlug}
       report={report}
+      backHref={`/${orgSlug}/clients/${clientId}/feedback`}
+      backLabel={t("feedback.report.back")}
       canExport={resolveClientAccess(ctx).canExport}
     />
   )

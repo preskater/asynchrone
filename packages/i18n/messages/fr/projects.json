@@ -259,5 +259,12 @@
       "invalid_date": "Date non comprise « {value} » : laissée vide. Utilisez AAAA-MM-JJ.",
       "description_truncated": "Description coupée à 5 000 caractères."
     }
-  }
+  },
+  "feedback": "Retours client",
+  "feedbackEmpty": "Aucune version client n’est liée à ce projet pour l’instant.",
+  "feedbackUnavailable": "Les retours client sont indisponibles pour le moment.",
+  "feedbackNone": "Aucun retour sur cette version pour l’instant.",
+  "feedbackCounts": "{open, plural, one {# ouvert} other {# ouverts}} sur {count}",
+  "feedbackOpenInClients": "Ouvrir dans Clients",
+  "feedbackOpenTask": "Voir la tâche"
 }

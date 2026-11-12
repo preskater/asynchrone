@@ -8,6 +8,7 @@ import type {
   DealInput,
   ExportInput,
   FeedbackAssigneeInput,
+  FeedbackConvertInput,
   FeedbackFilter,
   FeedbackInput,
   FeedbackStatusInput,
@@ -48,6 +49,8 @@ import type {
   ClientReleaseData,
   ClientReleaseGroupData,
   ClientReleaseReportData,
+  PortalReleaseSummaryData,
+  ReleaseReportView,
 } from "./types"
 
 import type { ClientServicePorts } from "./ports"
@@ -383,6 +386,21 @@ export class ClientsService {
     return this.feedback.getReleaseReport(ctx, releaseId)
   }
 
+  async listPortalReleases(
+    ctx: RequestContext,
+    clientId: string
+  ): Promise<PortalReleaseSummaryData[]> {
+    return this.feedback.listPortalReleases(ctx, clientId)
+  }
+
+  async getPortalReleaseReport(
+    ctx: RequestContext,
+    clientId: string,
+    releaseId: string
+  ): Promise<ReleaseReportView | null> {
+    return this.feedback.getPortalReleaseReport(ctx, clientId, releaseId)
+  }
+
   async exportReleaseCsv(
     ctx: RequestContext,
     input: ReleaseExportInput
@@ -430,5 +448,13 @@ export class ClientsService {
     id: string
   ): Promise<{ id: string }> {
     return this.feedback.deleteFeedback(ctx, id)
+  }
+
+  async convertFeedbackToTask(
+    ctx: RequestContext,
+    input: FeedbackConvertInput,
+    workspaceUrl: string
+  ): Promise<ClientFeedbackData> {
+    return this.feedback.convertFeedbackToTask(ctx, input, workspaceUrl)
   }
 }

@@ -290,7 +290,8 @@
           "created": "Retour « {title} » enregistré sur la {version}",
           "updated": "Retour « {title} » mis à jour",
           "status_changed": "Retour « {title} » ({version}) passé à l’état {status, select, new {nouveau} triaged {trié} accepted {accepté} rejected {rejeté} fixed {corrigé} deferred {reporté} other {{status}}}",
-          "deleted": "Retour « {title} » supprimé"
+          "deleted": "Retour « {title} » supprimé",
+          "converted": "Retour « {title} » ({version}) converti en tâche {taskIdentifier}"
         }
       },
       "contact": {
@@ -406,7 +407,8 @@
       "feedbackSaved": "Retour enregistré.",
       "statusChanged": "Statut mis à jour.",
       "assigned": "Responsable mis à jour.",
-      "deleted": "Supprimé."
+      "deleted": "Supprimé.",
+      "converted": "Tâche créée dans le projet."
     },
     "report": {
       "open": "Compte rendu",
@@ -433,6 +435,10 @@
       "description": "Moins de retours ouverts d’une version à l’autre : la qualité progresse.",
       "open": "Encore ouverts",
       "fixed": "Corrigés"
+    },
+    "task": {
+      "create": "Créer une tâche",
+      "open": "Voir la tâche"
     }
   }
 }

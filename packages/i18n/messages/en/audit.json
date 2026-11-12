@@ -175,7 +175,8 @@
         "created": "Client feedback recorded",
         "updated": "Client feedback updated",
         "status_changed": "Client feedback status changed",
-        "deleted": "Client feedback deleted"
+        "deleted": "Client feedback deleted",
+        "converted": "Client feedback converted to a task"
       }
     },
     "contact": {

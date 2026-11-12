@@ -59,7 +59,8 @@ const CROSS_DOMAIN_CALLS: Record<
   (typeof DOMAIN_KEYS)[number],
   { audiences: (typeof DOMAIN_KEYS)[number][]; write: boolean }
 > = {
-  projects: { audiences: [], write: false },
+  // Read-only: the project page lists the client test feedback (#132).
+  projects: { audiences: ["clients"], write: false },
   calendars: { audiences: ["projects"], write: false },
   files: { audiences: [], write: false },
   messages: { audiences: [], write: false },

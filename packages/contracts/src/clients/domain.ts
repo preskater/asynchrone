@@ -8,6 +8,8 @@ import {
   PortalMeetingsSchema,
   PortalProjectDetailSchema,
   PortalProjectSummarySchema,
+  PortalReleaseReportSchema,
+  PortalReleaseSummarySchema,
   PortalTaskDetailSchema,
   ProjectMessageSchema,
   TaskCommentSchema,
@@ -407,6 +409,33 @@ export class DomainClient {
       context,
       {},
       PortalDocumentSchema.array(),
+      options ?? {}
+    )
+  }
+
+  listPortalReleaseReports(
+    context: DelegatedContext,
+    options?: DomainCallOptions
+  ): Promise<z.infer<typeof PortalReleaseSummarySchema>[]> {
+    return this.post(
+      "portal-list-release-reports",
+      context,
+      {},
+      PortalReleaseSummarySchema.array(),
+      options ?? {}
+    )
+  }
+
+  getPortalReleaseReport(
+    context: DelegatedContext,
+    releaseId: string,
+    options?: DomainCallOptions
+  ): Promise<z.infer<typeof PortalReleaseReportSchema> | null> {
+    return this.post(
+      "portal-get-release-report",
+      context,
+      { releaseId },
+      PortalReleaseReportSchema.nullable(),
       options ?? {}
     )
   }

@@ -265,6 +265,10 @@ export const feedbackStatusSchema = z.object({
   status: z.enum(CLIENT_FEEDBACK_STATUSES),
 })
 
+export const feedbackConvertSchema = z.object({
+  id: z.string().min(1),
+})
+
 export const feedbackAssigneeSchema = z.object({
   id: z.string().min(1),
   assigneeId: z.string().min(1).nullable(),
@@ -312,3 +316,4 @@ export type FeedbackStatusInput = z.infer<typeof feedbackStatusSchema>
 export type FeedbackAssigneeInput = z.infer<typeof feedbackAssigneeSchema>
 export type FeedbackFilter = z.infer<typeof feedbackFilterSchema>
 export type ReleaseExportInput = z.infer<typeof releaseExportSchema>
+export type FeedbackConvertInput = z.infer<typeof feedbackConvertSchema>

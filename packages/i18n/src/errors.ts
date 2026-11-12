@@ -42,6 +42,8 @@ const CODE_KEYS: Record<string, string> = {
   file_in_trash: "fileInTrash",
   release_version_taken: "releaseVersionTaken",
   project_not_linked_to_client: "projectNotLinkedToClient",
+  feedback_already_converted: "feedbackAlreadyConverted",
+  feedback_project_required: "feedbackProjectRequired",
   project_already_linked: "projectAlreadyLinked",
   project_not_linked: "projectNotLinked",
   portal_invite_exists: "portalInviteExists",

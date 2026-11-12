@@ -22,6 +22,11 @@ export function PortalNav() {
       active: pathname.startsWith("/portal/documents"),
     },
     {
+      href: "/portal/reports",
+      label: t("navReports"),
+      active: pathname.startsWith("/portal/reports"),
+    },
+    {
       href: "/portal/meetings",
       label: t("navMeetings"),
       active: pathname.startsWith("/portal/meetings"),

@@ -8,6 +8,7 @@ import {
 import { parseDateKey, toDateKey } from "../dates"
 import type {
   FeedbackAssigneeInput,
+  FeedbackConvertInput,
   FeedbackFilter,
   FeedbackInput,
   FeedbackStatusInput,
@@ -20,6 +21,8 @@ import {
   type ClientFeedbackData,
   type ClientFeedbackPageData,
   type ClientReleaseReportData,
+  type PortalReleaseSummaryData,
+  type ReleaseReportView,
   type ClientFeedbackEnvironment,
   type ClientFeedbackStatus,
   type ClientReleaseData,
@@ -45,6 +48,15 @@ const ACTIONS = {
   feedbackUpdated: "client.feedback.updated",
   feedbackStatusChanged: "client.feedback.status_changed",
   feedbackDeleted: "client.feedback.deleted",
+  feedbackConverted: "client.feedback.converted",
+} as const
+
+/** Client impact → task priority: a critical report is urgent work. */
+const PRIORITY_BY_IMPACT = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "urgent",
 } as const
 
 type ReleaseRow = NonNullable<
@@ -166,6 +178,69 @@ export class ClientFeedbackService extends ClientsServiceCore {
       generatedAt: new Date().toISOString(),
       summary: summarizeFeedback(feedback),
       feedback,
+    }
+  }
+
+  /** Reports a company's portal users may read: shared releases only. */
+  async listPortalReleases(
+    ctx: RequestContext,
+    clientId: string
+  ): Promise<PortalReleaseSummaryData[]> {
+    const groups = await this.listReleaseGroups(ctx, { clientId })
+    return groups
+      .filter(({ release }) => release.portalVisible)
+      .map(({ release }) => ({
+        id: release.id,
+        version: release.version,
+        label: release.label,
+        releasedAt: release.releasedAt,
+        status: release.status,
+        openCount: release.openCount,
+        feedbackCount: release.feedbackCount,
+      }))
+  }
+
+  /**
+   * One shared report for a portal user. The company comes from the portal
+   * context, never from the caller; internal notes, assignees and authors stay
+   * out. Anything else is "not found", so a release id cannot be probed.
+   */
+  async getPortalReleaseReport(
+    ctx: RequestContext,
+    clientId: string,
+    releaseId: string
+  ): Promise<ReleaseReportView | null> {
+    const release = await this.repo.findRelease(ctx.organizationId, releaseId)
+    if (!release || release.clientId !== clientId || !release.portalVisible) {
+      return null
+    }
+    const report = await this.getReleaseReport(ctx, releaseId)
+    const { release: data } = report
+    return {
+      release: {
+        id: data.id,
+        clientId: data.clientId,
+        version: data.version,
+        label: data.label,
+        releasedAt: data.releasedAt,
+        status: data.status,
+        testedFrom: data.testedFrom,
+        testedTo: data.testedTo,
+      },
+      clientName: report.clientName,
+      generatedAt: report.generatedAt,
+      summary: report.summary,
+      feedback: report.feedback.map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        status: item.status,
+        category: item.category,
+        impact: item.impact,
+        environment: item.environment,
+        testedAt: item.testedAt,
+        contactName: item.contactName,
+      })),
     }
   }
 
@@ -408,6 +483,64 @@ export class ClientFeedbackService extends ClientsServiceCore {
       { title: row.title, version: row.version, assigneeId: input.assigneeId },
       { assigneeId: row.assigneeId }
     )
+    return this.toFeedbackData(ctx, updated)
+  }
+
+  /**
+   * "Convert to task": creates the task in the release's project through the
+   * projects internal API and links it back. The task description links to the
+   * company's feedback page under `workspaceUrl` (`{origin}/{locale}/{orgSlug}`);
+   * the company timeline gets an audit row.
+   */
+  async convertFeedbackToTask(
+    ctx: RequestContext,
+    input: FeedbackConvertInput,
+    workspaceUrl: string
+  ): Promise<ClientFeedbackData> {
+    requireEdit(this.accessFor(ctx))
+    const row = await this.repo.findFeedback(ctx.organizationId, input.id)
+    if (!row) throw new NotFoundError("Feedback")
+    if (row.linkedTaskId) {
+      throw new ConflictError("This feedback already has a task.", {
+        code: "feedback_already_converted",
+      })
+    }
+    if (!row.projectId) {
+      throw new ValidationError(
+        "Link the version to a project first.",
+        undefined,
+        { code: "feedback_project_required" }
+      )
+    }
+    const client = await this.repo.findClient(ctx.organizationId, row.clientId)
+    const task = await this.repo.createProjectTask(
+      ctx,
+      {
+        projectId: row.projectId,
+        title: row.title,
+        description: [
+          row.body,
+          "",
+          "---",
+          `Client feedback from ${client?.name ?? "a client"} on version ${row.version}, tested ${row.testedAt.toISOString()}.`,
+          `${workspaceUrl}/clients/${row.clientId}/feedback`,
+        ].join("\n"),
+        priority:
+          PRIORITY_BY_IMPACT[row.impact as keyof typeof PRIORITY_BY_IMPACT] ??
+          "medium",
+        assigneeId: row.assigneeId,
+      },
+      // A double click or a retry after a failed link returns the same task.
+      `client-feedback-task:${row.id}`
+    )
+    const updated = await this.repo.updateFeedback(row.id, {
+      linkedTaskId: task.id,
+    })
+    await this.audit(ctx, row.clientId, ACTIONS.feedbackConverted, {
+      title: row.title,
+      version: row.version,
+      taskIdentifier: task.identifier,
+    })
     return this.toFeedbackData(ctx, updated)
   }
 

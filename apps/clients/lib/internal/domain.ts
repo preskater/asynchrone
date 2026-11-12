@@ -5,9 +5,12 @@ import type {
   DelegatedContext,
   DomainCall,
   DomainOperation,
+  ProjectFeedbackRelease,
 } from "@workspace/contracts"
+import { appOrigin } from "@workspace/contracts/server"
 import type { RequestContext } from "@workspace/core/context"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
+import { routing } from "@workspace/i18n/routing"
 import {
   activityInputSchema,
   clientInputSchema,
@@ -21,7 +24,7 @@ import {
 
 import { clientsService } from "@/lib/clients"
 import { clientFiles } from "@/lib/clients/ports"
-import { memberDirectory } from "@/lib/identity"
+import { identity, memberDirectory } from "@/lib/identity"
 import { recordUserAudit } from "@/lib/audit"
 import { prisma } from "@/lib/prisma"
 
@@ -141,6 +144,55 @@ export async function dispatchDomain(
         ctx,
         unlinkProjectSchema.parse(call.input)
       )
+    case "list-project-feedback": {
+      // Internal members only: portal reports go through the portal operations.
+      if (call.context.portal) throw new ForbiddenError()
+      const { projectId } = z
+        .object({ projectId: z.string().min(1) })
+        .parse(call.input)
+      const [groups, organization] = await Promise.all([
+        clientsService.listReleaseGroups(ctx, { projectId }),
+        identity.getOrganization(ctx.organizationId),
+      ])
+      const base = `${appOrigin("clients")}/${routing.defaultLocale}/${organization.slug}`
+      return groups.map(({ release, feedback }): ProjectFeedbackRelease => ({
+        id: release.id,
+        clientId: release.clientId,
+        clientName: release.clientName ?? "",
+        version: release.version,
+        label: release.label,
+        releasedAt: release.releasedAt,
+        status: release.status,
+        openCount: release.openCount,
+        feedbackCount: release.feedbackCount,
+        url: `${base}/clients/${release.clientId}/feedback`,
+        feedback: feedback.map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          category: item.category,
+          impact: item.impact,
+          testedAt: item.testedAt,
+          contactName: item.contactName,
+          linkedTaskId: item.linkedTaskId,
+        })),
+      }))
+    }
+    case "portal-list-release-reports":
+      return clientsService.listPortalReleases(
+        ctx,
+        portalClientId(call.context)
+      )
+    case "portal-get-release-report": {
+      const { releaseId } = z
+        .object({ releaseId: z.string().min(1) })
+        .parse(call.input)
+      return clientsService.getPortalReleaseReport(
+        ctx,
+        portalClientId(call.context),
+        releaseId
+      )
+    }
     case "portal-get-client": {
       const clientId = portalClientId(call.context)
       return prisma.client.findFirst({

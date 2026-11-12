@@ -175,7 +175,8 @@
         "created": "Retour client enregistré",
         "updated": "Retour client mis à jour",
         "status_changed": "Statut d’un retour client modifié",
-        "deleted": "Retour client supprimé"
+        "deleted": "Retour client supprimé",
+        "converted": "Retour client converti en tâche"
       }
     },
     "contact": {

@@ -325,3 +325,63 @@ describe("release report helpers", () => {
     ])
   })
 })
+
+describe("convert feedback to task", () => {
+  const url = "https://clients.test/en/acme"
+
+  it("needs a project on the release", async () => {
+    const { service } = setup()
+    await expect(
+      service.convertFeedbackToTask(member, { id: "fb_1" }, url)
+    ).rejects.toMatchObject({ code: "feedback_project_required" })
+  })
+
+  it("never creates a second task", async () => {
+    const { service } = setup({
+      findFeedback: async () => feedback({ linkedTaskId: "task_1" }),
+    })
+    await expect(
+      service.convertFeedbackToTask(member, { id: "fb_1" }, url)
+    ).rejects.toMatchObject({ code: "feedback_already_converted" })
+  })
+
+  it("creates the task once, links it and audits the company", async () => {
+    const createProjectTask = vi.fn(async () => ({
+      id: "task_9",
+      identifier: "WEB-9",
+      projectId: "p_1",
+    }))
+    const { service, fake, audit } = setup({
+      findFeedback: async () =>
+        feedback({
+          projectId: "p_1",
+          impact: "critical",
+          assigneeId: "user_owner",
+        }),
+      findClient: async () => ({ id: "client_1", name: "Acme" }),
+      createProjectTask,
+    })
+    await service.convertFeedbackToTask(member, { id: "fb_1" }, url)
+    expect(createProjectTask).toHaveBeenCalledWith(
+      member,
+      expect.objectContaining({
+        projectId: "p_1",
+        title: "Login fails",
+        priority: "urgent",
+        assigneeId: "user_owner",
+        description: expect.stringContaining(
+          "https://clients.test/en/acme/clients/client_1/feedback"
+        ),
+      }),
+      "client-feedback-task:fb_1"
+    )
+    expect(fake.updateFeedback).toHaveBeenCalledWith("fb_1", {
+      linkedTaskId: "task_9",
+    })
+    expect(audit[0]).toMatchObject({
+      action: "client.feedback.converted",
+      entityId: "client_1",
+      after: { taskIdentifier: "WEB-9" },
+    })
+  })
+})

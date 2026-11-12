@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server"
 
 import { FeedbackBoard } from "@workspace/clients/components/feedback"
+import { appOrigin } from "@workspace/contracts/server"
 
 import { clientsService } from "@/lib/clients"
 import { getPageContext } from "@/lib/request-context"
@@ -30,6 +31,7 @@ export default async function FeedbackTriagePage({
         orgSlug={orgSlug}
         groups={data.groups}
         access={data.access}
+        projectsUrl={appOrigin("projects")}
         members={data.members}
       />
     </div>

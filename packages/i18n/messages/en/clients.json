@@ -290,7 +290,8 @@
           "created": "Feedback “{title}” recorded on {version}",
           "updated": "Feedback “{title}” updated",
           "status_changed": "Feedback “{title}” ({version}) marked {status, select, new {new} triaged {triaged} accepted {accepted} rejected {rejected} fixed {fixed} deferred {deferred} other {{status}}}",
-          "deleted": "Feedback “{title}” deleted"
+          "deleted": "Feedback “{title}” deleted",
+          "converted": "Feedback “{title}” ({version}) converted to task {taskIdentifier}"
         }
       },
       "contact": {
@@ -406,7 +407,8 @@
       "feedbackSaved": "Feedback saved.",
       "statusChanged": "Status updated.",
       "assigned": "Assignee updated.",
-      "deleted": "Deleted."
+      "deleted": "Deleted.",
+      "converted": "Task created in the project."
     },
     "report": {
       "open": "Report",
@@ -433,6 +435,10 @@
       "description": "Fewer open reports from one version to the next means quality is improving.",
       "open": "Still open",
       "fixed": "Fixed"
+    },
+    "task": {
+      "create": "Create a task",
+      "open": "Open the task"
     }
   }
 }

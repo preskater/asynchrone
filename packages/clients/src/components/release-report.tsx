@@ -17,8 +17,7 @@ import {
   CLIENT_FEEDBACK_OPEN_STATUSES,
   CLIENT_FEEDBACK_STATUSES,
   type ClientExportResultData,
-  type ClientFeedbackData,
-  type ClientReleaseReportData,
+  type ReleaseReportView,
 } from "../types"
 import { useClientActions } from "./actions"
 import { downloadCsv, useClientFormat } from "./use-clients"
@@ -30,21 +29,25 @@ const PRINT_CSS = `@media print {
   #release-report { position: absolute; inset: 0 auto auto 0; width: 100%; }
 }`
 
+/**
+ * The release report ("compte rendu"). The clients app shows it with the CSV
+ * export; the client portal (Copilot) shows the shared copy without it, so
+ * only the export button needs the clients actions.
+ */
 export function ReleaseReport({
-  orgSlug,
   report,
+  backHref,
+  backLabel,
   canExport,
 }: {
-  orgSlug: string
-  report: ClientReleaseReportData
+  report: ReleaseReportView
+  backHref: string
+  backLabel: string
   canExport: boolean
 }) {
   const t = useTranslations("Clients")
   const L = useEnumLabel()
-  const te = useErrorTranslator()
   const { day, dateTime } = useClientFormat()
-  const { exportReleaseCsvAction } = useClientActions()
-  const [exporting, setExporting] = React.useState(false)
 
   const { release, summary } = report
   const openStatuses = new Set<string>(CLIENT_FEEDBACK_OPEN_STATUSES)
@@ -52,48 +55,20 @@ export function ReleaseReport({
     openStatuses.has(item.status)
   )
 
-  async function exportCsv() {
-    setExporting(true)
-    try {
-      const file = unwrapActionResult<ClientExportResultData>(
-        await exportReleaseCsvAction({
-          releaseId: release.id,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
-      )
-      downloadCsv(file.filename, file.content)
-    } catch (error) {
-      toast.error(te(error, "internal"))
-    } finally {
-      setExporting(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <style>{PRINT_CSS}</style>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
-          href={`/${orgSlug}/clients/${release.clientId}/feedback`}
+          href={backHref}
           prefetch={false}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="size-3.5" />
-          {t("feedback.report.back")}
+          {backLabel}
         </Link>
         <div className="flex flex-wrap gap-2">
-          {canExport ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={exporting}
-              onClick={() => void exportCsv()}
-            >
-              <DownloadIcon data-icon="inline-start" />
-              {t("feedback.report.exportCsv")}
-            </Button>
-          ) : null}
+          {canExport ? <ExportCsvButton releaseId={release.id} /> : null}
           <Button type="button" size="sm" onClick={() => window.print()}>
             <PrinterIcon data-icon="inline-start" />
             {t("feedback.report.print")}
@@ -130,9 +105,11 @@ export function ReleaseReport({
             <Meta
               label={t("feedback.report.period")}
               value={
-                release.testedFrom
-                  ? `${dateTime(release.testedFrom)} – ${dateTime(release.testedTo)}`
-                  : "—"
+                !release.testedFrom
+                  ? "—"
+                  : release.testedFrom === release.testedTo
+                    ? dateTime(release.testedFrom)
+                    : `${dateTime(release.testedFrom)} – ${dateTime(release.testedTo)}`
               }
             />
             <Meta
@@ -206,6 +183,43 @@ export function ReleaseReport({
   )
 }
 
+function ExportCsvButton({ releaseId }: { releaseId: string }) {
+  const t = useTranslations("Clients")
+  const te = useErrorTranslator()
+  const { exportReleaseCsvAction } = useClientActions()
+  const [exporting, setExporting] = React.useState(false)
+
+  async function exportCsv() {
+    setExporting(true)
+    try {
+      const file = unwrapActionResult<ClientExportResultData>(
+        await exportReleaseCsvAction({
+          releaseId,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })
+      )
+      downloadCsv(file.filename, file.content)
+    } catch (error) {
+      toast.error(te(error, "internal"))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={exporting}
+      onClick={() => void exportCsv()}
+    >
+      <DownloadIcon data-icon="inline-start" />
+      {t("feedback.report.exportCsv")}
+    </Button>
+  )
+}
+
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -252,7 +266,7 @@ function FeedbackTable({
   items,
   withBody = false,
 }: {
-  items: ClientFeedbackData[]
+  items: ReleaseReportView["feedback"]
   withBody?: boolean
 }) {
   const t = useTranslations("Clients")

@@ -304,6 +304,8 @@ projects:
   config:
     PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
+    # The project page reads client test feedback from the clients app (#132).
+    CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
     DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production
@@ -497,6 +499,8 @@ clients:
   config:
     CLIENTS_APP_URL: https://clients.copilot.asynchrone.space
     COPILOT_APP_URL: https://copilot.asynchrone.space
+    # Project links and "Convert to task" go through the projects app (#132).
+    PROJECTS_APP_URL: https://projects.copilot.asynchrone.space
     DATABASE_POOL_MAX: "4"
     TRUSTED_IP_HEADERS: "x-real-ip,x-forwarded-for"
     DEPLOY_ENV: production

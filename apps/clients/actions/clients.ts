@@ -1,6 +1,8 @@
 "use server"
 
+import { appOrigin } from "@workspace/contracts/server"
 import { withAction } from "@workspace/core/action"
+import { routing } from "@workspace/i18n/routing"
 import {
   activityInputSchema,
   clientInputSchema,
@@ -10,6 +12,7 @@ import {
   deleteFieldDefinitionSchema,
   exportSchema,
   feedbackAssigneeSchema,
+  feedbackConvertSchema,
   feedbackFilterSchema,
   feedbackInputSchema,
   feedbackStatusSchema,
@@ -36,6 +39,7 @@ import {
   revalidateOrgPath,
 } from "@/lib/request-context"
 import { clientsService } from "@/lib/clients"
+import { identity } from "@/lib/identity"
 
 /** Activity can surface on the list pages of every record type. */
 async function revalidateClient(organizationId: string) {
@@ -408,3 +412,20 @@ export const exportReleaseCsvAction = withAction(async (input: unknown) => {
   const parsed = await parseLocalized(releaseExportSchema, input)
   return clientsService.exportReleaseCsv(ctx, parsed)
 })
+
+export const convertFeedbackToTaskAction = withAction(
+  async (input: unknown) => {
+    const ctx = await getRequestContext()
+    const parsed = await parseLocalized(feedbackConvertSchema, input)
+    const organization = await identity.getOrganization(ctx.organizationId)
+    // Server actions cannot read the route locale; the default one is a valid link.
+    const workspaceUrl = `${appOrigin("clients")}/${routing.defaultLocale}/${organization.slug}`
+    const feedback = await clientsService.convertFeedbackToTask(
+      ctx,
+      parsed,
+      workspaceUrl
+    )
+    await revalidateFeedback(ctx.organizationId)
+    return feedback
+  }
+)

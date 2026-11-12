@@ -115,5 +115,7 @@
   "accountImpersonated": "This account cannot be deleted from a session opened by the control tower.",
   "accountDeletionPartial": "Some apps could not delete the account yet. Please retry.",
   "releaseVersionTaken": "This version already exists for this client.",
-  "projectNotLinkedToClient": "Link the project to this client first."
+  "projectNotLinkedToClient": "Link the project to this client first.",
+  "feedbackAlreadyConverted": "This feedback already has a task.",
+  "feedbackProjectRequired": "Link the version to a project first."
 }

@@ -81,6 +81,7 @@ export const AUDIT_ACTIONS = {
   clientFeedbackUpdated: "client.feedback.updated",
   clientFeedbackStatusChanged: "client.feedback.status_changed",
   clientFeedbackDeleted: "client.feedback.deleted",
+  clientFeedbackConverted: "client.feedback.converted",
   contactCreated: "contact.created",
   contactUpdated: "contact.updated",
   contactArchived: "contact.archived",

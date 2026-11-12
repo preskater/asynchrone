@@ -259,5 +259,12 @@
       "invalid_date": "Date not understood \"{value}\": left empty. Use YYYY-MM-DD.",
       "description_truncated": "Description cut to 5,000 characters."
     }
-  }
+  },
+  "feedback": "Client feedback",
+  "feedbackEmpty": "No client version is linked to this project yet.",
+  "feedbackUnavailable": "Client feedback is unavailable right now.",
+  "feedbackNone": "No feedback on this version yet.",
+  "feedbackCounts": "{open} open of {count}",
+  "feedbackOpenInClients": "Open in Clients",
+  "feedbackOpenTask": "Open task"
 }

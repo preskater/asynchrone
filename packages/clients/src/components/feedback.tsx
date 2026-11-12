@@ -1,8 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { useTranslations } from "next-intl"
-import { FileTextIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  ExternalLinkIcon,
+  FileTextIcon,
+  ListTodoIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -146,12 +153,15 @@ export function FeedbackBoard({
   access,
   members,
   client,
+  projectsUrl,
 }: {
   orgSlug: string
   groups: ClientReleaseGroupData[]
   access: ClientAccessData
   members: ClientMemberOptionData[]
   client?: FeedbackBoardClient
+  /** The projects app origin, to link a converted feedback to its task. */
+  projectsUrl?: string
 }) {
   const t = useTranslations("Clients")
   const L = useEnumLabel()
@@ -300,6 +310,7 @@ export function FeedbackBoard({
             access={access}
             members={members}
             client={client}
+            projectsUrl={projectsUrl}
           />
         ))
       )}
@@ -330,6 +341,7 @@ function ReleaseCard({
   access,
   members,
   client,
+  projectsUrl,
 }: {
   orgSlug: string
   release: ClientReleaseData
@@ -338,6 +350,7 @@ function ReleaseCard({
   access: ClientAccessData
   members: ClientMemberOptionData[]
   client?: FeedbackBoardClient
+  projectsUrl?: string
 }) {
   const t = useTranslations("Clients")
   const L = useEnumLabel()
@@ -464,11 +477,13 @@ function ReleaseCard({
             {feedback.map((item) => (
               <FeedbackRow
                 key={item.id}
+                orgSlug={orgSlug}
                 item={item}
                 access={access}
                 members={members}
                 client={client}
                 releases={releases}
+                projectsUrl={projectsUrl}
               />
             ))}
           </ul>
@@ -486,18 +501,23 @@ function ReleaseCard({
 }
 
 function FeedbackRow({
+  orgSlug,
   item,
   access,
   members,
   client,
   releases,
+  projectsUrl,
 }: {
+  orgSlug: string
   item: ClientFeedbackData
   access: ClientAccessData
   members: ClientMemberOptionData[]
   client?: FeedbackBoardClient
   releases: ClientReleaseData[]
+  projectsUrl?: string
 }) {
+  const locale = useLocale()
   const t = useTranslations("Clients")
   const L = useEnumLabel()
   const te = useErrorTranslator()
@@ -507,6 +527,7 @@ function FeedbackRow({
     setFeedbackStatusAction,
     assignFeedbackAction,
     deleteFeedbackAction,
+    convertFeedbackToTaskAction,
   } = useClientActions()
   const [deleting, setDeleting] = React.useState(false)
 
@@ -565,6 +586,31 @@ function FeedbackRow({
             .filter(Boolean)
             .join(" · ")}
         </p>
+        {item.linkedTaskId && item.projectId && projectsUrl ? (
+          <a
+            href={`${projectsUrl}/${locale}/${orgSlug}/projects/${item.projectId}?task=${item.linkedTaskId}`}
+            className="inline-flex w-fit items-center gap-1 text-xs font-medium hover:underline"
+          >
+            <ExternalLinkIcon className="size-3" />
+            {t("feedback.task.open")}
+          </a>
+        ) : !item.linkedTaskId && item.projectId && access.canEdit ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-fit"
+            onClick={() =>
+              void run(
+                convertFeedbackToTaskAction({ id: item.id }),
+                t("feedback.toasts.converted")
+              )
+            }
+          >
+            <ListTodoIcon data-icon="inline-start" />
+            {t("feedback.task.create")}
+          </Button>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         {access.canEdit ? (

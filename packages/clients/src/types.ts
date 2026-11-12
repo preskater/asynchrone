@@ -481,3 +481,45 @@ export interface ClientTestRoundData {
   openCount: number
   feedbackCount: number
 }
+
+/**
+ * What a release report shows. The internal report and the portal copy both
+ * fit it; the portal copy leaves out notes, assignees and authors.
+ */
+export interface ReleaseReportView {
+  release: {
+    id: string
+    clientId: string
+    version: string
+    label?: string
+    releasedAt?: string
+    status: string
+    testedFrom?: string
+    testedTo?: string
+  }
+  clientName: string
+  generatedAt: string
+  summary: ClientFeedbackSummaryData
+  feedback: {
+    id: string
+    title: string
+    body: string
+    status: string
+    category: string
+    impact: string
+    environment: string
+    testedAt: string
+    contactName?: string
+  }[]
+}
+
+/** A release report shared with the client portal. */
+export interface PortalReleaseSummaryData {
+  id: string
+  version: string
+  label?: string
+  releasedAt?: string
+  status: string
+  openCount: number
+  feedbackCount: number
+}

@@ -15,6 +15,8 @@ import type { PortalContext } from "./types"
 import type {
   PortalDocumentData,
   PortalProjectDetailData,
+  PortalReleaseReportData,
+  PortalReleaseSummaryData,
   PortalTaskDetailData,
 } from "./types"
 
@@ -46,7 +48,12 @@ export interface PortalFiles {
     organizationId: string,
     fileId: string,
     metadata: { name: string; mimeType?: string }
-  ): Promise<{ name: string; mimeType?: string; size: number; stream: Readable }>
+  ): Promise<{
+    name: string
+    mimeType?: string
+    size: number
+    stream: Readable
+  }>
   quotaBytes(organizationId: string): Promise<number>
   usedBytes(organizationId: string): Promise<number>
 }
@@ -191,6 +198,15 @@ export interface PortalClientDocuments {
     organizationId: string,
     clientId: string
   ): Promise<{ id: string } | null>
+  listReleaseReports(
+    organizationId: string,
+    clientId: string
+  ): Promise<PortalReleaseSummaryData[]>
+  getReleaseReport(
+    organizationId: string,
+    clientId: string,
+    releaseId: string
+  ): Promise<PortalReleaseReportData | null>
 }
 
 /**

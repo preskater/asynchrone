@@ -6,6 +6,7 @@ import type {
   ClientAuditEntry,
   ClientFileRow,
   ClientRepositoryPorts,
+  ClientTaskInput,
 } from "./ports"
 
 /** Columns selecting the company fields shared by every client query. */
@@ -280,6 +281,14 @@ export class ClientsRepository {
   /** Project options used for client detail pages and statistics. */
   listProjectOptions(ctx: RequestContext) {
     return this.ports.projects.listOptions(ctx)
+  }
+
+  createProjectTask(
+    ctx: RequestContext,
+    input: ClientTaskInput,
+    idempotencyKey: string
+  ) {
+    return this.ports.projects.createTask(ctx, input, idempotencyKey)
   }
 
   findProject(ctx: RequestContext, id: string) {
@@ -1188,6 +1197,7 @@ export class ClientsRepository {
       title?: string
       body?: string
       documentId?: string | null
+      linkedTaskId?: string | null
       status?: string
       statusChangedAt?: Date
     }

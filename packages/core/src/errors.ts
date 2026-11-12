@@ -52,6 +52,8 @@ export type ServiceErrorCode =
   | "project_not_linked"
   | "release_version_taken"
   | "project_not_linked_to_client"
+  | "feedback_already_converted"
+  | "feedback_project_required"
   | "portal_invite_exists"
   | "portal_read_only"
   | "file_too_large"
