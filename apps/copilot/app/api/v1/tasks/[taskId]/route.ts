@@ -1,4 +1,10 @@
-import { apiJson, apiUserAgent, readJson, withApiToken } from "@/lib/api/v1"
+import {
+  apiJson,
+  apiUserAgent,
+  readJson,
+  withApiToken,
+  withTaskUrls,
+} from "@/lib/api/v1"
 import { ApiTaskSchema, UpdateTaskBodySchema } from "@/lib/api/schemas"
 import { callDomain, delegatedContext } from "@/lib/internal/domain"
 
@@ -23,6 +29,7 @@ export const PATCH = withApiToken<{ taskId: string }>(
           request.headers.get("idempotency-key")?.slice(0, 200) || undefined,
       }
     )
-    return apiJson(task)
+    const [withUrl] = await withTaskUrls(token, [task])
+    return apiJson(withUrl)
   }
 )

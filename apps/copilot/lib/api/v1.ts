@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { DomainClientError } from "@workspace/contracts"
+import { appOrigin } from "@workspace/contracts/server"
 import { AppError, toAppError, type ErrorCode } from "@workspace/core/errors"
 import { jsonError } from "@workspace/core/http"
 import { withObservedRoute } from "@workspace/observability/next"
@@ -12,6 +13,7 @@ import {
 import type { ApiTokenScope } from "@/lib/api-tokens/scopes"
 import { bearerToken } from "@/lib/api-tokens/token"
 import { assertRateLimit } from "@/lib/core/rate-limit"
+import { prisma } from "@/lib/prisma"
 import {
   entitlementsFor,
   getOrganizationPlan,
@@ -70,7 +72,8 @@ export function apiUserAgent(token: VerifiedApiToken, request: Request) {
  */
 export function withApiToken<TParams = Record<string, never>>(
   route: string,
-  scope: ApiTokenScope,
+  /** null for routes every valid token may call (token introspection). */
+  scope: ApiTokenScope | null,
   handler: (
     token: VerifiedApiToken,
     request: Request,
@@ -92,7 +95,7 @@ export function withApiToken<TParams = Record<string, never>>(
           RATE_WINDOW_MS,
           { failOpen: false }
         )
-        requireScope(token, scope)
+        if (scope) requireScope(token, scope)
         // Static routes have no params; Next still passes a context.
         const params = ((await context?.params) ?? {}) as TParams
         return await handler(token, request, params)
@@ -103,6 +106,22 @@ export function withApiToken<TParams = Record<string, never>>(
       }
     }
   )
+}
+
+/** Adds the projects-app link to each task (`{origin}/en/{slug}/projects/{id}?task=…`). */
+export async function withTaskUrls<T extends { id: string; projectId: string }>(
+  token: VerifiedApiToken,
+  tasks: T[]
+): Promise<(T & { url: string })[]> {
+  const { slug } = await prisma.organization.findUniqueOrThrow({
+    where: { id: token.ctx.organizationId },
+    select: { slug: true },
+  })
+  const base = `${appOrigin("projects")}/en/${slug}/projects`
+  return tasks.map((task) => ({
+    ...task,
+    url: `${base}/${task.projectId}?task=${task.id}`,
+  }))
 }
 
 /** Reads a JSON body, or throws a 400. */

@@ -279,6 +279,7 @@ describe("requireScope", () => {
       tokenId: "tok_1",
       prefix: "asy_abcdefgh",
       scopes: ["tasks:read" as const],
+      expiresAt: inDays(10),
     }
     expect(() => requireScope(verified, "tasks:read")).not.toThrow()
     expect(() => requireScope(verified, "tasks:write")).toThrow(

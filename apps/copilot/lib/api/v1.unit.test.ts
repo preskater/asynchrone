@@ -97,6 +97,14 @@ describe("withApiToken", () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
+  it("lets any valid token call a route without a scope", async () => {
+    const handler = vi.fn(async () => apiJson({ ok: true }))
+    const route = withApiToken("/api/v1/token", null, handler)
+    const response = await route(request(), { params: Promise.resolve({}) })
+    expect(response.status).toBe(200)
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
   it("returns 429 with Retry-After when the limit is reached", async () => {
     limit.mockRejectedValue(
       new AppError("rate_limited", "Slow down", { status: 429, retryAfter: 12 })

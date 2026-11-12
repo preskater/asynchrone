@@ -176,6 +176,7 @@ export interface VerifiedApiToken {
   tokenId: string
   prefix: string
   scopes: ApiTokenScope[]
+  expiresAt: Date
 }
 
 /**
@@ -244,6 +245,7 @@ export async function verifyApiToken(
     tokenId: row.id,
     prefix,
     scopes: row.scopes as ApiTokenScope[],
+    expiresAt: row.expiresAt,
     ctx: {
       userId: row.user.id,
       userName: row.user.name,

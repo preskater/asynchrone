@@ -38,6 +38,7 @@ export const ApiTaskSchema = z.object({
   endDate: z.string().optional(),
   externalIssueUrl: z.string().optional(),
   createdAt: z.string(),
+  url: z.string().optional().describe("Link to the task in the projects app"),
 })
 
 export const ApiMemberSchema = z.object({
@@ -45,6 +46,18 @@ export const ApiMemberSchema = z.object({
   name: z.string(),
   email: z.string(),
   roles: z.array(MemberRoleSchema),
+})
+
+export const ApiTokenInfoSchema = z.object({
+  prefix: z.string(),
+  scopes: z.array(z.string()),
+  expiresAt: z.string(),
+  user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+  organization: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string(),
+  }),
 })
 
 export const ListTasksQuerySchema = z.object({

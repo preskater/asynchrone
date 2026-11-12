@@ -5,6 +5,7 @@ import {
   ApiMemberSchema,
   ApiProjectSchema,
   ApiTaskSchema,
+  ApiTokenInfoSchema,
   CreateTaskBodySchema,
   ErrorEnvelopeSchema,
   UpdateTaskBodySchema,
@@ -83,6 +84,16 @@ export function buildOpenApiDocument(serverUrl = "/") {
       },
     },
     paths: {
+      "/api/v1/token": {
+        get: {
+          summary: "Describe the calling token",
+          security: [{ bearer: [] }],
+          responses: {
+            "200": { description: "Token", content: data(ApiTokenInfoSchema) },
+            ...errors,
+          },
+        },
+      },
       "/api/v1/projects": {
         get: op("projects:read", "List projects with their labels", {
           responses: {

@@ -6,6 +6,7 @@ import {
   apiUserAgent,
   readJson,
   withApiToken,
+  withTaskUrls,
 } from "@/lib/api/v1"
 import {
   ApiTaskSchema,
@@ -26,13 +27,16 @@ export const GET = withApiToken(
       Object.fromEntries(new URL(request.url).searchParams)
     )
     return apiList(
-      await callDomain(
-        "projects",
-        "list-tasks",
-        delegatedContext(token.ctx),
-        query,
-        z.array(ApiTaskSchema),
-        { userAgent: apiUserAgent(token, request) }
+      await withTaskUrls(
+        token,
+        await callDomain(
+          "projects",
+          "list-tasks",
+          delegatedContext(token.ctx),
+          query,
+          z.array(ApiTaskSchema),
+          { userAgent: apiUserAgent(token, request) }
+        )
       )
     )
   }
@@ -60,6 +64,7 @@ export const POST = withApiToken(
           request.headers.get("idempotency-key")?.slice(0, 200) || undefined,
       }
     )
-    return apiJson(task, { status: 201 })
+    const [withUrl] = await withTaskUrls(token, [task])
+    return apiJson(withUrl, { status: 201 })
   }
 )
