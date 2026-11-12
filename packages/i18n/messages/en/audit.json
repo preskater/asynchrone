@@ -254,6 +254,10 @@
     "conversation": {
       "created": "Conversation created",
       "updated": "Conversation updated"
+    },
+    "api_token": {
+      "created": "API token created",
+      "revoked": "API token revoked"
     }
   },
   "entities": {
@@ -281,6 +285,7 @@
     "leaveBalance": "Leave balance",
     "leaveAdjustment": "Leave adjustment",
     "attendance": "Attendance",
-    "dataExport": "Data export"
+    "dataExport": "Data export",
+    "apiToken": "API token"
   }
 }

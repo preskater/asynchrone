@@ -97,6 +97,10 @@ export type ServiceErrorCode =
   | "account_sole_owner"
   | "account_impersonated"
   | "account_deletion_partial"
+  | "token_invalid"
+  | "token_expired"
+  | "token_revoked"
+  | "token_scope_missing"
 
 export type ErrorCode = AppErrorCode | ServiceErrorCode
 
@@ -147,8 +151,14 @@ export interface CodedErrorOptions {
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = "You must be signed in to do this.") {
-    super("unauthorized", message, { status: 401 })
+  constructor(
+    message = "You must be signed in to do this.",
+    options: CodedErrorOptions = {}
+  ) {
+    super(options.code ?? "unauthorized", message, {
+      params: options.params,
+      status: 401,
+    })
     this.name = "UnauthorizedError"
   }
 }
