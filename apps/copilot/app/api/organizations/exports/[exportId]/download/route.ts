@@ -1,6 +1,7 @@
 import { Readable } from "node:stream"
 
 import { NextResponse } from "next/server"
+import { can } from "@workspace/core/roles"
 
 import { getRequestContext } from "@/lib/core/auth-context"
 import { openLargeObjectStream } from "@/lib/large-object"
@@ -20,7 +21,7 @@ export async function GET(
   } catch {
     return new NextResponse("Not found", { status: 404 })
   }
-  if (ctx.role !== "owner") {
+  if (!can(ctx, "organization:export")) {
     return new NextResponse("Not found", { status: 404 })
   }
   const { exportId } = await params

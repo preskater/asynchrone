@@ -33,7 +33,7 @@ export async function requestOrganizationDeletion(
   confirmName: string,
   now = new Date()
 ) {
-  requirePermission(ctx, ["owner"])
+  requirePermission(ctx, "organization:delete")
 
   const org = await prisma.organization.findUnique({
     where: { id: ctx.organizationId },
@@ -71,7 +71,7 @@ export async function requestOrganizationDeletion(
 }
 
 export async function cancelOrganizationDeletion(ctx: RequestContext) {
-  requirePermission(ctx, ["owner"])
+  requirePermission(ctx, "organization:delete")
 
   await prisma.$transaction(async (tx) => {
     const { count } = await tx.organization.updateMany({

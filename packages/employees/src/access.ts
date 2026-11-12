@@ -1,8 +1,7 @@
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 export interface EmployeeAccess {
-  rank: number
   /** Org admin/owner: full management. */
   isAdmin: boolean
   /** Admin or explicitly designated validator: approvals + team views. */
@@ -17,14 +16,12 @@ export function resolveEmployeeAccess(
   ctx: RequestContext,
   profileIsValidator = false
 ): EmployeeAccess {
-  const rank = roleRank(ctx.role)
-  const isAdmin = rank >= 3
+  const isAdmin = can(ctx, "hr:manage")
   const isValidator = isAdmin || profileIsValidator
   return {
-    rank,
     isAdmin,
     isValidator,
     canViewAll: isValidator,
-    canTrack: rank >= 2,
+    canTrack: can(ctx, "hr:track"),
   }
 }

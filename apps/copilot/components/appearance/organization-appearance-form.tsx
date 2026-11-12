@@ -93,7 +93,7 @@ export function OrganizationAppearanceForm() {
     setEffects(copyEffects(organization.animations.effects))
   }, [organization])
 
-  const canEdit = permissions.canUpdateOrganization
+  const canEdit = permissions.can("appearance:update")
 
   const previewAppearance = React.useMemo(
     () => ({

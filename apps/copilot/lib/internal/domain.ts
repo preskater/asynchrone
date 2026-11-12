@@ -10,6 +10,7 @@ import {
 } from "@workspace/contracts"
 import { ServiceTokenClient } from "@workspace/service-auth"
 import type { RequestContext } from "@workspace/core/context"
+import { roleFields } from "@workspace/core/roles"
 import { getCorrelationId } from "@workspace/observability/next"
 import type { PortalContext } from "@workspace/portal/types"
 
@@ -71,7 +72,7 @@ export function delegatedContext(
     userName: ctx.userName,
     userEmail: ctx.userEmail,
     organizationId: ctx.organizationId,
-    role: ctx.role,
+    ...roleFields(ctx.roles),
     impersonatedBy: impersonatedBy ?? null,
     portal: null,
   }

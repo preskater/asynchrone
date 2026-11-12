@@ -1,6 +1,6 @@
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import type { FileQuota, FileStorage } from "./deps"
 import { kindFromName } from "./file-utils"
@@ -14,7 +14,7 @@ const ABORTED = "aborted"
 const UPLOAD_SESSIONS_PER_HOUR = 1000
 
 function canWrite(ctx: RequestContext) {
-  if (roleRank(ctx.role) >= 2) return
+  if (can(ctx, "file:write")) return
   throw new ForbiddenError("Your role cannot modify files.", {
     code: "role_cannot_modify_files",
   })
@@ -156,7 +156,7 @@ export class UploadSessionService {
       where: { id: uploadId, organizationId: ctx.organizationId },
     })
     if (!session) throw new NotFoundError("Upload")
-    if (session.userId !== ctx.userId && ctx.role !== "owner") {
+    if (session.userId !== ctx.userId && !can(ctx, "file:manage")) {
       throw new NotFoundError("Upload")
     }
     return session

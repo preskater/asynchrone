@@ -6,6 +6,7 @@ import type {
   DomainOperation,
 } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
+import { rolesFrom } from "@workspace/core/roles"
 import { NotFoundError } from "@workspace/core/errors"
 import {
   createLeaveSchema,
@@ -23,7 +24,7 @@ function requestContext(context: DelegatedContext): RequestContext {
     userName: context.userName,
     userEmail: context.userEmail,
     organizationId: context.organizationId,
-    role: context.role,
+    roles: rolesFrom(context),
   }
 }
 

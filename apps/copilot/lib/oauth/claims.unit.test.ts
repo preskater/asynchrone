@@ -38,7 +38,7 @@ describe("OAuth claims", () => {
     })
   })
 
-  it("uses the first role when a member has several", () => {
+  it("carries every role when a member has several", () => {
     const claims = buildOAuthClaims({
       user,
       organization,
@@ -46,7 +46,7 @@ describe("OAuth claims", () => {
       plan: "free",
       requireTwoFactorEntitled: false,
     })
-    expect(claims.role).toBe("admin")
+    expect(claims.role).toBe("admin,member")
   })
 
   it("falls back to member when the membership is missing", () => {

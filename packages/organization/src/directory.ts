@@ -1,4 +1,4 @@
-import type { OrgRole } from "./roles"
+import { parseRoles, primaryRole, rolesFrom, type OrgRole } from "./roles"
 
 /** The member directory shape shared by the shell and every domain app. */
 export interface MemberDirectoryEntry {
@@ -6,7 +6,9 @@ export interface MemberDirectoryEntry {
   name: string
   email: string
   avatarUrl?: string
+  /** Primary role, for badges and sorting. */
   role: OrgRole
+  roles: OrgRole[]
 }
 
 export interface MemberDirectorySource {
@@ -19,12 +21,6 @@ export interface MemberDirectorySource {
   }
 }
 
-const ROLES: OrgRole[] = ["owner", "admin", "member", "viewer", "client"]
-
-function toMemberRole(role: string | null | undefined): OrgRole {
-  return ROLES.includes(role as OrgRole) ? (role as OrgRole) : "member"
-}
-
 /** Map a joined member row to the transport-safe directory entry. */
 export function toMemberDirectoryEntry(
   source: MemberDirectorySource
@@ -34,7 +30,8 @@ export function toMemberDirectoryEntry(
     name: source.user.name,
     email: source.user.email,
     avatarUrl: source.user.image ?? undefined,
-    role: toMemberRole(source.role),
+    role: primaryRole(parseRoles(source.role)),
+    roles: parseRoles(source.role),
   }
 }
 
@@ -44,7 +41,9 @@ export interface DirectoryEntry {
   name: string
   email: string
   avatarUrl?: string | null
+  /** Primary role, for badges and sorting. */
   role: OrgRole
+  roles: OrgRole[]
   clientId?: string | null
   joinedAt?: Date
 }
@@ -52,7 +51,7 @@ export interface DirectoryEntry {
 export interface DirectoryMemberInput {
   name: string
   email: string
-  role: string
+  roles: OrgRole[]
 }
 
 /**
@@ -75,7 +74,7 @@ export interface MemberDirectoryPort {
   updateRole(
     organizationId: string,
     userId: string,
-    role: string
+    roles: OrgRole[]
   ): Promise<DirectoryEntry>
   remove(organizationId: string, userId: string): Promise<{ id: string }>
 }
@@ -86,15 +85,18 @@ export function toDirectoryEntry(source: {
   email: string
   avatarUrl?: string | null
   role: string
+  roles?: OrgRole[]
   clientId?: string | null
   createdAt?: Date
 }): DirectoryEntry {
+  const roles = rolesFrom(source)
   return {
     userId: source.id,
     name: source.name,
     email: source.email,
     avatarUrl: source.avatarUrl ?? undefined,
-    role: toMemberRole(source.role),
+    role: primaryRole(roles),
+    roles,
     clientId: source.clientId ?? null,
     joinedAt: source.createdAt,
   }

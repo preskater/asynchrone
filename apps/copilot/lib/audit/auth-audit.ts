@@ -37,7 +37,8 @@ interface AuthHookContext {
   path?: string
   body?: Record<string, unknown>
   headers?: Headers
-  context: { returned?: unknown }
+  /** `previousMemberRole` is captured by the before hook in `createAuth`. */
+  context: { returned?: unknown; previousMemberRole?: unknown }
 }
 
 const HANDLED_PATHS = new Set([
@@ -125,6 +126,7 @@ export async function recordAuthAuditEvent(
           entityType: "member",
           entityId: userId ?? text(body.memberId) ?? "unknown",
           entityLabel: await emailFor(userId),
+          before: { role: text(ctx.context.previousMemberRole) },
           after: { role: text(returned.role) },
         })
         return

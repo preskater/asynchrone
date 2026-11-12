@@ -2,6 +2,7 @@ import type { z } from "zod"
 
 import type { DomainAppKey, DomainOperation } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
+import { roleFields } from "@workspace/core/roles"
 import { getCorrelationId } from "@workspace/observability/next"
 
 import { domainClient } from "@/lib/identity"
@@ -19,7 +20,7 @@ export function delegatedContext(ctx: RequestContext) {
     userName: ctx.userName,
     userEmail: ctx.userEmail,
     organizationId: ctx.organizationId,
-    role: ctx.role,
+    ...roleFields(ctx.roles),
     impersonatedBy: null,
     portal: null,
   }

@@ -9,7 +9,7 @@ import {
   type Page,
   type PageInput,
 } from "@workspace/core/pagination"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import type { MessagingStorage } from "./deps"
 import { MessagingRepository } from "./repository"
@@ -32,7 +32,7 @@ import type {
 } from "./types"
 
 function canWrite(ctx: RequestContext) {
-  if (roleRank(ctx.role) >= 2) return
+  if (can(ctx, "message:write")) return
   throw new ForbiddenError("Your role cannot send messages.", {
     code: "role_cannot_send_messages",
   })
@@ -40,8 +40,7 @@ function canWrite(ctx: RequestContext) {
 
 /** Only the author (or an admin/owner) may edit or delete a message. */
 function assertAuthor(ctx: RequestContext, authorId: string) {
-  if (authorId === ctx.userId || ctx.role === "owner" || ctx.role === "admin")
-    return
+  if (authorId === ctx.userId || can(ctx, "message:moderate")) return
   throw new ForbiddenError("You can only modify your own messages.", {
     code: "message_not_author",
   })

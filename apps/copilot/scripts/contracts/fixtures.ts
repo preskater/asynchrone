@@ -103,7 +103,7 @@ export async function createContractFixture(): Promise<ContractFixture> {
     userName,
     userEmail: `${userId}@contract.local`,
     organizationId,
-    role: role as RequestContext["role"],
+    roles: [role as RequestContext["roles"][number]],
   })
 
   return {

@@ -7,7 +7,7 @@ import {
 } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
 import type { ProjectDb } from "../db"
-import { ROLE_RANK } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import {
   decryptSecret,
@@ -99,7 +99,7 @@ export class RepositoryIntegrationService {
   ) {}
 
   private canManage(ctx: RequestContext) {
-    if ((ROLE_RANK[ctx.role] ?? 0) >= 3) return
+    if (can(ctx, "integration:manage")) return
     throw new ForbiddenError(
       "Your role cannot manage repository connections.",
       { code: "role_cannot_manage_integrations" }

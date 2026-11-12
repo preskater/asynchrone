@@ -350,7 +350,7 @@ export class PortalService {
       userName: ctx.userName,
       userEmail: ctx.userEmail,
       organizationId: ctx.organizationId,
-      role: "client",
+      roles: ["client"],
     }
     const file = await this.deps.files.createUploadedFile(fileCtx, {
       name: input.name,

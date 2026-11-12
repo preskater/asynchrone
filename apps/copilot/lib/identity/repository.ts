@@ -18,7 +18,13 @@ import type {
 
 import { planForOrganization } from "@/lib/billing/plans"
 import { getOrganizationShell } from "@/lib/organization/shell"
-import { parseRoles } from "@workspace/organization/utils"
+import { ValidationError } from "@workspace/core/errors"
+import {
+  roleFields,
+  roleSetProblem,
+  rolesFrom,
+  type OrgRole,
+} from "@workspace/organization/roles"
 
 /**
  * Read model for the identity internal API. Backed by the identity database so
@@ -58,8 +64,32 @@ export interface IdentityRepository {
   touchPresence(userId: string): Promise<{ at: Date }>
 }
 
-function role(value: string | null): Member["role"] {
-  return parseRoles(value)[0] ?? "member"
+function roles(value: string | null) {
+  return roleFields(rolesFrom({ role: value }))
+}
+
+const ROLE_SET_ERRORS = {
+  empty: "validation_error",
+  client_exclusive: "role_client_exclusive",
+  multiple_roles_require_upgrade: "roles_require_upgrade",
+} as const
+
+/** The stored role value, once the set is valid for the organization's plan. */
+async function storedRoles(
+  organizationId: string,
+  input: { role: OrgRole; roles?: OrgRole[] }
+): Promise<string> {
+  const set = rolesFrom(input)
+  const entitlements = await identityRepository.getEntitlements(organizationId)
+  const problem = roleSetProblem(set, {
+    multipleRolesAllowed: Boolean(entitlements?.granularPermissions),
+  })
+  if (problem) {
+    throw new ValidationError("This role combination is not allowed.", undefined, {
+      code: ROLE_SET_ERRORS[problem],
+    })
+  }
+  return set.join(",")
 }
 
 function mapEntitlements(
@@ -116,7 +146,7 @@ export const identityRepository: IdentityRepository = {
       name: member.user.name,
       email: member.user.email,
       avatarUrl: member.user.image,
-      role: role(member.role),
+      ...roles(member.role),
       clientId: member.clientId,
       createdAt: member.createdAt,
     }))
@@ -221,13 +251,13 @@ export const identityRepository: IdentityRepository = {
         name: session.user.name,
         email: session.user.email,
         avatarUrl: session.user.image,
-        role: role(member.role),
+        ...roles(member.role),
         clientId: member.clientId,
         createdAt: member.createdAt,
       },
       organizations: memberships.map((membership) => ({
         ...membership.organization,
-        role: role(membership.role),
+        ...roles(membership.role),
         clientId: membership.clientId,
       })),
       entitlements: mapEntitlements(
@@ -261,7 +291,7 @@ export const identityRepository: IdentityRepository = {
         id: `member_${crypto.randomUUID()}`,
         organizationId,
         userId: user.id,
-        role: input.role,
+        role: await storedRoles(organizationId, input),
         createdAt: new Date(),
       },
       select: { role: true, clientId: true, createdAt: true },
@@ -271,7 +301,7 @@ export const identityRepository: IdentityRepository = {
       name: user.name,
       email: user.email,
       avatarUrl: user.image,
-      role: role(member.role),
+      ...roles(member.role),
       clientId: member.clientId,
       createdAt: member.createdAt,
     }
@@ -280,7 +310,7 @@ export const identityRepository: IdentityRepository = {
   async updateMemberRole(organizationId, userId, input) {
     const member = await prisma.member.update({
       where: { organizationId_userId: { organizationId, userId } },
-      data: { role: input.role },
+      data: { role: await storedRoles(organizationId, input) },
       select: {
         role: true,
         clientId: true,
@@ -293,7 +323,7 @@ export const identityRepository: IdentityRepository = {
       name: member.user.name,
       email: member.user.email,
       avatarUrl: member.user.image,
-      role: role(member.role),
+      ...roles(member.role),
       clientId: member.clientId,
       createdAt: member.createdAt,
     }

@@ -119,7 +119,7 @@ export function BillingPanel({ checkout }: { checkout?: CheckoutReturn }) {
   const [loading, setLoading] = React.useState(true)
   const [pending, setPending] = React.useState<string | null>(null)
 
-  const canManage = permissions.canUpdateOrganization
+  const canManage = permissions.can("billing:manage")
 
   React.useEffect(() => {
     let cancelled = false

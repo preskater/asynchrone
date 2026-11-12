@@ -21,14 +21,14 @@ const DAY = 24 * 60 * 60 * 1000
 function context(
   userId: string,
   organizationId: string,
-  role: RequestContext["role"]
+  role: RequestContext["roles"][number]
 ): RequestContext {
   return {
     userId,
     userName: userId,
     userEmail: `${userId}@contract.local`,
     organizationId,
-    role,
+    roles: [role],
   }
 }
 

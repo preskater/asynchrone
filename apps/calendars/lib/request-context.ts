@@ -5,7 +5,7 @@ import type { $ZodErrorMap } from "zod/v4/core"
 
 import type { RequestContext } from "@workspace/core/context"
 import { UnauthorizedError } from "@workspace/core/errors"
-import { parseRoles } from "@workspace/organization/roles"
+import { rolesFrom } from "@workspace/organization/roles"
 import { routing } from "@workspace/i18n/routing"
 import { zodErrorMap } from "@workspace/i18n/zod"
 
@@ -34,7 +34,7 @@ export async function getRequestContext(): Promise<RequestContext> {
     userName: workspace.user.name,
     userEmail: workspace.user.email,
     organizationId: workspace.organization.id,
-    role: parseRoles(workspace.member.role)[0] ?? "member",
+    roles: rolesFrom(workspace.member),
   }
 }
 

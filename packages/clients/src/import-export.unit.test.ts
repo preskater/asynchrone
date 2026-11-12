@@ -10,7 +10,7 @@ const ctx: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "owner",
+  roles: ["owner"],
 }
 
 function member(id: string, name: string) {
@@ -87,12 +87,12 @@ describe("client CSV export", () => {
   })
 
   it("lets members export but rejects viewers", async () => {
-    const memberCtx = { ...ctx, role: "member" as const }
+    const memberCtx = { ...ctx, roles: ["member" as const] }
     await expect(
       service([client()]).exportClient(memberCtx, { entity: "clients" })
     ).resolves.toMatchObject({ filename: expect.any(String) })
 
-    const viewerCtx = { ...ctx, role: "viewer" as const }
+    const viewerCtx = { ...ctx, roles: ["viewer" as const] }
     await expect(
       service([client()]).exportClient(viewerCtx, { entity: "clients" })
     ).rejects.toMatchObject({ code: "role_cannot_export_clients" })

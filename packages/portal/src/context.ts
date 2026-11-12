@@ -1,6 +1,6 @@
 import type { RequestContext } from "@workspace/core/context"
 import { ForbiddenError, UnauthorizedError } from "@workspace/core/errors"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import type { PortalContext } from "./types"
 
@@ -29,16 +29,18 @@ export function isPortalContext(
 }
 
 /** Portal access management requires an admin (portal invitations). */
-export function requirePortalManager(ctx: Pick<RequestContext, "role">): void {
-  if (roleRank(ctx.role) >= 3) return
+export function requirePortalManager(ctx: Pick<RequestContext, "roles">): void {
+  if (can(ctx, "portal:manage")) return
   throw new ForbiddenError("Your role cannot manage portal access.", {
     code: "role_cannot_manage_members",
   })
 }
 
 /** The internal view of portal access is readable by members and up. */
-export function requireInternalMember(ctx: Pick<RequestContext, "role">): void {
-  if (roleRank(ctx.role) >= 2) return
+export function requireInternalMember(
+  ctx: Pick<RequestContext, "roles">
+): void {
+  if (can(ctx, "portal:read")) return
   throw new ForbiddenError("Your role cannot view portal access.", {
     code: "role_cannot_manage_members",
   })
