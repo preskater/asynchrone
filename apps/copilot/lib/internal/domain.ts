@@ -97,7 +97,11 @@ export async function callDomain<T>(
   context: DelegatedContext,
   input: unknown,
   schema: z.ZodType<T>,
-  options?: { idempotencyKey?: string; signal?: AbortSignal }
+  options?: {
+    idempotencyKey?: string
+    signal?: AbortSignal
+    userAgent?: string
+  }
 ): Promise<T> {
   // Carry the inbound request's correlation id into the domain call so both
   // apps' logs and metrics can be joined (issue #170).
@@ -115,7 +119,10 @@ export async function callDomain<T>(
 export async function domainServiceFetch(
   app: DomainAppKey,
   path: string,
-  init: RequestInit & { scope: "internal:domain:read" | "internal:domain:write" | "internal:export:read" }
+  init: RequestInit & {
+    scope:
+      "internal:domain:read" | "internal:domain:write" | "internal:export:read"
+  }
 ): Promise<Response> {
   const service = tokenClient()
   const baseUrl = process.env[APPS[app].hostEnv]
