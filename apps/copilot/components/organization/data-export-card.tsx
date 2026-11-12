@@ -1,4 +1,5 @@
 import { getFormatter, getTranslations } from "next-intl/server"
+import { can } from "@workspace/core/roles"
 
 import { RequestExportButton } from "@/components/organization/request-export-button"
 import { buttonVariants } from "@workspace/ui/components/button"
@@ -17,7 +18,7 @@ import { EXPORT_TTL_DAYS, listExports } from "@/lib/organization/export-service"
 /** Owner-only: request an archive of the organization and download it. */
 export async function DataExportCard() {
   const ctx = await getOptionalRequestContext()
-  if (!ctx || ctx.role !== "owner") return null
+  if (!ctx || !can(ctx, "organization:export")) return null
 
   const [exports, t, format] = await Promise.all([
     listExports(ctx.organizationId),

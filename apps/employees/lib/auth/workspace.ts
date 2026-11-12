@@ -4,6 +4,7 @@ import { resolveWorkspace } from "@workspace/app-shell/resolve-workspace"
 import { appUrl } from "@workspace/contracts/server"
 import { IdentityClientError, type MemberRole } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
+import { rolesFrom } from "@workspace/core/roles"
 import type { Entitlements } from "@workspace/organization/entitlements"
 import { IMPERSONATION_TTL_MS, twoFactorRequiredByClaims } from "@workspace/oidc"
 
@@ -22,7 +23,7 @@ export interface EmployeeWorkspace {
   session: NonNullable<Awaited<ReturnType<typeof readSessionRecord>>>
   user: { id: string; name: string; email: string; image: string | null }
   organization: { id: string; name: string; slug: string }
-  role: MemberRole
+  roles: MemberRole[]
   /** Copilot session metadata: impersonation expiry and the banner. */
   impersonatedBy: string | null
   entitlements: Entitlements
@@ -167,7 +168,7 @@ export async function requireEmployeeWorkspace({
       slug: workspace.organization.slug,
       name: workspace.organization.name,
     },
-    role: workspace.member.role,
+    roles: rolesFrom(workspace.member),
     impersonatedBy,
     entitlements: workspace.entitlements as unknown as Entitlements,
     storageQuotaBytes: workspace.storageQuotaBytes,
@@ -183,6 +184,6 @@ export function toRequestContext(workspace: EmployeeWorkspace): RequestContext {
     userName: workspace.user.name,
     userEmail: workspace.user.email,
     organizationId: workspace.organization.id,
-    role: workspace.role,
+    roles: workspace.roles,
   }
 }

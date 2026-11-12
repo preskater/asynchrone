@@ -451,6 +451,7 @@ export function ProjectStoreProvider({
           name: input.name,
           email: input.email,
           role: input.role,
+          roles: [input.role],
         }
         setMembers((prev) => [...prev, optimistic])
         void actions

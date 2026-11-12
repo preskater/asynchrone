@@ -520,7 +520,7 @@ describe("billing overview", () => {
     userName: "Owner",
     userEmail: "owner@acme.test",
     organizationId: ORGANIZATION_ID,
-    role: "owner" as const,
+    roles: ["owner" as const],
   }
 
   it("mirrors provider invoices when the local table is still empty", async () => {
@@ -611,7 +611,7 @@ describe("billing overview", () => {
     // A provider customer exists, so a manager would also backfill invoices.
     await repo.setCustomerId(ORGANIZATION_ID, CUSTOMER_ID)
 
-    const overview = await service.getOverview({ ...ctx, role: "member" })
+    const overview = await service.getOverview({ ...ctx, roles: ["member"] })
 
     expect(provider.listInvoices).not.toHaveBeenCalled()
     expect(overview.invoices).toEqual([])
@@ -627,7 +627,7 @@ describe("checkout sync", () => {
     userName: "Owner",
     userEmail: "owner@acme.test",
     organizationId: ORGANIZATION_ID,
-    role: "owner" as const,
+    roles: ["owner" as const],
   }
 
   function checkoutSession(organizationId: string | null) {

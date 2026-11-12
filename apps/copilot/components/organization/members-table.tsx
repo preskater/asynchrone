@@ -10,7 +10,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@workspace/ui/components/avatar"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -20,14 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -36,10 +27,16 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 
+import { RoleBadges, RolePicker } from "@/components/organization/role-picker"
 import { authClient } from "@/lib/auth-client"
-import { useEnumLabel } from "@workspace/i18n/labels"
-import { ORG_ROLES, roleRank, type OrgRole } from "@workspace/organization/roles"
-import { getInitials, parseRoles } from "@workspace/organization/utils"
+import {
+  ORG_ROLES,
+  compareRoles,
+  parseRoles,
+  primaryRole,
+  type OrgRole,
+} from "@workspace/organization/roles"
+import { getInitials } from "@workspace/organization/utils"
 
 export interface OrgMember {
   id: string
@@ -54,6 +51,7 @@ export function MembersTable({
   canUpdate,
   canRemove,
   canTransferOwnership,
+  multipleRoles,
   onChanged,
 }: {
   members: OrgMember[]
@@ -61,27 +59,31 @@ export function MembersTable({
   canUpdate: boolean
   canRemove: boolean
   canTransferOwnership: boolean
+  /** The `granularPermissions` entitlement: several roles per member. */
+  multipleRoles: boolean
   onChanged: () => void
 }) {
   const [pendingId, setPendingId] = React.useState<string | null>(null)
   const t = useTranslations("Org")
-  const L = useEnumLabel()
 
   const sortedMembers = React.useMemo(
     () =>
       [...members].sort(
         (a, b) =>
-          roleRank(b.role) - roleRank(a.role) ||
+          compareRoles(
+            primaryRole(parseRoles(a.role)),
+            primaryRole(parseRoles(b.role))
+          ) ||
           a.user.name.localeCompare(b.user.name)
       ),
     [members]
   )
 
-  async function updateRole(memberId: string, role: OrgRole) {
+  async function updateRoles(memberId: string, roles: OrgRole[]) {
     setPendingId(memberId)
     const { error } = await authClient.organization.updateMemberRole({
       memberId,
-      role,
+      role: roles,
     })
     setPendingId(null)
     if (error) {
@@ -153,45 +155,17 @@ export function MembersTable({
               </TableCell>
               <TableCell>
                 {canEditThisRole ? (
-                  <Select
-                    items={ORG_ROLES.filter(
-                      (item) => item.value !== "owner" || canTransferOwnership
-                    ).map((item) => ({
-                      value: item.value,
-                      label: L.orgRole(item.value),
-                    }))}
-                    value={
-                      memberRoles[0] && memberRoles[0] !== "owner"
-                        ? memberRoles[0]
-                        : "owner"
-                    }
+                  <RolePicker
+                    value={memberRoles}
+                    options={ORG_ROLES.map((item) => item.value).filter(
+                      (role) => role !== "owner" || canTransferOwnership
+                    )}
+                    multiple={multipleRoles}
                     disabled={pendingId === member.id}
-                    onValueChange={(value) =>
-                      updateRole(member.id, value as OrgRole)
-                    }
-                  >
-                    <SelectTrigger size="sm" className="w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {ORG_ROLES.filter(
-                          (item) =>
-                            item.value !== "owner" || canTransferOwnership
-                        ).map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {L.orgRole(item.value)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                    onChange={(roles) => updateRoles(member.id, roles)}
+                  />
                 ) : (
-                  <Badge variant={isOwner ? "default" : "secondary"}>
-                    {memberRoles[0]
-                      ? L.orgRole(memberRoles[0])
-                      : t("member")}
-                  </Badge>
+                  <RoleBadges roles={memberRoles} />
                 )}
               </TableCell>
               <TableCell>

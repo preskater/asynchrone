@@ -29,7 +29,7 @@ import {
   ValidationError,
 } from "@workspace/core/errors"
 import { requireEntitlement } from "@/lib/organization/entitlements"
-import { ROLE_RANK, roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 import { prisma } from "@/lib/prisma"
 
 import { AUDIT_ACTIONS } from "./actions"
@@ -94,7 +94,7 @@ export class AuditService {
 
   /** Role first, so a member gets `forbidden` rather than an upsell. */
   private async requireRead(ctx: RequestContext): Promise<void> {
-    if (roleRank(ctx.role) < ROLE_RANK.admin) {
+    if (!can(ctx, "audit:read")) {
       throw new ForbiddenError("Only owners and admins can read the audit log.")
     }
     await requireEntitlement(ctx.organizationId, "auditLog")
@@ -243,7 +243,7 @@ export class AuditService {
     value: unknown
   ): Promise<AuditRetentionView> {
     await this.requireRead(ctx)
-    if (roleRank(ctx.role) < ROLE_RANK.owner) {
+    if (!can(ctx, "audit:configure")) {
       throw new ForbiddenError("Only an owner can change the audit retention.")
     }
     const current = await this.retentionFor(ctx.organizationId)

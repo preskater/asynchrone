@@ -72,7 +72,7 @@ export function MeetingSettingsForm() {
     }
   }, [te])
 
-  const canEdit = permissions.canUpdateOrganization
+  const canEdit = permissions.can("meeting:manage")
 
   function patch(update: Partial<MeetingSettingsData>) {
     setSettings((previous) =>

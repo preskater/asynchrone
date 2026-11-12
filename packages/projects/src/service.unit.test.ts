@@ -11,13 +11,13 @@ import { ProjectService } from "./service"
 const ORG = "org_1"
 const USER = "user_member"
 
-function context(role: RequestContext["role"]): RequestContext {
+function context(role: RequestContext["roles"][number]): RequestContext {
   return {
     userId: USER,
     userName: "Ada",
     userEmail: "ada@example.com",
     organizationId: ORG,
-    role,
+    roles: [role],
   }
 }
 
@@ -97,12 +97,14 @@ function ports(
         name: "User",
         email: "user@example.com",
         role: "member" as const,
+        roles: ["member" as const],
       })),
       updateRole: vi.fn(async () => ({
         userId: "u",
         name: "User",
         email: "user@example.com",
         role: "member" as const,
+        roles: ["member" as const],
       })),
       remove: vi.fn(async () => ({ id: "u" })),
     },

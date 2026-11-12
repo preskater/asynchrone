@@ -10,7 +10,7 @@ const ctx: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "owner",
+  roles: ["owner"],
 }
 
 function member(id: string, name: string) {
@@ -76,7 +76,7 @@ describe("employee CSV export", () => {
     const memberCtx = {
       ...ctx,
       userId: "user_employee",
-      role: "member" as const,
+      roles: ["member" as const],
     }
     const result = await service([
       leave(),
@@ -88,12 +88,12 @@ describe("employee CSV export", () => {
   })
 
   it("keeps the audit export to admins", async () => {
-    const memberCtx = { ...ctx, role: "member" as const }
+    const memberCtx = { ...ctx, roles: ["member" as const] }
     await expect(
       service().exportCsv(memberCtx, { report: "audit" })
     ).rejects.toMatchObject({ code: "role_cannot_manage_employees" })
 
-    const adminCtx = { ...ctx, role: "admin" as const }
+    const adminCtx = { ...ctx, roles: ["admin" as const] }
     await expect(
       service().exportCsv(adminCtx, { report: "audit" })
     ).resolves.toMatchObject({ filename: expect.stringContaining("audit") })

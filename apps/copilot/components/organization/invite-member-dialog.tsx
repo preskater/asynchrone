@@ -23,19 +23,12 @@ import {
   FieldLabel,
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
 import { Spinner } from "@workspace/ui/components/spinner"
 
 import { PlanUpgradePrompt } from "@/components/organization/plan-upgrade-prompt"
+import { RolePicker } from "@/components/organization/role-picker"
 import { authClient } from "@/lib/auth-client"
-import { useEnumLabel } from "@workspace/i18n/labels"
+import { useEntitlements } from "@/lib/organization/use-entitlements"
 import { INVITABLE_ROLES, type OrgRole } from "@workspace/organization/roles"
 import { buildInviteUrl } from "@workspace/organization/utils"
 
@@ -48,9 +41,10 @@ export function InviteMemberDialog({
 }) {
   const [open, setOpen] = React.useState(false)
   const t = useTranslations("Org")
-  const L = useEnumLabel()
+  const { can } = useEntitlements()
+  const multipleRoles = can("granularPermissions")
   const [email, setEmail] = React.useState("")
-  const [role, setRole] = React.useState<OrgRole>("member")
+  const [roles, setRoles] = React.useState<OrgRole[]>(["member"])
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [seatLimitReached, setSeatLimitReached] = React.useState(false)
@@ -60,7 +54,7 @@ export function InviteMemberDialog({
   React.useEffect(() => {
     if (!open) {
       setEmail("")
-      setRole("member")
+      setRoles(["member"])
       setError(null)
       setSeatLimitReached(false)
       setInviteUrl(null)
@@ -79,7 +73,7 @@ export function InviteMemberDialog({
     setError(null)
     const { data, error } = await authClient.organization.inviteMember({
       email: trimmed,
-      role,
+      role: roles,
     })
     if (error?.code === "UPGRADE_REQUIRED") {
       setSeatLimitReached(true)
@@ -158,30 +152,16 @@ export function InviteMemberDialog({
               </Field>
               <Field>
                 <FieldLabel htmlFor="invite-role">{t("role")}</FieldLabel>
-                <Select
-                  items={INVITABLE_ROLES.map((item) => ({
-                    value: item.value,
-                    label: L.orgRole(item.value),
-                  }))}
-                  value={role}
-                  onValueChange={(value) => setRole(value as OrgRole)}
-                >
-                  <SelectTrigger id="invite-role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {INVITABLE_ROLES.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {L.orgRole(item.value)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  {L.orgRoleDescription(role)}
-                </FieldDescription>
+                <RolePicker
+                  id="invite-role"
+                  value={roles}
+                  options={INVITABLE_ROLES.map((item) => item.value)}
+                  multiple={multipleRoles}
+                  onChange={setRoles}
+                />
+                {multipleRoles ? null : (
+                  <PlanUpgradePrompt feature="multipleRoles" className="mt-2" />
+                )}
               </Field>
               {seatLimitReached ? <PlanUpgradePrompt feature="seats" /> : null}
               {error ? (

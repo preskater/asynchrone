@@ -69,7 +69,13 @@ import { ProjectPortalSettings } from "./project-portal-settings"
 import { ProjectRepositorySettings } from "./project-repository-settings"
 import { TaskTemplatesManager } from "./task-templates-manager"
 
-const ROLE_VALUES: MemberRole[] = ["owner", "admin", "member", "viewer"]
+const ROLE_VALUES: MemberRole[] = [
+  "owner",
+  "admin",
+  "member",
+  "developer",
+  "viewer",
+]
 
 const HEX_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
 
@@ -317,6 +323,9 @@ export function ProjectSettings({ project }: { project: Project }) {
                       <Select
                         items={roleItems}
                         value={member.role}
+                        // A cumulative role set is edited in Copilot's members
+                        // table; a single select here would drop the others.
+                        disabled={member.roles.length > 1}
                         onValueChange={(value) =>
                           updateMemberRole(member.id, value as MemberRole)
                         }

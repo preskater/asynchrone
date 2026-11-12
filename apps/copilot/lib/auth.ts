@@ -14,7 +14,7 @@ import {
   resolvePlan,
   seatsFull,
 } from "./organization/entitlements"
-import { parseRoles } from "@workspace/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
 import { prisma } from "./prisma"
 import { buildOAuthClaims, twoFactorEnrollmentRequired } from "./oauth/claims"
 import {

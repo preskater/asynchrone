@@ -1,4 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
+import { can } from "@workspace/core/roles"
 import { requirePermission } from "@/lib/core/auth-context"
 import { AUDIT_ACTIONS } from "@/lib/audit/actions"
 import { recordUserAudit } from "@/lib/audit/record"
@@ -26,7 +27,7 @@ export function mustEnrollTwoFactor({
 
 /** Owners and admins see the setting and who still has to enroll. */
 export async function getTwoFactorPolicy(ctx: RequestContext) {
-  if (ctx.role !== "owner" && ctx.role !== "admin") return null
+  if (!can(ctx, "organization:update")) return null
   const [organization, missing] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: ctx.organizationId },
@@ -58,7 +59,7 @@ export async function setTwoFactorRequired(
   ctx: RequestContext,
   required: boolean
 ) {
-  requirePermission(ctx, ["owner", "admin"])
+  requirePermission(ctx, "organization:update")
   // Turning it off is always allowed, so a downgraded org can clear it.
   if (required) await requireEntitlement(ctx.organizationId, "requireTwoFactor")
 

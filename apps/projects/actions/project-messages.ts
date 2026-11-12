@@ -5,7 +5,7 @@ import { z } from "zod"
 import { withAction } from "@workspace/core/action"
 import { ForbiddenError, NotFoundError } from "@workspace/core/errors"
 import { PROJECT_MESSAGE_MAX_LENGTH } from "@workspace/projects/thread"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 import {
   createProjectMessage,
@@ -41,7 +41,7 @@ export const listProjectMessagesAction = withAction(
 export const postProjectMessageAction = withAction(async (input: unknown) => {
   const ctx = await getRequestContext()
   const parsed = await parseLocalized(postProjectMessageSchema, input)
-  if (roleRank(ctx.role) < 2) {
+  if (!can(ctx, "message:write")) {
     throw new ForbiddenError("Your role cannot post messages.", {
       code: "role_cannot_send_messages",
     })

@@ -37,9 +37,10 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 
+import { RolesGuide } from "@/components/organization/roles-guide"
 import { authClient } from "@/lib/auth-client"
-import { roleRank } from "@workspace/organization/roles"
-import { parseRoles } from "@workspace/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
+import { useEntitlements } from "@/lib/organization/use-entitlements"
 import { useOrgPermissions } from "@/lib/organization/use-permissions"
 
 /** Tab ids are part of the URL (`?tab=billing`), so links can deep-link here. */
@@ -81,15 +82,28 @@ export function OrganizationSettings({
   const tMeetings = useTranslations("MeetingRequests")
   const locale = useLocale()
   const permissions = useOrgPermissions()
+  const entitlements = useEntitlements()
+  // Tabs follow capabilities: a developer sees neither billing, appearance nor
+  // invitations; the server re-checks every action.
+  const visibleTabs = new Set<TabId>(
+    TAB_IDS.filter(
+      (tab) =>
+        (tab !== "billing" || permissions.can("billing:manage")) &&
+        (tab !== "appearance" || permissions.can("appearance:update")) &&
+        (tab !== "invitations" || permissions.can("member:manage")) &&
+        (tab !== "audit" || permissions.can("audit:read"))
+    )
+  )
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
   // Returning from Stripe keeps `checkout`/`session_id` but no `tab`, so the
   // billing panel must be the one that mounts to finish the checkout.
-  const activeTab = resolveTab(
+  const requestedTab = resolveTab(
     searchParams.get("tab"),
     checkout ? "billing" : "general"
   )
+  const activeTab = visibleTabs.has(requestedTab) ? requestedTab : "general"
 
   function changeTab(value: string) {
     const tab = resolveTab(value, "general")
@@ -140,9 +154,6 @@ export function OrganizationSettings({
   const isOnlyOwner =
     owners.length <= 1 &&
     owners.some((member) => member.userId === currentUserId)
-  // The audit trail is read by whoever can change the workspace: members and
-  // viewers never see it, and the server action re-checks the role.
-  const canReadAudit = roleRank(permissions.role) >= 3
 
   return (
     <Tabs
@@ -152,12 +163,18 @@ export function OrganizationSettings({
     >
       <TabsList variant="line" className="w-full justify-start border-b pb-0">
         <TabsTrigger value="general">{t("general")}</TabsTrigger>
-        <TabsTrigger value="billing">{t("billing")}</TabsTrigger>
-        <TabsTrigger value="appearance">{tAppearance("title")}</TabsTrigger>
+        {visibleTabs.has("billing") ? (
+          <TabsTrigger value="billing">{t("billing")}</TabsTrigger>
+        ) : null}
+        {visibleTabs.has("appearance") ? (
+          <TabsTrigger value="appearance">{tAppearance("title")}</TabsTrigger>
+        ) : null}
         <TabsTrigger value="meetings">{tMeetings("settingsTitle")}</TabsTrigger>
         <TabsTrigger value="members">{t("members")}</TabsTrigger>
-        <TabsTrigger value="invitations">{t("invitations")}</TabsTrigger>
-        {canReadAudit ? (
+        {visibleTabs.has("invitations") ? (
+          <TabsTrigger value="invitations">{t("invitations")}</TabsTrigger>
+        ) : null}
+        {visibleTabs.has("audit") ? (
           <TabsTrigger value="audit">{tAudit("tab")}</TabsTrigger>
         ) : null}
         <TabsTrigger value="danger">{t("dangerZone")}</TabsTrigger>
@@ -232,10 +249,12 @@ export function OrganizationSettings({
               canUpdate={permissions.canUpdateMember}
               canRemove={permissions.canDeleteMember}
               canTransferOwnership={permissions.isOwner}
+              multipleRoles={entitlements.can("granularPermissions")}
               onChanged={refetch}
             />
           </CardContent>
         </Card>
+        <RolesGuide />
       </TabsContent>
 
       <TabsContent value="invitations">
@@ -264,7 +283,7 @@ export function OrganizationSettings({
         </Card>
       </TabsContent>
 
-      {canReadAudit ? (
+      {visibleTabs.has("audit") ? (
         <TabsContent value="audit">
           <AuditLogPanel
             organizationName={organization.name}

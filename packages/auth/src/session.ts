@@ -1,8 +1,8 @@
 import { headers } from "next/headers"
 
-import type { MemberRole } from "@workspace/contracts"
 import type { RequestContext } from "@workspace/core/context"
 import { ForbiddenError, UnauthorizedError } from "@workspace/core/errors"
+import { can, parseRoles, type Capability } from "@workspace/core/roles"
 
 /** Resolved identity of a signed-in client-portal user. */
 export interface PortalContext {
@@ -63,22 +63,6 @@ export interface AuthSessionDb {
   }
 }
 
-const DEFAULT_ROLE: MemberRole = "member"
-
-function firstRole(role: string | null | undefined): MemberRole {
-  const primary = (role ?? "").split(",")[0]?.trim()
-  switch (primary) {
-    case "owner":
-    case "admin":
-    case "member":
-    case "viewer":
-    case "client":
-      return primary
-    default:
-      return DEFAULT_ROLE
-  }
-}
-
 export interface CreateAuthSessionOptions {
   auth: AuthServer
   db: AuthSessionDb
@@ -119,7 +103,7 @@ export function createAuthSession({
       userName: user.name,
       userEmail: user.email,
       organizationId,
-      role: firstRole(member.role),
+      roles: parseRoles(member.role),
     }
   }
 
@@ -162,8 +146,8 @@ export function createAuthSession({
     return contextForMember(session.user, organizationId)
   }
 
-  function requirePermission(ctx: RequestContext, allowed: MemberRole[]) {
-    if (allowed.includes(ctx.role)) return
+  function requirePermission(ctx: RequestContext, capability: Capability) {
+    if (can(ctx, capability)) return
     throw new ForbiddenError()
   }
 

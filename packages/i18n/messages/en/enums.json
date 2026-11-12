@@ -29,6 +29,7 @@
     "owner": "Owner",
     "admin": "Admin",
     "member": "Member",
+    "developer": "Developer",
     "viewer": "Viewer",
     "client": "Client (portal)"
   },
@@ -36,6 +37,7 @@
     "owner": "Full access, including deleting the organization.",
     "admin": "Manage members, invitations and organization settings.",
     "member": "Use the workspace. Cannot manage people or settings.",
+    "developer": "Connect repositories, work on tasks and files. Cannot manage people, billing or settings.",
     "viewer": "Read-only access to the workspace.",
     "client": "Read-only access to their company's projects in the client portal."
   },

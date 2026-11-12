@@ -39,7 +39,6 @@ import type {
   MeetingRequestsData,
   MeetingStatus,
 } from "@workspace/meetings/types"
-import { roleRank } from "@workspace/organization/roles"
 import { useOrgPermissions } from "@/lib/permissions"
 
 const STATUS_VARIANT: Record<
@@ -62,7 +61,7 @@ export function MeetingRequestsDialog() {
   const locale = useLocale()
   const router = useRouter()
   const permissions = useOrgPermissions()
-  const canDecide = roleRank(permissions.role) >= 2
+  const canDecide = permissions.can("calendar:write")
 
   const [open, setOpen] = React.useState(false)
   const [data, setData] = React.useState<MeetingRequestsData>()

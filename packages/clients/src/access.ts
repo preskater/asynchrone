@@ -1,8 +1,7 @@
 import type { RequestContext } from "@workspace/core/context"
-import { roleRank } from "@workspace/organization/roles"
+import { can } from "@workspace/organization/roles"
 
 export interface ClientAccess {
-  rank: number
   /** Member and above: create, edit, archive and restore records. */
   canEdit: boolean
   /** Admin and above: pipelines, custom field configuration. */
@@ -12,11 +11,9 @@ export interface ClientAccess {
 }
 
 export function resolveClientAccess(ctx: RequestContext): ClientAccess {
-  const rank = roleRank(ctx.role)
   return {
-    rank,
-    canEdit: rank >= 2,
-    canManage: rank >= 3,
-    canExport: rank >= 2,
+    canEdit: can(ctx, "crm:write"),
+    canManage: can(ctx, "crm:manage"),
+    canExport: can(ctx, "crm:write"),
   }
 }

@@ -19,6 +19,7 @@ import {
 } from "better-auth/plugins"
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access"
 
+import { parseRoles, roleSetProblem } from "@workspace/core/roles"
 import { parseTrustedIpHeaders } from "@workspace/core/trusted-ip"
 
 import { MIN_PASSWORD_LENGTH } from "./password-policy"
@@ -83,7 +84,10 @@ export interface AuthOptions<
     access: { ac: any; roles: TRoles }
     parseRoles: (role: string | null | undefined) => string[]
     resolvePlan: (source: AuthOrganizationSource) => any
-    entitlementsFor: (plan: any) => { requireTwoFactor: boolean }
+    entitlementsFor: (plan: any) => {
+      requireTwoFactor: boolean
+      granularPermissions: boolean
+    }
     seatsFull: (
       organizationId: string,
       options: { countPending: boolean }
@@ -159,6 +163,49 @@ export function createAuth<TRoles extends Record<string, any>>(
       throw new APIError("FORBIDDEN", {
         code: "UPGRADE_REQUIRED",
         message: `Your plan includes up to ${seats} members. Upgrade to add more.`,
+      })
+    }
+  }
+
+  /**
+   * A portal `client` holds no other role, and several roles need the
+   * `granularPermissions` entitlement (Team and up).
+   */
+  async function assertRoleSet(
+    organizationId: string,
+    role: string | string[] | null | undefined
+  ) {
+    const roles = parseRoles(role)
+    const organization = await database.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        metadata: true,
+        trialEndsAt: true,
+        subscription: { select: { plan: true } },
+      },
+    })
+    const plan = organization
+      ? org.resolvePlan({
+          metadata: organization.metadata,
+          trialEndsAt: organization.trialEndsAt,
+          subscription: organization.subscription ?? null,
+        })
+      : null
+    const problem = roleSetProblem(roles, {
+      multipleRolesAllowed: plan
+        ? org.entitlementsFor(plan).granularPermissions
+        : false,
+    })
+    if (problem === "client_exclusive") {
+      throw new APIError("BAD_REQUEST", {
+        code: "ROLE_CLIENT_EXCLUSIVE",
+        message: "A client portal account cannot hold another role.",
+      })
+    }
+    if (problem === "multiple_roles_require_upgrade") {
+      throw new APIError("FORBIDDEN", {
+        code: "ROLES_REQUIRE_UPGRADE",
+        message: "Combining several roles requires the Team plan.",
       })
     }
   }
@@ -275,6 +322,18 @@ export function createAuth<TRoles extends Record<string, any>>(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // The audit row for a role change records the previous role set; the
+        // after hook sees the same per-call `ctx.context`.
+        if (
+          ctx.path === "/organization/update-member-role" &&
+          typeof ctx.body?.memberId === "string"
+        ) {
+          const current = await database.member.findUnique({
+            where: { id: ctx.body.memberId },
+            select: { role: true },
+          })
+          Object.assign(ctx.context, { previousMemberRole: current?.role })
+        }
         // OAuth authorization must not issue a code to a member who still has
         // to enroll in 2FA under the organization policy. The redirect
         // preserves the authorize URL so the setup page can send the user back
@@ -382,6 +441,7 @@ export function createAuth<TRoles extends Record<string, any>>(
         requireEmailVerificationOnInvitation: false,
         organizationHooks: {
           beforeCreateInvitation: async ({ invitation }) => {
+            await assertRoleSet(invitation.organizationId, invitation.role)
             await assertInvitationRate(invitation.organizationId)
             await assertSeatAvailable(
               invitation.organizationId,
@@ -393,7 +453,13 @@ export function createAuth<TRoles extends Record<string, any>>(
           // it was created (pending ones are counted there), so lowering a plan
           // cap must not strand invitations that were legitimately issued.
           beforeAddMember: async ({ member }) => {
+            await assertRoleSet(member.organizationId, member.role)
             await assertSeatAvailable(member.organizationId, member.role, false)
+          },
+          // The last-owner rule is Better Auth's own (it refuses to demote or
+          // remove the only member holding `owner`).
+          beforeUpdateMemberRole: async ({ member, newRole }) => {
+            await assertRoleSet(member.organizationId, newRole)
           },
           // A new role must not ride on sessions opened under the old one, so
           // the member signs in again everywhere.

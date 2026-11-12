@@ -50,13 +50,13 @@ function projectRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function membership(role: RequestContext["role"]): RequestContext {
+function membership(role: RequestContext["roles"][number]): RequestContext {
   return {
     userId: "user_staff",
     userName: "Sam",
     userEmail: "sam@example.com",
     organizationId: "org_a",
-    role,
+    roles: [role],
   }
 }
 
@@ -594,7 +594,7 @@ describe("PortalService documents", () => {
       expect.objectContaining({
         organizationId: "org_a",
         userId: "user_client_a",
-        role: "client",
+        roles: ["client"],
       }),
       expect.objectContaining({
         name: "photo.png",

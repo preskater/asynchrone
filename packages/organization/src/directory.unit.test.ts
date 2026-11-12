@@ -22,6 +22,7 @@ describe("toMemberDirectoryEntry", () => {
       email: "ada@example.com",
       avatarUrl: undefined,
       role: "admin",
+      roles: ["admin"],
     })
   })
 

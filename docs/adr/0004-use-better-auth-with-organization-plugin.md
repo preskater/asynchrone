@@ -1,6 +1,6 @@
 # Use Better Auth with the organization plugin for multi-tenant RBAC
 
-- Status: accepted
+- Status: accepted; role model superseded by [ADR 0040](0040-cumulative-organization-roles-and-capabilities.md)
 - Deciders: Asynchrone Space maintainers
 - Date: 2026-10-10
 

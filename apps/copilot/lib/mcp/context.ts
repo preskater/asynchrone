@@ -2,7 +2,7 @@ import type { AuthInfo } from "@modelcontextprotocol/server"
 
 import { UnauthorizedError, ForbiddenError } from "@workspace/core/errors"
 import type { RequestContext } from "@workspace/core/context"
-import type { OrgRole } from "@workspace/organization/roles"
+import { parseRoles } from "@workspace/organization/roles"
 
 type Claims = Record<string, unknown>
 
@@ -39,7 +39,8 @@ export function authInfoFromClaims(claims: Claims): AuthInfo {
 interface McpTokenExtra {
   userId?: string
   organizationId?: string
-  role?: OrgRole
+  /** Comma-separated cumulative roles. */
+  role?: string
   userName?: string
   userEmail?: string
 }
@@ -53,14 +54,15 @@ export function contextFromAuthInfo(
       "The MCP access token is missing a workspace context."
     )
   }
+  const roles = parseRoles(extra.role)
   // Client-portal members have no access to the assistant.
-  if (extra.role === "client") {
+  if (roles.includes("client")) {
     throw new ForbiddenError("Portal accounts cannot access the workspace.")
   }
   return {
     userId: extra.userId,
     organizationId: extra.organizationId,
-    role: extra.role ?? "member",
+    roles,
     userName: extra.userName ?? "Asynchrone Space Assistant",
     userEmail: extra.userEmail ?? "assistant@asynchrone.space",
   }

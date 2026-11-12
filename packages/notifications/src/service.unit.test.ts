@@ -13,7 +13,7 @@ const ctx: RequestContext = {
   userName: "Ada",
   userEmail: "ada@example.com",
   organizationId: "org_1",
-  role: "member",
+  roles: ["member"],
 }
 
 function fakeRepository(

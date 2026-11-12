@@ -1,6 +1,6 @@
 import type { OrgPlan } from "@workspace/core/plans"
 
-import { parseRoles } from "@workspace/organization/utils"
+import { parseRoles } from "@workspace/organization/roles"
 
 /**
  * Pure claim construction for the OAuth provider. Keeping this out of
@@ -58,7 +58,8 @@ export function buildOAuthClaims({
     org: organization.id,
     org_slug: organization.slug,
     organizationName: organization.name,
-    role: parseRoles(member?.role)[0] ?? "member",
+    // Comma-separated: every role the member holds.
+    role: parseRoles(member?.role).join(","),
     plan,
     userName: user.name,
     userEmail: user.email,

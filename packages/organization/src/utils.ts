@@ -1,5 +1,3 @@
-import type { OrgRole } from "./roles"
-
 export function slugify(value: string) {
   return value
     .toLowerCase()
@@ -14,14 +12,6 @@ export function buildInviteUrl(invitationId: string) {
   const path = `/accept-invitation?id=${encodeURIComponent(invitationId)}`
   if (typeof window === "undefined") return path
   return `${window.location.origin}${path}`
-}
-
-export function parseRoles(role: string | null | undefined): OrgRole[] {
-  if (!role) return []
-  return role
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean) as OrgRole[]
 }
 
 export function getInitials(name: string) {

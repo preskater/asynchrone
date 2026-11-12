@@ -117,13 +117,13 @@ async function main() {
     const ctx = (
       user: { id: string; email: string },
       organizationId: string,
-      role: RequestContext["role"] = "owner"
+      role: RequestContext["roles"][number] = "owner"
     ): RequestContext => ({
       userId: user.id,
       userName: user.id,
       userEmail: user.email,
       organizationId,
-      role,
+      roles: [role],
     })
     const notifications = (organizationId: string, type: string) =>
       prisma.notification.count({ where: { organizationId, type } })

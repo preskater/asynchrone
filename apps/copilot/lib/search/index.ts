@@ -1,4 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
+import { primaryRole } from "@workspace/core/roles"
 
 import {
   searchAcrossApps,
@@ -30,6 +31,6 @@ export async function searchWorkspace(
     userId: ctx.userId,
     userName: ctx.userName,
     userEmail: ctx.userEmail,
-    role: ctx.role,
+    role: primaryRole(ctx.roles),
   })
 }

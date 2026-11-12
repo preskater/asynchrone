@@ -1,4 +1,5 @@
 import { getFormatter, getTranslations } from "next-intl/server"
+import { can } from "@workspace/core/roles"
 
 import { StartTrialButton } from "@/components/trial/start-trial-button"
 import { Link } from "@workspace/i18n/navigation"
@@ -23,7 +24,7 @@ export async function TrialCard() {
 
   const t = await getTranslations("Trial")
   const format = await getFormatter()
-  const canStart = ctx.role === "owner" || ctx.role === "admin"
+  const canStart = can(ctx, "billing:manage")
 
   const description =
     status.state === "active"
