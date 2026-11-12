@@ -1,4 +1,4 @@
-/** Exit codes documented in `docs/api/README.md` (issue #133). */
+/** Exit codes documented in `docs/api.md` (issue #133). */
 export const EXIT = {
   ok: 0,
   failure: 1,

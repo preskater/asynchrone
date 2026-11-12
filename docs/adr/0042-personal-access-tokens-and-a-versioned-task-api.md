@@ -67,7 +67,8 @@ Option 3.
 
 `projects:read` (projects and their labels), `members:read`, `tasks:read`,
 `tasks:write`. A new resource adds `<resource>:read|write`; there is no
-wildcard scope.
+wildcard scope. `GET /api/v1/token`, which only describes the calling token,
+needs none.
 
 ### `/api/v1` conventions
 
@@ -96,6 +97,9 @@ wildcard scope.
 - Mutations accept `Idempotency-Key` and forward it to the delegated call.
 - Tasks created through the API never open a repository issue unless the
   caller sends `createIssue: true` (ADR 0014).
+- `GET /api/v1/projects` reads the projects app's `list-project-shell`
+  operation (projects and labels without tasks), not `list-projects`, which
+  loads every task.
 - The delegated call is sent with `User-Agent: asynchrone-api (token
   asy_xxxxxxxx)`, so the target app's audit row names the token in its
   `userAgent` column next to the owner as actor. Neither the delegated context
