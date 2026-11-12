@@ -266,6 +266,10 @@
     "conversation": {
       "created": "Conversation créée",
       "updated": "Conversation mise à jour"
+    },
+    "api_token": {
+      "created": "Jeton d'API créé",
+      "revoked": "Jeton d'API révoqué"
     }
   },
   "entities": {
@@ -293,6 +297,7 @@
     "leaveBalance": "Solde de congés",
     "leaveAdjustment": "Ajustement de congés",
     "attendance": "Pointage",
-    "dataExport": "Export de données"
+    "dataExport": "Export de données",
+    "apiToken": "Jeton d'API"
   }
 }

@@ -58,6 +58,8 @@ export const AUDIT_ACTIONS = {
   organizationExportRequested: "organization.export.request",
   memberTwoFactorEnabled: "member.two_factor_enabled",
   memberTwoFactorDisabled: "member.two_factor_disabled",
+  apiTokenCreated: "api_token.created",
+  apiTokenRevoked: "api_token.revoked",
 
   // Written by earlier releases; listed so the filter and labels still know
   // them.
@@ -173,4 +175,5 @@ export const AUDIT_ENTITY_TYPES = [
   "leaveAdjustment",
   "attendance",
   "dataExport",
+  "apiToken",
 ] as const

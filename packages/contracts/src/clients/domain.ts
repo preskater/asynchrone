@@ -69,6 +69,11 @@ export interface DomainCallOptions {
    * target app's logs and metrics share one id with the caller (issue #170).
    */
   correlationId?: string | null
+  /**
+   * Sent as `User-Agent`, so the target app's audit rows name the real client,
+   * e.g. the personal access token behind an `/api/v1` call (ADR 0042).
+   */
+  userAgent?: string
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -212,6 +217,7 @@ export class DomainClient {
             ...(options.correlationId
               ? { "x-request-id": options.correlationId }
               : {}),
+            ...(options.userAgent ? { "User-Agent": options.userAgent } : {}),
           },
           body: JSON.stringify({ context, input }),
           cache: "no-store",

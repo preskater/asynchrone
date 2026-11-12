@@ -65,3 +65,4 @@ collection.
 | [0039](0039-file-support-tickets-in-the-identity-database.md)              | accepted | File support tickets in the identity database, worked from the control tower |
 | [0040](0040-record-client-test-feedback-per-release.md)                    | accepted | Record client test feedback per release in the clients database           |
 | [0040](0040-cumulative-organization-roles-and-capabilities.md)             | accepted | Cumulative organization roles and capability-based authorization             |
+| [0042](0042-personal-access-tokens-and-a-versioned-task-api.md)            | accepted | Personal access tokens and a versioned task API served by Copilot            |

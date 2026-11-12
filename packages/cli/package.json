@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/cli",
+  "version": "0.1.0",
+  "description": "Command-line client for the Asynchrone Space /api/v1 API.",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "bin": {
+    "asynchrone": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.14.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  }
+}
