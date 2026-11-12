@@ -407,6 +407,32 @@
       "statusChanged": "Statut mis à jour.",
       "assigned": "Responsable mis à jour.",
       "deleted": "Supprimé."
+    },
+    "report": {
+      "open": "Compte rendu",
+      "title": "Compte rendu de test",
+      "back": "Retour aux retours de test",
+      "exportCsv": "Exporter en CSV",
+      "print": "Imprimer ou enregistrer en PDF",
+      "releasedAt": "Date de livraison",
+      "period": "Période de test",
+      "generatedAt": "Généré le",
+      "summary": "Synthèse",
+      "total": "Retours",
+      "stillOpen": "Encore ouverts",
+      "noneOpen": "Plus rien d’ouvert sur cette version.",
+      "all": "Tous les retours",
+      "empty": "Aucun retour n’a été enregistré sur cette version.",
+      "openCount": "Encore ouverts"
+    },
+    "rounds": {
+      "title": "Recettes en cours"
+    },
+    "trend": {
+      "title": "Ouverts et corrigés par version",
+      "description": "Moins de retours ouverts d’une version à l’autre : la qualité progresse.",
+      "open": "Encore ouverts",
+      "fixed": "Corrigés"
     }
   }
 }

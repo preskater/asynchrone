@@ -58,6 +58,7 @@ export interface ClientActions {
   setFeedbackStatusAction: ClientAction
   assignFeedbackAction: ClientAction
   deleteFeedbackAction: ClientAction
+  exportReleaseCsvAction: ClientAction
   /**
    * Portal access management lives in Copilot until the identity API exposes
    * invitations (#171); an app that does not own it omits the three actions and

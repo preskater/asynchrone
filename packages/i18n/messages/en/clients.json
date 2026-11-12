@@ -407,6 +407,32 @@
       "statusChanged": "Status updated.",
       "assigned": "Assignee updated.",
       "deleted": "Deleted."
+    },
+    "report": {
+      "open": "Report",
+      "title": "Test report",
+      "back": "Back to test feedback",
+      "exportCsv": "Export CSV",
+      "print": "Print or save as PDF",
+      "releasedAt": "Release date",
+      "period": "Test period",
+      "generatedAt": "Generated",
+      "summary": "Summary",
+      "total": "Entries",
+      "stillOpen": "Still open",
+      "noneOpen": "Nothing is left open on this version.",
+      "all": "All feedback",
+      "empty": "No feedback was recorded on this version.",
+      "openCount": "Still open"
+    },
+    "rounds": {
+      "title": "Test rounds in progress"
+    },
+    "trend": {
+      "title": "Open and fixed per version",
+      "description": "Fewer open reports from one version to the next means quality is improving.",
+      "open": "Still open",
+      "fixed": "Fixed"
     }
   }
 }

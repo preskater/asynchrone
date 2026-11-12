@@ -1028,6 +1028,19 @@ export class ClientsRepository {
     })
   }
 
+  /** Releases in test, newest first, for the CRM overview. */
+  listReleasesInTest(organizationId: string, take: number) {
+    return this.db.clientRelease.findMany({
+      where: { organizationId, status: "in_test" },
+      include: { client: { select: { name: true } } },
+      orderBy: [
+        { releasedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+      take,
+    })
+  }
+
   /** Feedback count, open count and test date range per release. */
   async releaseStats(
     organizationId: string,

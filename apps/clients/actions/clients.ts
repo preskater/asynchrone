@@ -21,6 +21,7 @@ import {
   moveDealSchema,
   moveStageSchema,
   pipelineInputSchema,
+  releaseExportSchema,
   releaseInputSchema,
   reopenDealSchema,
   setDefaultPipelineSchema,
@@ -400,4 +401,10 @@ export const deleteFeedbackAction = withAction(async (feedbackId: string) => {
   const result = await clientsService.deleteFeedback(ctx, feedbackId)
   await revalidateFeedback(ctx.organizationId)
   return result
+})
+
+export const exportReleaseCsvAction = withAction(async (input: unknown) => {
+  const ctx = await getRequestContext()
+  const parsed = await parseLocalized(releaseExportSchema, input)
+  return clientsService.exportReleaseCsv(ctx, parsed)
 })

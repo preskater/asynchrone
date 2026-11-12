@@ -12,7 +12,9 @@ import type {
   ClientDealDetailData,
   ClientOverviewData,
   ClientProjectOptionData,
+  ClientTestRoundData,
 } from "../types"
+import { CLIENT_FEEDBACK_OPEN_STATUSES } from "../types"
 import { ClientsServiceCore, text } from "./core"
 
 export class ClientOverviewService extends ClientsServiceCore {
@@ -38,6 +40,7 @@ export class ClientOverviewService extends ClientsServiceCore {
       dealKpis,
       clientOptions,
       contactOptions,
+      testRounds,
     ] = await Promise.all([
       this.repo.listMembers(ctx.organizationId),
       this.repo.listClientsPage(ctx.organizationId, { take: limit + 1 }),
@@ -53,6 +56,7 @@ export class ClientOverviewService extends ClientsServiceCore {
       this.repo.dealStats(ctx.organizationId, wonSince),
       this.repo.listClientOptions(ctx.organizationId),
       this.repo.listContactOptions(ctx.organizationId),
+      this.loadTestRounds(ctx.organizationId),
     ])
     const nameById = this.nameById(memberRows)
 
@@ -143,7 +147,29 @@ export class ClientOverviewService extends ClientsServiceCore {
       recentActivities: activityPage.items.map((row) =>
         this.mapActivity(row, nameById)
       ),
+      testRounds,
     }
+  }
+
+  /** The current test round: releases in test with their open feedback. */
+  private async loadTestRounds(
+    organizationId: string
+  ): Promise<ClientTestRoundData[]> {
+    const releases = await this.repo.listReleasesInTest(organizationId, 6)
+    const stats = await this.repo.releaseStats(
+      organizationId,
+      releases.map((row) => row.id),
+      CLIENT_FEEDBACK_OPEN_STATUSES
+    )
+    const byId = new Map(stats.map((row) => [row.releaseId, row]))
+    return releases.map((row) => ({
+      releaseId: row.id,
+      clientId: row.clientId,
+      clientName: row.client.name,
+      version: row.version,
+      openCount: byId.get(row.id)?.open ?? 0,
+      feedbackCount: byId.get(row.id)?.count ?? 0,
+    }))
   }
 
   private accessData(

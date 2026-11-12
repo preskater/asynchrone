@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { FileTextIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -70,6 +70,7 @@ import {
   type ClientReleaseGroupData,
 } from "../types"
 import { useClientActions } from "./actions"
+import { FeedbackTrend } from "./feedback-trend"
 import { useClientFormat } from "./use-clients"
 
 const ALL = "all"
@@ -194,6 +195,7 @@ export function FeedbackBoard({
 
   return (
     <div className="flex flex-col gap-4">
+      {client ? <FeedbackTrend groups={groups} /> : null}
       <div className="flex flex-wrap items-end gap-3">
         <FilterField label={t("feedback.fields.status")}>
           <OptionSelect
@@ -397,43 +399,59 @@ function ReleaseCard({
               })}
             </p>
           </div>
-          {client && access.canEdit ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <FeedbackDialog
-                client={client}
-                releases={releases}
-                members={members}
-                defaultReleaseId={release.id}
-                trigger={
-                  <Button type="button" size="sm">
-                    <PlusIcon data-icon="inline-start" />
-                    {t("feedback.newFeedback")}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link
+                  href={`/${orgSlug}/clients/${release.clientId}/feedback/${release.id}`}
+                  prefetch={false}
+                />
+              }
+            >
+              <FileTextIcon data-icon="inline-start" />
+              {t("feedback.report.open")}
+            </Button>
+            {client && access.canEdit ? (
+              <>
+                <FeedbackDialog
+                  client={client}
+                  releases={releases}
+                  members={members}
+                  defaultReleaseId={release.id}
+                  trigger={
+                    <Button type="button" size="sm">
+                      <PlusIcon data-icon="inline-start" />
+                      {t("feedback.newFeedback")}
+                    </Button>
+                  }
+                />
+                <ReleaseDialog
+                  client={client}
+                  release={release}
+                  trigger={
+                    <Button type="button" size="sm" variant="outline">
+                      <PencilIcon data-icon="inline-start" />
+                      {t("common.edit")}
+                    </Button>
+                  }
+                />
+                {access.canManage ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t("feedback.deleteRelease")}
+                    onClick={() => setDeleting(true)}
+                  >
+                    <Trash2Icon />
                   </Button>
-                }
-              />
-              <ReleaseDialog
-                client={client}
-                release={release}
-                trigger={
-                  <Button type="button" size="sm" variant="outline">
-                    <PencilIcon data-icon="inline-start" />
-                    {t("common.edit")}
-                  </Button>
-                }
-              />
-              {access.canManage ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label={t("feedback.deleteRelease")}
-                  onClick={() => setDeleting(true)}
-                >
-                  <Trash2Icon />
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+                ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

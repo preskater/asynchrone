@@ -20,6 +20,7 @@
     "lucide-react": "^1.70.0",
     "next-intl": "^4.14.9",
     "react": "19.3.1",
+    "recharts": "^3.10.1",
     "sonner": "^2.0.8",
     "zod": "^4.6.7"
   },
@@ -56,6 +57,7 @@
     "./components/deals-workspace": "./src/components/deals-workspace.tsx",
     "./components/documents": "./src/components/documents.tsx",
     "./components/feedback": "./src/components/feedback.tsx",
+    "./components/release-report": "./src/components/release-report.tsx",
     "./components/import-dialog": "./src/components/import-dialog.tsx",
     "./components/pipeline-settings-dialog": "./src/components/pipeline-settings-dialog.tsx",
     "./components/portal-access": "./src/components/portal-access.tsx",

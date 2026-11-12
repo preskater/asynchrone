@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { RequestContext } from "@workspace/core/context"
 
+import { feedbackTrend, summarizeFeedback } from "./feedback-stats"
 import type { ClientAuditEntry } from "./ports"
 import type { ClientsRepository } from "./repository"
-import { ClientFeedbackService } from "./services/feedback"
+import { ClientFeedbackService, formatTestedAt } from "./services/feedback"
+import type { ClientFeedbackData, ClientReleaseGroupData } from "./types"
 
 const owner: RequestContext = {
   userId: "user_owner",
@@ -274,5 +276,52 @@ describe("ClientFeedbackService", () => {
       testedFrom: "2026-11-01T09:00:00.000Z",
     })
     expect(groups[0]?.feedback[0]?.authorName).toBe("Ada")
+  })
+})
+
+describe("release report helpers", () => {
+  const item = (status: string, category = "bug", impact = "high") =>
+    ({ status, category, impact }) as unknown as ClientFeedbackData
+
+  it("counts a report by status, category and impact", () => {
+    const summary = summarizeFeedback([
+      item("new"),
+      item("fixed", "idea", "low"),
+      item("triaged", "bug", "critical"),
+    ])
+    expect(summary).toMatchObject({
+      total: 3,
+      open: 2,
+      byStatus: { new: 1, fixed: 1, triaged: 1 },
+      byCategory: { bug: 2, idea: 1 },
+      byImpact: { high: 1, low: 1, critical: 1 },
+    })
+  })
+
+  it("prints test times in the viewer's zone, UTC otherwise", () => {
+    const iso = "2026-11-10T10:30:00.000Z"
+    expect(formatTestedAt(iso, "Indian/Reunion")).toBe("2026-11-10 14:30")
+    expect(formatTestedAt(iso, "Not/AZone")).toBe("2026-11-10 10:30 UTC")
+    expect(formatTestedAt(iso)).toBe("2026-11-10 10:30 UTC")
+  })
+
+  it("orders the trend by release date and skips empty versions", () => {
+    const group = (
+      version: string,
+      releasedAt: string,
+      statuses: string[]
+    ) => ({
+      release: { version, releasedAt, createdAt: releasedAt },
+      feedback: statuses.map((status) => item(status)),
+    })
+    const groups = [
+      group("1.5.0", "2026-12-01", ["new", "fixed", "fixed"]),
+      group("1.6.0", "2026-12-15", []),
+      group("1.4.2", "2026-11-05", ["new", "triaged", "rejected"]),
+    ] as unknown as ClientReleaseGroupData[]
+    expect(feedbackTrend(groups)).toEqual([
+      { version: "1.4.2", open: 2, fixed: 0 },
+      { version: "1.5.0", open: 1, fixed: 2 },
+    ])
   })
 })

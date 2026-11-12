@@ -298,6 +298,8 @@ export interface ClientOverviewData {
   stats: ClientOverviewStats
   /** Latest activity across all records (desk feed). */
   recentActivities: ClientActivityData[]
+  /** Releases currently in test, newest first (ADR 0040). */
+  testRounds: ClientTestRoundData[]
 }
 
 export interface ClientDetailData {
@@ -449,4 +451,33 @@ export interface ClientFeedbackPageData {
   access: ClientAccessData
   members: ClientMemberOptionData[]
   groups: ClientReleaseGroupData[]
+}
+
+/** Counts of a set of feedback entries, for a release report. */
+export interface ClientFeedbackSummaryData {
+  total: number
+  open: number
+  byStatus: Record<string, number>
+  byCategory: Record<string, number>
+  byImpact: Record<string, number>
+}
+
+/** The per-release report ("compte rendu"), printed or shared. */
+export interface ClientReleaseReportData {
+  release: ClientReleaseData
+  clientName: string
+  generatedAt: string
+  summary: ClientFeedbackSummaryData
+  /** Oldest test first, as the client ran them. */
+  feedback: ClientFeedbackData[]
+}
+
+/** A release in test, for the CRM overview. */
+export interface ClientTestRoundData {
+  releaseId: string
+  clientId: string
+  clientName: string
+  version: string
+  openCount: number
+  feedbackCount: number
 }

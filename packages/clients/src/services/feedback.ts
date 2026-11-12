@@ -1,4 +1,5 @@
 import type { RequestContext } from "@workspace/core/context"
+import { toCsv } from "@workspace/core/csv"
 import {
   ConflictError,
   NotFoundError,
@@ -10,12 +11,15 @@ import type {
   FeedbackFilter,
   FeedbackInput,
   FeedbackStatusInput,
+  ReleaseExportInput,
   ReleaseInput,
 } from "../schemas"
 import {
   CLIENT_FEEDBACK_OPEN_STATUSES,
+  type ClientExportResultData,
   type ClientFeedbackData,
   type ClientFeedbackPageData,
+  type ClientReleaseReportData,
   type ClientFeedbackEnvironment,
   type ClientFeedbackStatus,
   type ClientReleaseData,
@@ -23,7 +27,14 @@ import {
   type ClientReleaseStatus,
 } from "../types"
 import type { ClientsRepository } from "../repository"
-import { ClientsServiceCore, requireEdit, requireManage, text } from "./core"
+import { summarizeFeedback } from "../feedback-stats"
+import {
+  ClientsServiceCore,
+  requireEdit,
+  requireExport,
+  requireManage,
+  text,
+} from "./core"
 
 /** Registered in `AUDIT_ACTIONS` (`@workspace/audit`) for filters and labels. */
 const ACTIONS = {
@@ -45,6 +56,30 @@ type FeedbackRow = NonNullable<
 type ReleaseStats = Awaited<
   ReturnType<ClientsRepository["releaseStats"]>
 >[number]
+
+/** `YYYY-MM-DD HH:mm` in the given zone; UTC when the zone is unknown. */
+export function formatTestedAt(iso: string, timeZone?: string): string {
+  const date = new Date(iso)
+  let zone = "UTC"
+  if (timeZone) {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone })
+      zone = timeZone
+    } catch {
+      // An unknown zone falls back to UTC instead of failing the export.
+    }
+  }
+  // The Swedish locale prints ISO-like "2026-11-10 14:30".
+  const text = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
+  return zone === "UTC" ? `${text} UTC` : text
+}
 
 /**
  * Client releases and the test feedback recorded against them (ADR 0040).
@@ -112,6 +147,78 @@ export class ClientFeedbackService extends ClientsServiceCore {
       },
       members: this.mapMembers(members),
       groups,
+    }
+  }
+
+  /** The release report ("compte rendu"): every entry, oldest test first. */
+  async getReleaseReport(
+    ctx: RequestContext,
+    releaseId: string
+  ): Promise<ClientReleaseReportData> {
+    const [group] = await this.listReleaseGroups(ctx, { releaseId })
+    if (!group) throw new NotFoundError("Release")
+    const feedback = [...group.feedback].sort((a, b) =>
+      a.testedAt.localeCompare(b.testedAt)
+    )
+    return {
+      release: group.release,
+      clientName: group.release.clientName ?? "",
+      generatedAt: new Date().toISOString(),
+      summary: summarizeFeedback(feedback),
+      feedback,
+    }
+  }
+
+  async exportReleaseCsv(
+    ctx: RequestContext,
+    input: ReleaseExportInput
+  ): Promise<ClientExportResultData> {
+    requireExport(this.accessFor(ctx))
+    const report = await this.getReleaseReport(ctx, input.releaseId)
+    const { release } = report
+    const rows: (string | number)[][] = [
+      [
+        "Client",
+        "Version",
+        "Release date",
+        "Title",
+        "Status",
+        "Category",
+        "Impact",
+        "Environment",
+        "Tester",
+        "Tested at",
+        "Assignee",
+        "Recorded by",
+        "Linked task",
+        "Description",
+      ],
+      ...report.feedback.map((item) => [
+        report.clientName,
+        item.version,
+        release.releasedAt ?? "",
+        item.title,
+        item.status,
+        item.category,
+        item.impact,
+        item.environment,
+        item.contactName ?? "",
+        formatTestedAt(item.testedAt, input.timeZone),
+        item.assigneeName ?? "",
+        item.authorName,
+        item.linkedTaskId ?? "",
+        item.body,
+      ]),
+    ]
+    const slug = `${report.clientName}-${release.version}`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9.]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase()
+    return {
+      filename: `feedback-${slug || release.id}.csv`,
+      content: toCsv(rows),
     }
   }
 

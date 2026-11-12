@@ -270,6 +270,12 @@ export const feedbackAssigneeSchema = z.object({
   assigneeId: z.string().min(1).nullable(),
 })
 
+export const releaseExportSchema = z.object({
+  releaseId: z.string().min(1),
+  /** The viewer's IANA zone, so test times read as they were entered. */
+  timeZone: z.string().trim().min(1).max(64).optional(),
+})
+
 export const feedbackFilterSchema = z.object({
   clientId: z.string().min(1).optional(),
   projectId: z.string().min(1).optional(),
@@ -305,3 +311,4 @@ export type FeedbackInput = z.infer<typeof feedbackInputSchema>
 export type FeedbackStatusInput = z.infer<typeof feedbackStatusSchema>
 export type FeedbackAssigneeInput = z.infer<typeof feedbackAssigneeSchema>
 export type FeedbackFilter = z.infer<typeof feedbackFilterSchema>
+export type ReleaseExportInput = z.infer<typeof releaseExportSchema>

@@ -12,6 +12,7 @@ import type {
   FeedbackInput,
   FeedbackStatusInput,
   FieldDefinitionInput,
+  ReleaseExportInput,
   ImportClientsInput,
   ImportContactsInput,
   LinkDocumentInput,
@@ -46,6 +47,7 @@ import type {
   ClientProjectOptionData,
   ClientReleaseData,
   ClientReleaseGroupData,
+  ClientReleaseReportData,
 } from "./types"
 
 import type { ClientServicePorts } from "./ports"
@@ -372,6 +374,20 @@ export class ClientsService {
     filter: FeedbackFilter = {}
   ): Promise<ClientFeedbackPageData> {
     return this.feedback.getFeedbackPage(ctx, filter)
+  }
+
+  async getReleaseReport(
+    ctx: RequestContext,
+    releaseId: string
+  ): Promise<ClientReleaseReportData> {
+    return this.feedback.getReleaseReport(ctx, releaseId)
+  }
+
+  async exportReleaseCsv(
+    ctx: RequestContext,
+    input: ReleaseExportInput
+  ): Promise<ClientExportResultData> {
+    return this.feedback.exportReleaseCsv(ctx, input)
   }
 
   async saveRelease(
