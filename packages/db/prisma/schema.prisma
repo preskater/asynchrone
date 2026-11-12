@@ -31,6 +31,7 @@ model User {
   customerTwoFactor CustomerTwoFactor[]
   assistantConversations AssistantConversation[]
   supportTickets SupportTicket[]
+  apiTokens     ApiToken[]
 
   oauthClients       OauthClient[]
   oauthRefreshTokens OauthRefreshToken[]
@@ -186,6 +187,7 @@ model Organization {
   aiUsageEvents AiUsageEvent[]
   assistantConversations AssistantConversation[]
   supportTickets SupportTicket[]
+  apiTokens     ApiToken[]
 
   @@unique([slug])
   @@map("organization")
@@ -2006,4 +2008,26 @@ model SupportTicket {
   @@index([status, createdAt])
   @@index([organizationId, createdAt])
   @@map("supportTicket")
+}
+
+/// A personal access token for the `/api/v1` API (ADR 0042). Only the SHA-256
+/// hash is stored; the plaintext is shown once at creation.
+model ApiToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  /// "asy_xxxxxxxx": public, used for lookup, display and audit rows.
+  prefix         String       @unique
+  tokenHash      String
+  scopes         String[]
+  expiresAt      DateTime
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, userId])
+  @@map("apiToken")
 }
