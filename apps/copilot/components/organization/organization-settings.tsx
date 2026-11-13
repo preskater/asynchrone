@@ -64,6 +64,7 @@ export function OrganizationSettings({
   checkout,
   deletionScheduledAt,
   twoFactorPolicy,
+  ssoCard,
   exportCard,
   calendarsUrl,
 }: {
@@ -71,6 +72,8 @@ export function OrganizationSettings({
   deletionScheduledAt: Date | null
   /** Owners and admins only; null hides the card. */
   twoFactorPolicy: TwoFactorPolicy | null
+  /** Server-rendered SSO card for owners and admins (#93). */
+  ssoCard?: React.ReactNode
   /** Server-rendered, owner-only data export card for the General tab. */
   exportCard?: React.ReactNode
   /** Origin of the calendars app, which owns the meeting settings (#161). */
@@ -225,6 +228,7 @@ export function OrganizationSettings({
         {twoFactorPolicy ? (
           <TwoFactorPolicyCard policy={twoFactorPolicy} />
         ) : null}
+        {ssoCard}
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">

@@ -95,6 +95,9 @@ const CODE_KEYS: Record<string, string> = {
   account_password_invalid: "accountPasswordInvalid",
   account_platform_operator: "accountPlatformOperator",
   account_sole_owner: "accountSoleOwner",
+  sso_provider_invalid: "ssoProviderInvalid",
+  sso_domain_unverified: "ssoDomainUnverified",
+  sso_domain_verification_failed: "ssoDomainVerificationFailed",
   account_impersonated: "accountImpersonated",
 }
 

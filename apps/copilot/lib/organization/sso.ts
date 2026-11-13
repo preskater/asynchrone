@@ -174,12 +174,13 @@ export async function getSsoSettings(
   }
 }
 
+/** Only the attributes the admin overrides; the plugin has per-protocol defaults. */
 function mappingFor(input: SsoProviderInput) {
-  return {
-    id: "sub",
-    email: input.emailAttribute || "email",
-    name: input.nameAttribute || "name",
+  const mapping = {
+    ...(input.emailAttribute ? { email: input.emailAttribute } : {}),
+    ...(input.nameAttribute ? { name: input.nameAttribute } : {}),
   }
+  return Object.keys(mapping).length > 0 ? mapping : undefined
 }
 
 /** Create or replace the organization's identity provider. */

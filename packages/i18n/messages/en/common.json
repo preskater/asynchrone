@@ -22,6 +22,7 @@
     "seats": "Your plan includes up to {seats} members, pending invitations included. Upgrade to add more.",
     "aiQuota": "Upgrade or add seats to raise your monthly AI allowance.",
     "auditLog": "The customer-facing audit log with filters and export is included in the Enterprise plan.",
-    "requireTwoFactor": "Requiring two-factor authentication for every member is included in the Team and Enterprise plans."
+    "requireTwoFactor": "Requiring two-factor authentication for every member is included in the Team and Enterprise plans.",
+    "sso": "Single sign-on (SAML/OIDC) is included in the Enterprise plan."
   }
 }
