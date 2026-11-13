@@ -1,3 +1,5 @@
+import { headers } from "next/headers"
+
 import { prisma } from "@/lib/prisma"
 
 import { AUDIT_ACTIONS } from "./actions"
@@ -242,4 +244,28 @@ export async function recordAuthAuditEvent(
   } catch (error) {
     console.error("[audit] failed to record an organization event", error)
   }
+}
+
+/**
+ * An SSO sign-in joined the organization bound to its provider (#93). The
+ * `sso` plugin inserts the member itself, so the row is written from its
+ * provisioning callback; the user is their own actor.
+ */
+export async function recordSsoMemberProvisioned(input: {
+  organizationId: string
+  user: { id: string; name: string; email: string }
+}): Promise<void> {
+  const requestHeaders = await headers().catch(() => new Headers())
+  await recordAudit({
+    organizationId: input.organizationId,
+    actorId: input.user.id,
+    actorName: input.user.name,
+    actorEmail: input.user.email,
+    ...requestMetaFromHeaders(requestHeaders),
+    action: AUDIT_ACTIONS.organizationMemberAdded,
+    entityType: "member",
+    entityId: input.user.id,
+    entityLabel: input.user.email,
+    after: { role: "member", source: "sso" },
+  })
 }
