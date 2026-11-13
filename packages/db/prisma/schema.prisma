@@ -37,6 +37,7 @@ model User {
   oauthAccessTokens  OauthAccessToken[]
   oauthConsents      OauthConsent[]
   repositoryTokens   UserRepositoryToken[]
+  ssoProviders       SsoProvider[]
 
   @@unique([email])
   @@map("user")
@@ -138,6 +139,10 @@ model Organization {
   deletionRequestedById String?
   /// Members must enroll TOTP before reaching the workspace (Team/Enterprise).
   requireTwoFactor      Boolean   @default(false)
+  /// Members on a verified SSO domain must sign in through the organization's
+  /// identity provider; owners keep password + 2FA as break-glass (#93).
+  ssoEnforced           Boolean   @default(false)
+  ssoProviders          SsoProvider[]
   teams             Team[]
   members           Member[]
   invitations       Invitation[]
@@ -2081,4 +2086,24 @@ model SupportTicket {
   @@index([status, createdAt])
   @@index([organizationId, createdAt])
   @@map("supportTicket")
+}
+
+/// An organization's identity provider (Better Auth `sso` plugin, #93). One per
+/// organization; `domain` routes sign-ins once `domainVerified` is set by the
+/// DNS TXT check. `oidcConfig`/`samlConfig` are the plugin's JSON strings.
+model SsoProvider {
+  id             String        @id
+  issuer         String
+  oidcConfig     String?
+  samlConfig     String?
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String        @unique
+  organizationId String?       @unique
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain         String
+  domainVerified Boolean?      @default(false)
+
+  @@index([domain])
+  @@map("ssoProvider")
 }
