@@ -22,6 +22,7 @@ export default createNextConfig({
     "@workspace/files",
     "@workspace/messaging",
     "@workspace/oidc",
+    "@workspace/realtime",
     "@workspace/storage",
   ],
   // `pg` and `pg-large-object` are native/CommonJS; keep them external so the

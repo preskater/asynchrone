@@ -73,11 +73,17 @@ export type MessagingAudit = (
 export interface MessagingServiceDeps {
   storage: MessagingStorage
   audit?: MessagingAudit
+  /**
+   * Called after a change other members should see (#98): the app publishes a
+   * real-time hint. It must not throw; the change is already committed.
+   */
+  changed?: (organizationId: string) => Promise<void>
 }
 
 export class MessagingService {
   private readonly storage: MessagingStorage
   private readonly audit?: MessagingAudit
+  private readonly changed?: (organizationId: string) => Promise<void>
 
   constructor(
     private readonly repo: MessagingRepository,
@@ -85,6 +91,11 @@ export class MessagingService {
   ) {
     this.storage = deps.storage
     this.audit = deps.audit
+    this.changed = deps.changed
+  }
+
+  private async notifyChanged(ctx: RequestContext): Promise<void> {
+    await this.changed?.(ctx.organizationId)
   }
 
   private record(
@@ -314,6 +325,7 @@ export class MessagingService {
       entityLabel: message.body.slice(0, 120),
       after: { conversationId: message.conversationId },
     })
+    await this.notifyChanged(ctx)
     return message
   }
 
@@ -337,6 +349,7 @@ export class MessagingService {
       entityId: message.id,
       entityLabel: message.body.slice(0, 120),
     })
+    await this.notifyChanged(ctx)
     return message
   }
 
@@ -369,6 +382,7 @@ export class MessagingService {
       entityType: "message",
       entityId: id,
     })
+    await this.notifyChanged(ctx)
     return { id }
   }
 
@@ -389,6 +403,7 @@ export class MessagingService {
       entityId: messageId,
       after: { emoji: input.emoji },
     })
+    await this.notifyChanged(ctx)
     return message
   }
 
@@ -415,6 +430,7 @@ export class MessagingService {
       entityId: reply.id,
       after: { parentId: reply.parentId ?? null },
     })
+    await this.notifyChanged(ctx)
     return reply
   }
 
@@ -466,6 +482,7 @@ export class MessagingService {
       entityLabel: conversation.name,
       after: { kind: "dm" },
     })
+    await this.notifyChanged(ctx)
     return conversation
   }
 
@@ -484,6 +501,7 @@ export class MessagingService {
       topic: input.topic,
       memberIds: [ctx.userId],
     })
+    await this.notifyChanged(ctx)
     return this.mapConversation(row)
   }
 

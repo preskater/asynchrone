@@ -37,6 +37,15 @@ export interface MessagingLive {
     cursor?: string | null
   ) => Promise<Page<Message>>
   touchPresence: () => Promise<void>
+  /**
+   * Optional push channel (#98): `onChange` runs when the organization's
+   * messaging changed or the stream (re)connected. While `connected()` is true
+   * the store stops polling; it resumes when the stream is down.
+   */
+  subscribe?: (onChange: () => void) => {
+    close(): void
+    connected(): boolean
+  }
 }
 
 /**
@@ -320,8 +329,10 @@ export function MessagingProvider({
     }
     window.addEventListener("focus", onVisible)
     document.addEventListener("visibilitychange", onVisible)
+    const stream = live.subscribe?.(refetch)
     const poll = window.setInterval(() => {
-      if (document.visibilityState === "visible") refetch()
+      if (document.visibilityState === "visible" && !stream?.connected())
+        refetch()
     }, 5000)
     // Presence is coarse: write at most once every 30s, not on every poll.
     const presence = window.setInterval(() => {
@@ -332,6 +343,7 @@ export function MessagingProvider({
 
     return () => {
       active = false
+      stream?.close()
       window.clearInterval(poll)
       window.clearInterval(presence)
       window.removeEventListener("focus", onVisible)

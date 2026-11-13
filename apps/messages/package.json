@@ -32,6 +32,7 @@
     "@workspace/observability": "*",
     "@workspace/oidc": "*",
     "@workspace/organization": "*",
+    "@workspace/realtime": "*",
     "@workspace/sagas": "*",
     "@workspace/search": "*",
     "@workspace/service-auth": "*",

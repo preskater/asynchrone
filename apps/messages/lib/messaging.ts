@@ -4,6 +4,7 @@ import { recordUserAudit } from "@/lib/audit"
 import { identity } from "@/lib/identity"
 import { largeObjectStore } from "@/lib/large-object"
 import { prisma } from "@/lib/prisma"
+import { publishMessagingChange } from "@/lib/realtime"
 
 /**
  * The messages app's binding of `@workspace/messaging`: the package owns the
@@ -15,6 +16,7 @@ const runtime = createMessagingRuntime({
   db: prisma,
   storage: largeObjectStore,
   audit: (ctx, input) => recordUserAudit(ctx, input),
+  changed: publishMessagingChange,
   directory: {
     listPresence(organizationId) {
       return identity.listPresence(organizationId)

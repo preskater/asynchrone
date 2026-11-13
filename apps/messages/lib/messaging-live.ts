@@ -1,4 +1,5 @@
 import type { Page } from "@workspace/core/pagination"
+import { openLiveStream } from "@workspace/realtime/client"
 import type { MessagingLive } from "@workspace/messaging/store"
 import type { Message, MessagingData } from "@workspace/messaging/types"
 
@@ -39,4 +40,5 @@ export const messagingLive: MessagingLive = {
       cache: "no-store",
     }).catch(() => undefined)
   },
+  subscribe: (onChange) => openLiveStream("/api/messages/stream", onChange),
 }
