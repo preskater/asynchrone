@@ -13,7 +13,7 @@
   "dependencies": {
     "@workspace/core": "*",
     "@workspace/db": "*",
-    "better-auth": "^1.7.18",
+    "better-auth": "^1.7.22",
     "next": "16.4.5",
     "react": "19.3.1"
   },
