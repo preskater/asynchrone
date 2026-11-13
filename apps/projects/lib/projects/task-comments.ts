@@ -2,6 +2,7 @@ import { recordUserAudit } from "@/lib/audit"
 import { memberDirectory } from "@/lib/identity"
 import { prisma } from "@/lib/prisma"
 import { notificationService } from "@/lib/projects"
+import { publishTaskCommentChange } from "@/lib/realtime"
 
 import {
   createTaskComment as createTaskCommentInDb,
@@ -19,6 +20,7 @@ const dependencies: TaskCommentDependencies = {
   notify: (args) => notificationService.notify(args),
   directory: memberDirectory,
   audit: recordUserAudit,
+  changed: publishTaskCommentChange,
 }
 
 export const listTaskComments = (organizationId: string, taskId: string) =>

@@ -54,4 +54,6 @@ export interface ProjectServicePorts {
   repository: ProjectRepositorySync
   /** Identity reads and the member-management writes the settings card exposes. */
   directory: MemberDirectoryPort
+  /** Publishes a real-time hint after a comment is added (#98). */
+  changed?: (organizationId: string) => Promise<void>
 }

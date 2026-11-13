@@ -1026,6 +1026,7 @@ export class ProjectService {
         db: this.db,
         notify: this.ports.notify,
         directory: this.ports.directory,
+        changed: this.ports.changed,
       },
       {
         organizationId: ctx.organizationId,

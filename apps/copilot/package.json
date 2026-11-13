@@ -58,6 +58,7 @@
     "@workspace/organization": "*",
     "@workspace/portal": "*",
     "@workspace/projects": "*",
+    "@workspace/realtime": "*",
     "@workspace/sagas": "*",
     "@workspace/search": "*",
     "@workspace/service-auth": "*",

@@ -22,6 +22,7 @@ export default createNextConfig({
     "@workspace/integrations",
     "@workspace/notifications",
     "@workspace/oidc",
+    "@workspace/realtime",
     "@workspace/projects",
   ],
   // `pg` and `pg-large-object` are native/CommonJS; keep them external so the

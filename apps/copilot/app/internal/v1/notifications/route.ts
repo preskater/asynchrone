@@ -6,6 +6,7 @@ import {
 import { prisma } from "@workspace/db-identity"
 
 import { requireCopilotService } from "@/lib/internal/service"
+import { publishNotificationChange } from "@/lib/realtime"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -97,6 +98,7 @@ export async function POST(request: Request): Promise<Response> {
         },
       },
     })
+    await publishNotificationChange(input.organizationId, input.userId)
     return envelope({ created: true })
   } catch (cause) {
     if (

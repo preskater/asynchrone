@@ -13,6 +13,8 @@ export interface MessagingRuntimeOptions {
   directory: MessagingDirectory
   /** The app's audit writer (`recordUserAudit`). */
   audit?: MessagingAudit
+  /** Publishes a real-time hint after a shared change (#98). */
+  changed?: (organizationId: string) => Promise<void>
 }
 
 export interface MessagingRuntime {
@@ -35,6 +37,7 @@ export function createMessagingRuntime(
   const service = new MessagingService(repository, {
     storage: options.storage,
     audit: options.audit,
+    changed: options.changed,
   })
   const objects = createMessagingObjects(options.db, options.storage)
 

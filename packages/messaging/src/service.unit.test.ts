@@ -109,10 +109,12 @@ function buildService() {
     open: vi.fn(async () => ({ size: 5, stream: new PassThrough() })),
     unlink: vi.fn(async () => undefined),
   }
+  const changed = vi.fn(async (_organizationId: string) => undefined)
   const service = new MessagingService(repo as unknown as MessagingRepository, {
     storage,
+    changed,
   })
-  return { repo, storage, service, conversation }
+  return { repo, storage, service, conversation, changed }
 }
 
 beforeEach(() => {
@@ -158,6 +160,18 @@ describe("MessagingService membership and organization scope", () => {
       message: expect.stringContaining("Conversation"),
     })
     expect(repo.createMessage).not.toHaveBeenCalled()
+  })
+
+  it("publishes a real-time hint for the organization after a send only", async () => {
+    const { service, changed } = buildService()
+
+    await expect(
+      service.sendMessage(ctxB, { conversationId: "conv_a", body: "hi" })
+    ).rejects.toThrow()
+    expect(changed).not.toHaveBeenCalled()
+
+    await service.sendMessage(ctxA, { conversationId: "conv_a", body: "hi" })
+    expect(changed).toHaveBeenCalledWith(ctxA.organizationId)
   })
 
   it("returns the existing direct message with its membership untouched", async () => {

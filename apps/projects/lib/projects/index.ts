@@ -6,6 +6,7 @@ import { memberDirectory } from "@/lib/identity"
 import { repositoryIntegrationService } from "@/lib/integrations"
 import { createNotificationService } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
+import { publishTaskCommentChange } from "@/lib/realtime"
 
 /**
  * App adapter for the projects domain.
@@ -28,6 +29,7 @@ export const projectService = new ProjectService(projectRepository, prisma, {
   notify: (args) => notificationService.notify(args),
   repository: repositoryIntegrationService,
   directory: memberDirectory,
+  changed: publishTaskCommentChange,
 })
 
 export { ProjectRepository, ProjectService }

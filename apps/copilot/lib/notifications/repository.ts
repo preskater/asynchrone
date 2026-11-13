@@ -6,7 +6,14 @@ import type {
 } from "@workspace/notifications"
 
 export class NotificationRepository implements NotificationRepositoryPort {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    /** Real-time hint for the recipient's open tabs (#98). */
+    private readonly onCreated?: (
+      organizationId: string,
+      userId: string
+    ) => Promise<void>
+  ) {}
 
   list(
     organizationId: string,
@@ -26,16 +33,18 @@ export class NotificationRepository implements NotificationRepositoryPort {
     })
   }
 
-  create(data: {
+  async create(data: {
     organizationId: string
     userId: string
     actorId: string | null
     type: string
     data?: unknown
   }) {
-    return this.db.notification.create({
+    const row = await this.db.notification.create({
       data: { ...data, data: (data.data ?? undefined) as never },
     })
+    await this.onCreated?.(data.organizationId, data.userId)
+    return row
   }
 
   /**

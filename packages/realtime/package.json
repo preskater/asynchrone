@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/realtime",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Elastic-2.0",
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^10.14.0",
+    "typescript": "^7",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    "./client": "./src/client.ts",
+    "./server": "./src/server.ts"
+  }
+}
