@@ -14,6 +14,7 @@ export default createNextConfig({
     "@workspace/files",
     "@workspace/messaging",
     "@workspace/portal",
+    "@workspace/realtime",
     "@workspace/sagas",
     "@workspace/search",
     "@workspace/db-core",

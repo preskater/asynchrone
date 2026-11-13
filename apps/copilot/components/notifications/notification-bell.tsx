@@ -28,6 +28,7 @@ import {
 } from "@/actions/notifications"
 import { useRouter } from "@workspace/i18n/navigation"
 import { unwrapActionResult } from "@workspace/core/action"
+import { openLiveStream } from "@workspace/realtime/client"
 import type {
   NotificationItemData,
   NotificationsData,
@@ -108,6 +109,24 @@ export function NotificationBell({
       // Keep the server-rendered list when refreshing fails.
     }
   }
+
+  // New notifications arrive as real-time hints (#98); the read is a route
+  // handler so it can run at any time without touching the router.
+  React.useEffect(() => {
+    let active = true
+    const stream = openLiveStream("/api/notifications/stream", () => {
+      void fetch("/api/notifications", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((fresh: NotificationsData | null) => {
+          if (active && fresh) setData(fresh)
+        })
+        .catch(() => {})
+    })
+    return () => {
+      active = false
+      stream.close()
+    }
+  }, [])
 
   function formatRelative(iso: string) {
     const formatter = new Intl.RelativeTimeFormat(locale, {
