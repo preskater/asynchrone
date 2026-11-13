@@ -14,6 +14,9 @@ export type AppErrorCode =
  * the HTTP-level {@link AppErrorCode}.
  */
 export type ServiceErrorCode =
+  | "sso_provider_invalid"
+  | "sso_domain_unverified"
+  | "sso_domain_verification_failed"
   | "trial_not_eligible"
   | "trial_already_used"
   | "trial_email_unverified"

@@ -134,6 +134,12 @@
       "two_factor_policy": {
         "update": "Obligation de double authentification modifiée"
       },
+      "sso": {
+        "provider_updated": "Fournisseur SSO enregistré",
+        "provider_removed": "Fournisseur SSO supprimé",
+        "domain_verified": "Domaine SSO vérifié",
+        "enforcement_updated": "Connexion SSO obligatoire modifiée"
+      },
       "export": {
         "request": "Export de l’espace de travail demandé"
       },

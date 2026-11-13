@@ -120,5 +120,8 @@
   "releaseVersionTaken": "Cette version existe déjà pour ce client.",
   "projectNotLinkedToClient": "Liez d’abord le projet à ce client.",
   "feedbackAlreadyConverted": "Ce retour a déjà une tâche.",
-  "feedbackProjectRequired": "Liez d’abord la version à un projet."
+  "feedbackProjectRequired": "Liez d’abord la version à un projet.",
+  "ssoProviderInvalid": "Le fournisseur d'identité n'a pas pu être enregistré : {reason}",
+  "ssoDomainUnverified": "Vérifiez le domaine avant d'imposer l'authentification unique.",
+  "ssoDomainVerificationFailed": "L'enregistrement DNS est introuvable pour l'instant. La propagation DNS peut prendre du temps ; réessayez plus tard."
 }

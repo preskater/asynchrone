@@ -134,6 +134,12 @@
       "two_factor_policy": {
         "update": "Two-factor requirement changed"
       },
+      "sso": {
+        "provider_updated": "SSO provider saved",
+        "provider_removed": "SSO provider removed",
+        "domain_verified": "SSO domain verified",
+        "enforcement_updated": "SSO-only sign-in changed"
+      },
       "export": {
         "request": "Workspace export requested"
       },

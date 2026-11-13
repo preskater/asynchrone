@@ -120,5 +120,8 @@
   "releaseVersionTaken": "This version already exists for this client.",
   "projectNotLinkedToClient": "Link the project to this client first.",
   "feedbackAlreadyConverted": "This feedback already has a task.",
-  "feedbackProjectRequired": "Link the version to a project first."
+  "feedbackProjectRequired": "Link the version to a project first.",
+  "ssoProviderInvalid": "The identity provider could not be saved: {reason}",
+  "ssoDomainUnverified": "Verify the domain before requiring single sign-on.",
+  "ssoDomainVerificationFailed": "The DNS record was not found yet. DNS changes can take a while to propagate; try again later."
 }

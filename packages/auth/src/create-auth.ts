@@ -25,7 +25,12 @@ import { parseTrustedIpHeaders } from "@workspace/core/trusted-ip"
 
 import { MIN_PASSWORD_LENGTH } from "./password-policy"
 import { isBlockedEmailDomain, isInviteOnly } from "./signup-policy"
-import { SSO_MANAGEMENT_PATHS, isSsoSessionPath, requiresSso } from "./sso"
+import {
+  SSO_DOMAIN_TOKEN_PREFIX,
+  SSO_MANAGEMENT_PATHS,
+  isSsoSessionPath,
+  requiresSso,
+} from "./sso"
 
 export interface AuthRateLimitOptions {
   failOpen: boolean
@@ -537,7 +542,7 @@ export function createAuth<TRoles extends Record<string, any>>(
       sso({
         domainVerification: {
           enabled: true,
-          tokenPrefix: "asynchrone-space-verification",
+          tokenPrefix: SSO_DOMAIN_TOKEN_PREFIX,
         },
         organizationProvisioning: {
           defaultRole: "member",

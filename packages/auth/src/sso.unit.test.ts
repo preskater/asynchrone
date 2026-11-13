@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  isPublicHttpsUrl,
   isSsoSessionPath,
   requiresSso,
   ssoDomainCandidates,
@@ -103,5 +104,16 @@ describe("requiresSso", () => {
     await expect(requiresSso(db({ email: null }), org(), "u1")).resolves.toBe(
       false
     )
+  })
+})
+
+describe("isPublicHttpsUrl", () => {
+  it("allows only public HTTPS hosts for discovery", () => {
+    expect(isPublicHttpsUrl("https://login.example.com/oauth2")).toBe(true)
+    expect(isPublicHttpsUrl("http://login.example.com")).toBe(false)
+    expect(isPublicHttpsUrl("https://localhost:8443")).toBe(false)
+    expect(isPublicHttpsUrl("https://10.0.0.5")).toBe(false)
+    expect(isPublicHttpsUrl("https://169.254.169.254/latest")).toBe(false)
+    expect(isPublicHttpsUrl("not a url")).toBe(false)
   })
 })

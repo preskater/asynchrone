@@ -1,3 +1,6 @@
+import { isPublicRoutableHost } from "@better-auth/core/utils/host"
+import { discoverOIDCConfig } from "@better-auth/sso"
+
 /**
  * Organization SSO policy (#93, ADR 0044).
  *
@@ -21,6 +24,38 @@ export const SSO_MANAGEMENT_PATHS: ReadonlySet<string> = new Set([
   "/sso/request-domain-verification",
   "/sso/verify-domain",
 ])
+
+/** Must match `tokenPrefix` in `createAuth`'s `sso()` options. */
+export const SSO_DOMAIN_TOKEN_PREFIX = "asynchrone-space-verification"
+
+/** The DNS TXT record name the plugin resolves for a provider's domain. */
+export function ssoVerificationIdentifier(providerId: string): string {
+  return `_${SSO_DOMAIN_TOKEN_PREFIX}-${providerId}`
+}
+
+/**
+ * Only public HTTPS hosts may be fetched during OIDC discovery: the issuer is
+ * typed by a customer, so a private address would be a server-side request
+ * forgery into our network.
+ */
+export function isPublicHttpsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "https:" && isPublicRoutableHost(parsed.hostname)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve a customer's OIDC endpoints from its issuer. The plugin's own
+ * discovery only accepts Better Auth `trustedOrigins`, which must stay limited
+ * to our apps, so the provider is registered with these endpoints and
+ * `skipDiscovery` instead.
+ */
+export function discoverIdentityProvider(issuer: string) {
+  return discoverOIDCConfig({ issuer, isTrustedOrigin: isPublicHttpsUrl })
+}
 
 /** A session created by the SSO callbacks (OIDC or SAML). */
 export function isSsoSessionPath(path: string | undefined): boolean {
