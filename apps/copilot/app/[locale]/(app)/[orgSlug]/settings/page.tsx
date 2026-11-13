@@ -5,10 +5,12 @@ import { appOrigin } from "@workspace/contracts/server"
 import type { CheckoutReturn } from "@/components/billing/billing-panel"
 import { DataExportCard } from "@/components/organization/data-export-card"
 import { OrganizationSettings } from "@/components/organization/organization-settings"
+import { SsoCard } from "@/components/organization/sso-card"
 import { TrialCard } from "@/components/trial/trial-card"
 
 import { getOptionalRequestContext } from "@/lib/core/auth-context"
 import { getDeletionScheduledAt } from "@/lib/organization/deletion-service"
+import { getSsoSettings } from "@/lib/organization/sso"
 import { getTwoFactorPolicy } from "@/lib/organization/two-factor-policy"
 
 function checkoutFrom(
@@ -29,12 +31,13 @@ export default async function SettingsPage({
   const t = await getTranslations("AppPages")
   const checkout = checkoutFrom(await searchParams)
   const ctx = await getOptionalRequestContext()
-  const [deletionScheduledAt, twoFactorPolicy] = ctx
+  const [deletionScheduledAt, twoFactorPolicy, ssoSettings] = ctx
     ? await Promise.all([
         getDeletionScheduledAt(ctx.organizationId),
         getTwoFactorPolicy(ctx),
+        getSsoSettings(ctx),
       ])
-    : [null, null]
+    : [null, null, null]
   return (
     <div className="flex flex-1 flex-col gap-4 px-4 py-4 md:py-6 lg:px-6">
       <div className="flex flex-col gap-1">
@@ -49,6 +52,7 @@ export default async function SettingsPage({
         checkout={checkout}
         deletionScheduledAt={deletionScheduledAt}
         twoFactorPolicy={twoFactorPolicy}
+        ssoCard={ssoSettings ? <SsoCard settings={ssoSettings} /> : null}
         exportCard={<DataExportCard />}
         calendarsUrl={appOrigin("calendars")}
       />

@@ -39,6 +39,7 @@ export function SignInForm({
   const searchParams = useSearchParams()
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
+  const [ssoPending, setSsoPending] = useState(false)
 
   const formSchema = z.object({
     email: z.email(t("invalidEmail")),
@@ -58,6 +59,11 @@ export function SignInForm({
     const { data: result, error } = await authClient.signIn.email(data)
 
     if (error) {
+      // The organization behind this email domain requires SSO (#93).
+      if (error.code === "SSO_REQUIRED") {
+        form.setError("root", { message: t("ssoRequired") })
+        return
+      }
       if (error.status === 403) {
         setUnverifiedEmail(data.email)
         form.setError("root", { message: t("emailNotVerified") })
@@ -76,6 +82,23 @@ export function SignInForm({
     }
     router.push(redirectTo)
     router.refresh()
+  }
+
+  /** Send the user to the identity provider of their email's verified domain. */
+  async function signInWithSso() {
+    const email = form.getValues("email")
+    if (!(await form.trigger("email"))) return
+    setSsoPending(true)
+    const { data, error } = await authClient.signIn.sso({
+      email,
+      callbackURL: safeRedirect(searchParams.get("redirect")),
+    })
+    if (error || !data?.url) {
+      setSsoPending(false)
+      form.setError("root", { message: t("ssoNotFound") })
+      return
+    }
+    window.location.href = data.url
   }
 
   async function resendVerification() {
@@ -134,7 +157,9 @@ export function SignInForm({
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>{t("password")}</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>
+                      {t("password")}
+                    </FieldLabel>
                     <Input
                       {...field}
                       id={field.name}
@@ -160,6 +185,14 @@ export function SignInForm({
               <Field>
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? t("submitting") : t("submit")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={ssoPending || form.formState.isSubmitting}
+                  onClick={signInWithSso}
+                >
+                  {t("sso")}
                 </Button>
                 {form.formState.errors.root && (
                   <FieldError errors={[form.formState.errors.root]} />

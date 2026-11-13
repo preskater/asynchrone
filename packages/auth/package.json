@@ -11,14 +11,16 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@better-auth/cimd": "^1.7.18",
-    "@better-auth/mcp": "^1.7.18",
-    "@better-auth/oauth-provider": "^1.7.13",
+    "@better-auth/cimd": "^1.7.22",
+    "@better-auth/core": "^1.7.22",
+    "@better-auth/mcp": "^1.7.22",
+    "@better-auth/oauth-provider": "^1.7.22",
+    "@better-auth/sso": "^1.7.22",
     "@workspace/audit": "*",
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/oidc": "*",
-    "better-auth": "^1.7.18",
+    "better-auth": "^1.7.22",
     "next": "16.4.5"
   },
   "devDependencies": {
@@ -39,6 +41,7 @@
     "./signup-policy": "./src/signup-policy.ts",
     "./two-factor-audit": "./src/two-factor-audit.ts",
     "./user-agent": "./src/user-agent.ts",
-    "./oidc": "./src/oidc.ts"
+    "./oidc": "./src/oidc.ts",
+    "./sso": "./src/sso.ts"
   }
 }

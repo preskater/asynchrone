@@ -20,6 +20,7 @@ export function PlanUpgradePrompt({
     | "multipleRoles"
     | "requireTwoFactor"
     | "seats"
+    | "sso"
   className?: string
 }) {
   const t = useTranslations("Common.upgrade")

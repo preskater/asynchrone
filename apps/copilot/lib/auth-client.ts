@@ -1,4 +1,5 @@
 import { oauthProviderClient } from "@better-auth/oauth-provider/client"
+import { ssoClient } from "@better-auth/sso/client"
 import { organizationClient, twoFactorClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
 
@@ -12,5 +13,6 @@ export const authClient = createAuthClient({
     }),
     oauthProviderClient(),
     twoFactorClient(),
+    ssoClient(),
   ],
 })

@@ -65,6 +65,7 @@ const DATABASES = {
       "UserDeletionJob",
       "UserDeletionApp",
       "SupportTicket",
+      "SsoProvider",
     ],
   },
   projects: {

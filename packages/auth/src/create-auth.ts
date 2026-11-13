@@ -1,6 +1,7 @@
 import { cimd } from "@better-auth/cimd"
 import { fetchClientMetadataResource } from "@better-auth/cimd/node"
 import { mcp } from "@better-auth/mcp"
+import { sso } from "@better-auth/sso"
 import { betterAuth } from "better-auth"
 import {
   APIError,
@@ -24,6 +25,12 @@ import { parseTrustedIpHeaders } from "@workspace/core/trusted-ip"
 
 import { MIN_PASSWORD_LENGTH } from "./password-policy"
 import { isBlockedEmailDomain, isInviteOnly } from "./signup-policy"
+import {
+  SSO_DOMAIN_TOKEN_PREFIX,
+  SSO_MANAGEMENT_PATHS,
+  isSsoSessionPath,
+  requiresSso,
+} from "./sso"
 
 export interface AuthRateLimitOptions {
   failOpen: boolean
@@ -79,6 +86,11 @@ export interface AuthOptions<
       userId: string,
       path: string | undefined
     ) => Promise<void>
+    /** An SSO sign-in joined its organization (the plugin inserts the member). */
+    recordSsoMemberProvisioned?: (input: {
+      organizationId: string
+      user: { id: string; name: string; email: string }
+    }) => Promise<void>
   }
   organization: {
     access: { ac: any; roles: TRoles }
@@ -87,6 +99,7 @@ export interface AuthOptions<
     entitlementsFor: (plan: any) => {
       requireTwoFactor: boolean
       granularPermissions: boolean
+      sso: boolean
     }
     seatsFull: (
       organizationId: string,
@@ -315,6 +328,24 @@ export function createAuth<TRoles extends Record<string, any>>(
           },
         },
       },
+      session: {
+        // SSO-only organizations (#93): every way of opening a session (password,
+        // 2FA verification, social, magic link) ends here, so the rule is checked
+        // once. SSO callbacks and impersonation handoffs are exempt.
+        create: {
+          before: async (session, ctx) => {
+            if (!ctx || isSsoSessionPath(ctx.path)) return
+            if ((session as { impersonatedBy?: string | null }).impersonatedBy)
+              return
+            if (await requiresSso(database, org, session.userId)) {
+              throw new APIError("FORBIDDEN", {
+                code: "SSO_REQUIRED",
+                message: "Your organization requires single sign-on.",
+              })
+            }
+          },
+        },
+      },
     },
     socialProviders: {
       ...(options.github ? { github: options.github } : {}),
@@ -322,6 +353,11 @@ export function createAuth<TRoles extends Record<string, any>>(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // SSO providers are managed only through Copilot's server actions, which
+        // check the entitlement and capability and write the audit row (#93).
+        if (SSO_MANAGEMENT_PATHS.has(ctx.path) && ctx.request) {
+          throw new APIError("NOT_FOUND")
+        }
         // The audit row for a role change records the previous role set; the
         // after hook sees the same per-call `ctx.context`.
         if (
@@ -498,6 +534,34 @@ export function createAuth<TRoles extends Record<string, any>>(
         schema: {
           user: { fields: { twoFactorEnabled: "customerTwoFactorEnabled" } },
           twoFactor: { modelName: "customerTwoFactor" },
+        },
+      }),
+      // Per-organization SAML/OIDC (#93, ADR 0044). A verified domain routes
+      // `/sign-in/sso` to the organization's provider and its users join the
+      // organization on first sign-in.
+      sso({
+        domainVerification: {
+          enabled: true,
+          tokenPrefix: SSO_DOMAIN_TOKEN_PREFIX,
+        },
+        organizationProvisioning: {
+          defaultRole: "member",
+          // Runs before the plugin inserts the member directly, so the plan's
+          // seat limit and the audit trail still apply.
+          getRole: async ({ user, provider }) => {
+            if (provider.organizationId) {
+              await assertSeatAvailable(
+                provider.organizationId,
+                "member",
+                false
+              )
+              await audit.recordSsoMemberProvisioned?.({
+                organizationId: provider.organizationId,
+                user: { id: user.id, name: user.name, email: user.email },
+              })
+            }
+            return "member"
+          },
         },
       }),
       jwt(),

@@ -22,6 +22,7 @@
     "seats": "Votre offre inclut jusqu'à {seats} membres, invitations en attente comprises. Passez à une offre supérieure pour en ajouter.",
     "aiQuota": "Passez à une offre supérieure ou ajoutez des membres pour augmenter votre allocation IA mensuelle.",
     "auditLog": "Le journal d'audit avec filtres et export est inclus dans l'offre Enterprise.",
-    "requireTwoFactor": "Imposer la double authentification à tous les membres est inclus dans les offres Team et Enterprise."
+    "requireTwoFactor": "Imposer la double authentification à tous les membres est inclus dans les offres Team et Enterprise.",
+    "sso": "L'authentification unique (SAML/OIDC) est incluse dans l'offre Enterprise."
   }
 }

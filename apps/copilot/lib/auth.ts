@@ -3,7 +3,10 @@ import { z } from "zod"
 
 import { recordSessionRevocation } from "./account/session-audit"
 import { recordTwoFactorChange } from "./account/two-factor-audit"
-import { recordAuthAuditEvent } from "./audit/auth-audit"
+import {
+  recordAuthAuditEvent,
+  recordSsoMemberProvisioned,
+} from "./audit/auth-audit"
 import { rateLimit } from "./core/rate-limit"
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email"
 import { domainClient } from "./internal/domain"
@@ -75,6 +78,7 @@ export const auth = createAuth({
     recordAuthAuditEvent,
     recordSessionRevocation,
     recordTwoFactorChange,
+    recordSsoMemberProvisioned,
   },
   organization: {
     access: { ac, roles: orgRoles },
