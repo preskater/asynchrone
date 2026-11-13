@@ -9,6 +9,8 @@ export interface TaskCommentDependencies {
   notify: ProjectNotify
   directory: MemberDirectoryPort
   audit?: ProjectAudit
+  /** Publishes a real-time hint once the comment is stored (#98). */
+  changed?: (organizationId: string) => Promise<void>
 }
 
 export const TASK_COMMENT_MAX_LENGTH = 4000
@@ -83,7 +85,7 @@ function mapComment(
  * project members so the team sees them in the header bell.
  */
 export async function createTaskComment(
-  { db, notify, directory, audit }: TaskCommentDependencies,
+  { db, notify, directory, audit, changed }: TaskCommentDependencies,
   input: {
     organizationId: string
     taskId: string
@@ -133,6 +135,7 @@ export async function createTaskComment(
   if (input.authorKind === "client") {
     await notifyTeamOfClientComment({ db, notify, directory }, input, task)
   }
+  await changed?.(input.organizationId)
 
   const nameById = await namesByIds(
     directory,

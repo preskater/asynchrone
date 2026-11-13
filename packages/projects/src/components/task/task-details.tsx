@@ -77,9 +77,12 @@ function TaskDetailsBody({ taskId }: { taskId: string }) {
     updateTask,
     toggleSubtask,
     addComment,
+    watchTaskComments,
   } = store
   const task = store.tasks.find((item) => item.id === taskId)
   const [comment, setComment] = React.useState("")
+
+  React.useEffect(() => watchTaskComments(taskId), [watchTaskComments, taskId])
 
   if (!task) return null
 
