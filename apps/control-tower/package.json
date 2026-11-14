@@ -18,7 +18,7 @@
     "test:unit": "vitest run --coverage"
   },
   "dependencies": {
-    "@sentry/nextjs": "^11.11.0",
+    "@sentry/nextjs": "^11.12.0",
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/db-control-tower": "*",
@@ -26,10 +26,10 @@
     "@workspace/observability": "*",
     "@workspace/service-auth": "*",
     "@workspace/ui": "*",
-    "better-auth": "^1.7.18",
-    "dotenv": "^18.0.9",
-    "lucide-react": "^1.70.0",
-    "next": "16.4.5",
+    "better-auth": "^1.7.20",
+    "dotenv": "^18.0.10",
+    "lucide-react": "^1.71.0",
+    "next": "16.4.6",
     "next-themes": "^0.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",

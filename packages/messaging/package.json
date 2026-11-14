@@ -19,8 +19,8 @@
     "@workspace/organization": "*",
     "@workspace/storage": "*",
     "@workspace/ui": "*",
-    "lucide-react": "^1.70.0",
-    "next-intl": "^4.14.9",
+    "lucide-react": "^1.71.0",
+    "next-intl": "^4.14.10",
     "react": "19.3.1",
     "sonner": "^2.0.8",
     "zod": "^4.6.7"
