@@ -11,15 +11,15 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@better-auth/cimd": "^1.7.18",
-    "@better-auth/mcp": "^1.7.18",
+    "@better-auth/cimd": "^1.7.20",
+    "@better-auth/mcp": "^1.7.20",
     "@better-auth/oauth-provider": "^1.7.13",
     "@workspace/audit": "*",
     "@workspace/contracts": "*",
     "@workspace/core": "*",
     "@workspace/oidc": "*",
-    "better-auth": "^1.7.18",
-    "next": "16.4.5"
+    "better-auth": "^1.7.20",
+    "next": "16.4.6"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
