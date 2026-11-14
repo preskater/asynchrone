@@ -17,7 +17,7 @@
     "legal:pdfs": "tsx scripts/build-legal-pdfs.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "^6.0.0",
+    "@hookform/resolvers": "^7.0.5",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@sentry/nextjs": "^11.11.0",
